@@ -50,9 +50,24 @@
             <div class="panel-header"><h2 class="panel-title">Kaynak</h2></div>
             <dl class="panel-body detail-list">
                 <div><dt class="detail-term">Sağlayıcı</dt><dd class="detail-value">@DeploymentDisplay.GitProviderText(project.GitProvider)</dd></div>
-                <div><dt class="detail-term">Depo</dt><dd class="detail-value font-mono break-all">@project.RepositoryUrl</dd></div>
+                @if (project.GitIntegration is not null)
+                {
+                    <div><dt class="detail-term">Bağlantı</dt><dd class="detail-value">@(project.GitIntegrationName ?? $"{project.GitIntegration} (eklenti etkin değil)")</dd></div>
+                    <div><dt class="detail-term">Depo</dt><dd class="detail-value font-mono break-all">@project.GitRepository</dd></div>
+                }
+                else
+                {
+                    <div><dt class="detail-term">Depo</dt><dd class="detail-value font-mono break-all">@project.RepositoryUrl</dd></div>
+                }
                 <div><dt class="detail-term">Dal</dt><dd class="detail-value"><span class="tag">@project.Branch</span></dd></div>
-                <div><dt class="detail-term">Kimlik</dt><dd class="detail-value">@(project.HasAccessToken ? $"Erişim anahtarı kayıtlı{(project.GitUsername is null ? "" : $" ({project.GitUsername})")}" : "Anahtar yok (herkese açık veya SSH)")</dd></div>
+                @if (project.GitIntegration is not null)
+                {
+                    <div><dt class="detail-term">Kimlik</dt><dd class="detail-value">Her işlemde bağlantıdan kısa ömürlü anahtar alınır</dd></div>
+                }
+                else
+                {
+                    <div><dt class="detail-term">Kimlik</dt><dd class="detail-value">@(project.HasAccessToken ? $"Erişim anahtarı kayıtlı{(project.GitUsername is null ? "" : $" ({project.GitUsername})")}" : "Anahtar yok (herkese açık veya SSH)")</dd></div>
+                }
             </dl>
         </section>
 

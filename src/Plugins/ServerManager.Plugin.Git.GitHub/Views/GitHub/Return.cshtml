@@ -1,0 +1,13 @@
+@model GitHubReturnViewModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = Model.Title;
+    ViewData["Page"] = "github-return";
+    ViewData[PluginContent.PagePluginKey] = GitHubPlugin.SystemName;
+}
+
+<div class="login-card github-return" data-github-return data-target="@Model.TargetUrl">
+    <h2 class="login-title">@Model.Title</h2>
+    <p class="login-lead">@Model.Message</p>
+    <a href="@Model.TargetUrl" class="btn-primary w-full justify-center" title="Panele dönüp işlemi tamamla">Devam et</a>
+</div>

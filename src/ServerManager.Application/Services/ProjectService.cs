@@ -34,6 +34,8 @@ public class ProjectService : IProjectService
     private readonly ICurrentUserService _currentUser;
     private readonly IValidator<CreateProjectDto> _createValidator;
     private readonly IValidator<UpdateProjectDto> _updateValidator;
+    private readonly IValidator<RemoteBranchQueryDto> _remoteBranchValidator;
+    private readonly IGitIntegrationRegistry _gitIntegrations;
     private readonly DeploymentOptions _options;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<ProjectService> _logger;
@@ -48,6 +50,8 @@ public class ProjectService : IProjectService
         ICurrentUserService currentUser,
         IValidator<CreateProjectDto> createValidator,
         IValidator<UpdateProjectDto> updateValidator,
+        IValidator<RemoteBranchQueryDto> remoteBranchValidator,
+        IGitIntegrationRegistry gitIntegrations,
         IOptions<DeploymentOptions> options,
         TimeProvider timeProvider,
         ILogger<ProjectService> logger)
@@ -61,6 +65,8 @@ public class ProjectService : IProjectService
         _currentUser = currentUser;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
+        _remoteBranchValidator = remoteBranchValidator;
+        _gitIntegrations = gitIntegrations;
         _options = options.Value;
         _timeProvider = timeProvider;
         _logger = logger;
@@ -90,7 +96,8 @@ public class ProjectService : IProjectService
 
         var (keys, unreadable) = ReadEnvironmentKeys(project);
         var running = await _repository.GetRunningDeploymentAsync(id, cancellationToken);
-        return ServiceResult<ProjectDetailsDto>.Success(project.ToDetailsDto(keys, unreadable, running?.Id));
+        var integrationName = project.GitIntegration is null ? null : _gitIntegrations.Find(project.GitIntegration)?.DisplayName;
+        return ServiceResult<ProjectDetailsDto>.Success(project.ToDetailsDto(keys, unreadable, running?.Id, integrationName));
     }
 
     public async Task<ServiceResult<UpdateProjectDto>> GetForEditAsync(Guid id, CancellationToken cancellationToken = default)
@@ -126,6 +133,10 @@ public class ProjectService : IProjectService
         if (await _repository.ProjectNameExistsAsync(dto.Name, null, cancellationToken))
             return ServiceResult<Guid>.ValidationFailure(nameof(dto.Name), "Bu isimde bir proje zaten kayıtlı.");
 
+        var integrationError = await ApplyIntegrationAsync(dto, cancellationToken);
+        if (integrationError is not null)
+            return ServiceResult<Guid>.ValidationFailure([integrationError]);
+
         var slug = await GenerateSlugAsync(dto.Name, cancellationToken);
         if (slug is null)
             return ServiceResult<Guid>.ValidationFailure(nameof(dto.Name), "Bu ad için benzersiz bir kısa ad üretilemedi; farklı bir ad deneyin.");
@@ -141,7 +152,7 @@ public class ProjectService : IProjectService
         await _repository.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Deployment projesi eklendi. ProjectId: {ProjectId}, Name: {ProjectName}", project.Id, project.Name);
-        await AuditAsync(AuditActions.ProjectCreate, project, $"Sunucu: {server.Name} | Depo: {project.RepositoryUrl} ({project.Branch}) | Tür: {project.BuildType}", cancellationToken);
+        await AuditAsync(AuditActions.ProjectCreate, project, $"Sunucu: {server.Name} | Depo: {DescribeSource(project)} ({project.Branch}) | Tür: {project.BuildType}", cancellationToken);
         return ServiceResult<Guid>.Success(project.Id, "Proje eklendi.");
     }
 
@@ -163,9 +174,15 @@ public class ProjectService : IProjectService
         if (await _repository.ProjectNameExistsAsync(dto.Name, project.Id, cancellationToken))
             return ServiceResult.ValidationFailure(nameof(dto.Name), "Bu isimde bir proje zaten kayıtlı.");
 
-        var keepsToken = string.IsNullOrEmpty(dto.AccessToken) && !dto.RemoveAccessToken && project.EncryptedAccessToken is not null;
+        var integrationError = await ApplyIntegrationAsync(dto, cancellationToken);
+        if (integrationError is not null)
+            return ServiceResult.ValidationFailure([integrationError]);
+
+        var keepsToken = !dto.UsesIntegration && string.IsNullOrEmpty(dto.AccessToken) && !dto.RemoveAccessToken && project.EncryptedAccessToken is not null;
         if (keepsToken && !GitRepositoryUrls.IsHttps(dto.RepositoryUrl))
             return ServiceResult.ValidationFailure(nameof(dto.RepositoryUrl), "Kayıtlı erişim anahtarı yalnızca https:// adreslerle kullanılabilir; anahtarı kaldırın veya https adres girin.");
+        if (keepsToken && !GitRepositoryUrls.HaveSameHost(project.RepositoryUrl, dto.RepositoryUrl))
+            return ServiceResult.ValidationFailure(nameof(dto.AccessToken), "Depo adresi başka bir sunucuya çevrildi; kayıtlı erişim anahtarı yeni adrese gönderilmez. Anahtarı yeniden girin veya kaldırın.");
 
         if (await _repository.GetRunningDeploymentAsync(project.Id, cancellationToken) is not null)
             return ServiceResult.Failure("Proje için süren bir deployment var; bitmesini bekleyin veya iptal edin.", ServiceErrorType.Conflict);
@@ -178,7 +195,7 @@ public class ProjectService : IProjectService
             project.EncryptedAccessToken = _secretProtector.Protect(dto.AccessToken);
             changes.Add("Erişim anahtarı güncellendi");
         }
-        else if (dto.RemoveAccessToken && project.EncryptedAccessToken is not null)
+        else if ((dto.RemoveAccessToken || dto.UsesIntegration) && project.EncryptedAccessToken is not null)
         {
             project.EncryptedAccessToken = null;
             changes.Add("Erişim anahtarı kaldırıldı");
@@ -231,28 +248,9 @@ public class ProjectService : IProjectService
         if (project is null)
             return ServiceResult<GitBranchListDto>.NotFound(NotFoundMessage);
 
-        var connection = await _connectionProvider.GetAsync(project.ServerId, cancellationToken);
-        if (!connection.IsSuccess)
-            return ServiceResult<GitBranchListDto>.Failure(connection.Message ?? "Sunucuya bağlanılamadı.", connection.ErrorType);
-
-        string? token;
-        try
-        {
-            token = project.EncryptedAccessToken is null ? null : _secretProtector.Unprotect(project.EncryptedAccessToken);
-        }
-        catch (CryptographicException ex)
-        {
-            _logger.LogError(ex, "Git erişim anahtarı çözülemedi. ProjectId: {ProjectId}", project.Id);
-            return ServiceResult<GitBranchListDto>.Failure("Erişim anahtarı çözülemedi. Master key değişmiş olabilir; anahtarı yeniden girin.");
-        }
-
-        var source = new GitSource
-        {
-            RepositoryUrl = project.RepositoryUrl,
-            Username = GitRepositoryUrls.TokenUsername(project.GitProvider, project.GitUsername),
-            AccessToken = token
-        };
-        var branches = await _provider.ListBranchesAsync(connection.Data!.Context, source, TimeSpan.FromSeconds(Math.Clamp(_options.GitTimeoutSeconds, 15, 120)), cancellationToken);
+        var branches = project.GitIntegration is null
+            ? await ListBranchesOverSshAsync(project, cancellationToken)
+            : await ListIntegrationBranchesAsync(project.GitIntegration, project.GitSourceId, project.GitRepository, cancellationToken);
         if (!branches.IsSuccess)
             return ServiceResult<GitBranchListDto>.Failure(branches.Message ?? "Depoya erişilemedi.", branches.ErrorType);
 
@@ -263,6 +261,178 @@ public class ProjectService : IProjectService
             ConfiguredBranchExists = branches.Data!.Contains(project.Branch, StringComparer.Ordinal)
         });
     }
+
+    public async Task<GitSourceListDto> GetGitSourcesAsync(CancellationToken cancellationToken = default)
+    {
+        var sources = new List<GitSourceOptionDto>();
+        var warnings = new List<string>();
+        foreach (var integration in _gitIntegrations.GetEnabled())
+        {
+            var result = await CallIntegrationAsync(integration, i => i.ListSourcesAsync(cancellationToken));
+            if (!result.IsSuccess)
+            {
+                warnings.Add($"{integration.DisplayName}: {result.Message}");
+                continue;
+            }
+
+            sources.AddRange(result.Data!.Select(source =>
+                new GitSourceOptionDto(GitSourceKeys.Format(integration.SystemName, source.Id), source.Name, integration.DisplayName)));
+        }
+
+        return new GitSourceListDto { Sources = sources, Warnings = warnings };
+    }
+
+    public async Task<ServiceResult<IReadOnlyList<GitRepositoryDto>>> ListGitRepositoriesAsync(string? sourceKey, CancellationToken cancellationToken = default)
+    {
+        if (!GitSourceKeys.TryParse(sourceKey, out var systemName, out var sourceId))
+            return ServiceResult<IReadOnlyList<GitRepositoryDto>>.ValidationFailure(nameof(ProjectFormDto.GitSource), "Geçerli bir Git bağlantısı seçin.");
+
+        var integration = _gitIntegrations.Find(systemName);
+        if (integration is null)
+            return ServiceResult<IReadOnlyList<GitRepositoryDto>>.Failure(IntegrationDisabledMessage(systemName));
+
+        return await CallIntegrationAsync(integration, i => i.ListRepositoriesAsync(sourceId, cancellationToken));
+    }
+
+    public async Task<ServiceResult<IReadOnlyList<string>>> ListGitBranchesAsync(string? sourceKey, string? repository, CancellationToken cancellationToken = default)
+    {
+        if (!GitSourceKeys.TryParse(sourceKey, out var systemName, out var sourceId))
+            return ServiceResult<IReadOnlyList<string>>.ValidationFailure(nameof(ProjectFormDto.GitSource), "Geçerli bir Git bağlantısı seçin.");
+
+        return await ListIntegrationBranchesAsync(systemName, sourceId, repository, cancellationToken);
+    }
+
+    public async Task<ServiceResult<IReadOnlyList<string>>> ListRemoteBranchesAsync(RemoteBranchQueryDto dto, CancellationToken cancellationToken = default)
+    {
+        dto.RepositoryUrl = dto.RepositoryUrl?.Trim() ?? string.Empty;
+        dto.GitUsername = TextHelper.NullIfEmpty(dto.GitUsername);
+        dto.AccessToken = TextHelper.NullIfEmpty(dto.AccessToken);
+        var validation = await _remoteBranchValidator.ValidateAsync(dto, cancellationToken);
+        if (!validation.IsValid)
+            return ServiceResult<IReadOnlyList<string>>.ValidationFailure(validation);
+
+        var token = dto.AccessToken;
+        if (token is null && !dto.RemoveAccessToken && dto.ProjectId is { } projectId)
+        {
+            var project = await _repository.GetProjectAsync(projectId, cancellationToken);
+            if (project?.EncryptedAccessToken is not null && GitRepositoryUrls.HaveSameHost(project.RepositoryUrl, dto.RepositoryUrl))
+            {
+                var stored = UnprotectToken(project);
+                if (!stored.IsSuccess)
+                    return ServiceResult<IReadOnlyList<string>>.Failure(stored.Message!);
+
+                token = stored.Data;
+            }
+        }
+
+        var source = new GitSource
+        {
+            RepositoryUrl = dto.RepositoryUrl,
+            Username = GitRepositoryUrls.TokenUsername(dto.GitProvider, dto.GitUsername),
+            AccessToken = token
+        };
+        return await ListBranchesOverSshAsync(dto.ServerId, source, cancellationToken);
+    }
+
+    private async Task<ServiceResult<IReadOnlyList<string>>> ListIntegrationBranchesAsync(string systemName, string? sourceId, string? repository, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(sourceId) || !GitSourceKeys.IsValidRepository(repository))
+            return ServiceResult<IReadOnlyList<string>>.ValidationFailure(nameof(ProjectFormDto.GitRepository), "Bağlantıdaki depolardan birini seçin.");
+
+        var integration = _gitIntegrations.Find(systemName);
+        if (integration is null)
+            return ServiceResult<IReadOnlyList<string>>.Failure(IntegrationDisabledMessage(systemName));
+
+        return await CallIntegrationAsync(integration, i => i.ListBranchesAsync(sourceId, repository!, cancellationToken));
+    }
+
+    private async Task<ServiceResult<IReadOnlyList<string>>> ListBranchesOverSshAsync(DeploymentProject project, CancellationToken cancellationToken)
+    {
+        var token = UnprotectToken(project);
+        if (!token.IsSuccess)
+            return ServiceResult<IReadOnlyList<string>>.Failure(token.Message!);
+
+        var source = new GitSource
+        {
+            RepositoryUrl = project.RepositoryUrl,
+            Username = GitRepositoryUrls.TokenUsername(project.GitProvider, project.GitUsername),
+            AccessToken = token.Data
+        };
+        return await ListBranchesOverSshAsync(project.ServerId, source, cancellationToken);
+    }
+
+    private async Task<ServiceResult<IReadOnlyList<string>>> ListBranchesOverSshAsync(Guid serverId, GitSource source, CancellationToken cancellationToken)
+    {
+        var connection = await _connectionProvider.GetAsync(serverId, cancellationToken);
+        if (!connection.IsSuccess)
+            return ServiceResult<IReadOnlyList<string>>.Failure(connection.Message ?? "Sunucuya bağlanılamadı.", connection.ErrorType);
+
+        return await _provider.ListBranchesAsync(connection.Data!.Context, source, TimeSpan.FromSeconds(Math.Clamp(_options.GitTimeoutSeconds, 15, 120)), cancellationToken);
+    }
+
+    private ServiceResult<string?> UnprotectToken(DeploymentProject project)
+    {
+        try
+        {
+            return ServiceResult<string?>.Success(project.EncryptedAccessToken is null ? null : _secretProtector.Unprotect(project.EncryptedAccessToken));
+        }
+        catch (CryptographicException ex)
+        {
+            _logger.LogError(ex, "Git erişim anahtarı çözülemedi. ProjectId: {ProjectId}", project.Id);
+            return ServiceResult<string?>.Failure("Erişim anahtarı çözülemedi. Master key değişmiş olabilir; anahtarı yeniden girin.");
+        }
+    }
+
+    /// <summary>
+    /// Entegrasyonla bağlanan depoda adres, sağlayıcı ve kimlik bilgisi entegrasyondan gelir; formdaki değerler yok sayılır.
+    /// Seçilen deponun gerçekten o bağlantıdan erişilebilir olduğu burada doğrulanır.
+    /// </summary>
+    private async Task<ServiceError?> ApplyIntegrationAsync(ProjectFormDto dto, CancellationToken cancellationToken)
+    {
+        if (!dto.UsesIntegration)
+        {
+            dto.GitRepository = null;
+            return null;
+        }
+
+        GitSourceKeys.TryParse(dto.GitSource, out var systemName, out var sourceId);
+        var integration = _gitIntegrations.Find(systemName);
+        if (integration is null)
+            return new ServiceError(nameof(dto.GitSource), IntegrationDisabledMessage(systemName));
+
+        var repository = await CallIntegrationAsync(integration, i => i.GetRepositoryAsync(sourceId, dto.GitRepository!, cancellationToken));
+        if (!repository.IsSuccess)
+            return new ServiceError(nameof(dto.GitRepository), repository.Message ?? "Depoya erişilemedi.");
+
+        if (!GitRepositoryUrls.TryValidate(repository.Data!.CloneUrl, out var error))
+            return new ServiceError(nameof(dto.GitRepository), $"Deponun adresi kullanılamıyor: {error}");
+
+        dto.GitRepository = repository.Data.FullName;
+        dto.RepositoryUrl = repository.Data.CloneUrl;
+        dto.GitProvider = integration.Provider;
+        dto.GitUsername = null;
+        dto.AccessToken = null;
+        return null;
+    }
+
+    private async Task<ServiceResult<T>> CallIntegrationAsync<T>(IGitIntegration integration, Func<IGitIntegration, Task<ServiceResult<T>>> call)
+    {
+        try
+        {
+            return await call(integration);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Git entegrasyonu beklenmeyen hata verdi. Integration: {Integration}", integration.SystemName);
+            return ServiceResult<T>.Failure($"{integration.DisplayName} beklenmeyen bir hata verdi; ayrıntılar uygulama loglarında.");
+        }
+    }
+
+    private static string IntegrationDisabledMessage(string systemName) =>
+        $"Git entegrasyonu ({systemName}) kurulu veya etkin değil; Eklentiler sayfasından etkinleştirin ya da depo adresi kullanın.";
+
+    private static string DescribeSource(DeploymentProject project) =>
+        project.GitIntegration is null ? project.RepositoryUrl : $"{project.GitRepository} ({project.GitIntegration})";
 
     private async Task<string?> GenerateSlugAsync(string name, CancellationToken cancellationToken)
     {
@@ -297,6 +467,8 @@ public class ProjectService : IProjectService
     private static void Trim(ProjectFormDto dto)
     {
         dto.Name = dto.Name?.Trim() ?? string.Empty;
+        dto.GitSource = TextHelper.NullIfEmpty(dto.GitSource);
+        dto.GitRepository = TextHelper.NullIfEmpty(dto.GitRepository);
         dto.RepositoryUrl = dto.RepositoryUrl?.Trim() ?? string.Empty;
         dto.Branch = dto.Branch?.Trim() ?? string.Empty;
         dto.DeployPath = dto.DeployPath?.Trim() ?? string.Empty;
@@ -314,6 +486,10 @@ public class ProjectService : IProjectService
         project.ServerId = dto.ServerId;
         project.Name = dto.Name;
         project.Description = TextHelper.NullIfEmpty(dto.Description);
+        GitSourceKeys.TryParse(dto.GitSource, out var integration, out var sourceId);
+        project.GitIntegration = dto.UsesIntegration ? integration : null;
+        project.GitSourceId = dto.UsesIntegration ? sourceId : null;
+        project.GitRepository = dto.UsesIntegration ? dto.GitRepository : null;
         project.GitProvider = dto.GitProvider;
         project.RepositoryUrl = dto.RepositoryUrl;
         project.Branch = dto.Branch;
@@ -335,6 +511,8 @@ public class ProjectService : IProjectService
             changes.Add($"Sunucu: {serverName}");
         if (!string.Equals(project.RepositoryUrl, dto.RepositoryUrl, StringComparison.Ordinal))
             changes.Add($"Depo: {dto.RepositoryUrl}");
+        if (!string.Equals(project.GitSourceId, GitSourceKeys.TryParse(dto.GitSource, out _, out var sourceId) ? sourceId : null, StringComparison.Ordinal))
+            changes.Add(dto.UsesIntegration ? $"Git bağlantısı: {dto.GitSource}" : "Git bağlantısı kaldırıldı; depo adresi kullanılıyor");
         if (!string.Equals(project.Branch, dto.Branch, StringComparison.Ordinal))
             changes.Add($"Dal: {dto.Branch}");
         if (!string.Equals(project.DeployPath, dto.DeployPath, StringComparison.Ordinal))

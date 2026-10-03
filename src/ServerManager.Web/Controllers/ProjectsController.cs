@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using ServerManager.Application.Authorization;
 using ServerManager.Application.DTOs.Deployments;
 using ServerManager.Application.Interfaces;
+using ServerManager.Application.Interfaces.Deployments;
 using ServerManager.Application.Interfaces.Services;
 using ServerManager.Web.Deployments;
 using ServerManager.Web.Framework.Authorization;
@@ -16,18 +17,22 @@ namespace ServerManager.Web.Controllers;
 public class ProjectsController : Controller
 {
     public const string ServerOptionsKey = "ServerOptions";
+    public const string GitIntegrationsKey = "GitIntegrations";
 
     private readonly IProjectService _projectService;
     private readonly IDeploymentService _deploymentService;
     private readonly DeploymentManager _deploymentManager;
     private readonly ICurrentUserService _currentUser;
+    private readonly IGitIntegrationRegistry _gitIntegrations;
 
     public ProjectsController(
         IProjectService projectService,
         IDeploymentService deploymentService,
         DeploymentManager deploymentManager,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        IGitIntegrationRegistry gitIntegrations)
     {
+        _gitIntegrations = gitIntegrations;
         _projectService = projectService;
         _deploymentService = deploymentService;
         _deploymentManager = deploymentManager;
@@ -67,6 +72,7 @@ public class ProjectsController : Controller
     [HasPermission(Permissions.DeploymentManage)]
     public async Task<IActionResult> Create(Guid? serverId, CancellationToken cancellationToken)
     {
+        SetFormData();
         ViewData[ServerOptionsKey] = await _projectService.GetServerOptionsAsync(cancellationToken);
         return View(new CreateProjectDto { ServerId = serverId ?? Guid.Empty });
     }
@@ -93,6 +99,7 @@ public class ProjectsController : Controller
         if (!result.IsSuccess)
             return NotFound();
 
+        SetFormData();
         ViewData[ServerOptionsKey] = await _projectService.GetServerOptionsAsync(cancellationToken);
         return View(result.Data);
     }
@@ -135,6 +142,54 @@ public class ProjectsController : Controller
         return Ok(ApiResponse<GitBranchListDto>.Success(result.Data, $"{result.Data!.Branches.Count} dal bulundu."));
     }
 
+    [HttpGet]
+    [HasPermission(Permissions.DeploymentManage)]
+    [EnableRateLimiting(RateLimitPolicies.DeploymentLookup)]
+    public async Task<IActionResult> GitSources(CancellationToken cancellationToken)
+    {
+        var result = await _projectService.GetGitSourcesAsync(cancellationToken);
+        return Ok(ApiResponse<GitSourceListDto>.Success(result, $"{result.Sources.Count} bağlantı bulundu."));
+    }
+
+    [HttpGet]
+    [HasPermission(Permissions.DeploymentManage)]
+    [EnableRateLimiting(RateLimitPolicies.DeploymentLookup)]
+    public async Task<IActionResult> GitRepositories(string? source, CancellationToken cancellationToken)
+    {
+        var result = await _projectService.ListGitRepositoriesAsync(source, cancellationToken);
+        if (!result.IsSuccess)
+            return this.ApiFailure(result, "Depolar listelenemedi.");
+
+        return Ok(ApiResponse<IReadOnlyList<GitRepositoryDto>>.Success(result.Data, $"{result.Data!.Count} depo bulundu."));
+    }
+
+    [HttpGet]
+    [HasPermission(Permissions.DeploymentManage)]
+    [EnableRateLimiting(RateLimitPolicies.DeploymentLookup)]
+    public async Task<IActionResult> GitBranches(string? source, string? repository, CancellationToken cancellationToken)
+    {
+        var result = await _projectService.ListGitBranchesAsync(source, repository, cancellationToken);
+        if (!result.IsSuccess)
+            return this.ApiFailure(result, "Dallar listelenemedi.");
+
+        return Ok(ApiResponse<IReadOnlyList<string>>.Success(result.Data, $"{result.Data!.Count} dal bulundu."));
+    }
+
+    [HttpPost]
+    [HasPermission(Permissions.DeploymentManage)]
+    [EnableRateLimiting(RateLimitPolicies.DeploymentLookup)]
+    public async Task<IActionResult> RemoteBranches(RemoteBranchQueryDto dto, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+            return this.ApiInvalidModel();
+
+        var result = await _projectService.ListRemoteBranchesAsync(dto, cancellationToken);
+        if (!result.IsSuccess)
+            return this.ApiFailure(result, "Dallar listelenemedi.");
+
+        return Ok(ApiResponse<IReadOnlyList<string>>.Success(result.Data, $"{result.Data!.Count} dal bulundu."));
+    }
+
     [HttpPost]
     [HasPermission(Permissions.DeploymentExecute)]
     [EnableRateLimiting(RateLimitPolicies.DeploymentAction)]
@@ -150,4 +205,7 @@ public class ProjectsController : Controller
 
         return this.ApiSuccess(result.Message, Url.Action(nameof(DeploymentsController.Details), "Deployments", new { id = result.Data }));
     }
+
+    private void SetFormData() =>
+        ViewData[GitIntegrationsKey] = _gitIntegrations.GetEnabled().Select(i => i.DisplayName).ToList();
 }

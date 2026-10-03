@@ -1,0 +1,97 @@
+@model IReadOnlyList<GitHubAppDto>
+
+@if (Model.Count == 0)
+{
+    <section class="panel">
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("link", "h-6 w-6")</span>
+            <p class="empty-state-title">Henüz GitHub App yok</p>
+            <p>Sağdaki formdan GitHub'da yeni bir uygulama oluşturun veya mevcut bir uygulamayı ekleyin.</p>
+        </div>
+    </section>
+}
+
+@foreach (var app in Model)
+{
+    <section class="panel github-app" data-app-id="@app.Id" data-app-name="@app.Name">
+        <div class="panel-header github-app-header">
+            <div class="min-w-0">
+                <h2 class="panel-title truncate">@app.Name</h2>
+                <p class="github-app-meta">
+                    App ID <span class="font-mono">@app.AppId</span>
+                    @if (app.OwnerLogin is not null)
+                    {
+                        <span>· sahibi @app.OwnerLogin</span>
+                    }
+                    <span>· eklendi @DateDisplay.Relative(app.CreatedAt)</span>
+                </p>
+            </div>
+            <div class="github-app-actions">
+                <a href="@app.InstallUrl" class="btn-primary btn-sm" title="Uygulamayı bir hesaba/kuruma kur veya kurulumun depo erişimini değiştir">@Icons.Render("plus", "h-4 w-4") Hesaba kur</a>
+                @if (app.HtmlUrl is not null)
+                {
+                    <a href="@app.HtmlUrl" class="btn-secondary btn-sm" target="_blank" rel="noopener noreferrer" title="Uygulamanın GitHub sayfasını yeni sekmede aç">@Icons.Render("globe", "h-4 w-4") GitHub</a>
+                }
+                <button type="button" class="btn-ghost btn-sm text-red-600 dark:text-red-400" data-app-delete title="Uygulamayı panelden kaldır (GitHub'daki uygulama silinmez)">@Icons.Render("trash", "h-4 w-4") Kaldır</button>
+            </div>
+        </div>
+
+        @if (app.InstallationsError is not null)
+        {
+            <p class="alert-warning github-app-warning">Kurulumlar alınamadı: @app.InstallationsError</p>
+        }
+        else if (app.Installations.Count == 0)
+        {
+            <div class="panel-body github-app-empty">
+                Uygulama henüz hiçbir hesaba kurulmamış. <strong>Hesaba kur</strong> ile depolarına erişim verin.
+            </div>
+        }
+        else
+        {
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Hesap</th>
+                            <th>Tür</th>
+                            <th>Depo erişimi</th>
+                            <th>Durum</th>
+                            <th class="text-right">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var installation in app.Installations)
+                        {
+                            <tr>
+                                <td class="font-medium">@installation.Account</td>
+                                <td>@(installation.IsOrganization ? "Kurum" : "Kullanıcı")</td>
+                                <td>@(installation.AllRepositories ? "Tüm depolar" : "Seçili depolar")</td>
+                                <td>
+                                    @if (installation.IsSuspended)
+                                    {
+                                        <span class="badge-warning">Askıda</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-success">Etkin</span>
+                                    }
+                                </td>
+                                <td class="text-right">
+                                    @if (installation.HtmlUrl is not null)
+                                    {
+                                        <a href="@installation.HtmlUrl" class="btn-ghost btn-sm" target="_blank" rel="noopener noreferrer" title="Bu kurulumun depo erişimini GitHub'da düzenle">@Icons.Render("settings", "h-4 w-4") Depoları düzenle</a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (app.ProjectNames.Count > 0)
+        {
+            <p class="github-app-projects">Kullanan projeler: @string.Join(", ", app.ProjectNames)</p>
+        }
+    </section>
+}

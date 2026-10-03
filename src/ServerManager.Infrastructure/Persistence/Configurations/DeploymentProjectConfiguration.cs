@@ -19,6 +19,9 @@ public class DeploymentProjectConfiguration : IEntityTypeConfiguration<Deploymen
         builder.Property(p => p.RepositoryUrl).HasMaxLength(500).IsRequired();
         builder.Property(p => p.Branch).HasMaxLength(200).IsRequired();
         builder.Property(p => p.GitUsername).HasMaxLength(128);
+        builder.Property(p => p.GitIntegration).HasMaxLength(100);
+        builder.Property(p => p.GitSourceId).HasMaxLength(200);
+        builder.Property(p => p.GitRepository).HasMaxLength(200);
         builder.Property(p => p.DeployPath).HasMaxLength(500).IsRequired();
         builder.Property(p => p.BuildType).HasConversion<int>();
         builder.Property(p => p.ComposeFile).HasMaxLength(255);

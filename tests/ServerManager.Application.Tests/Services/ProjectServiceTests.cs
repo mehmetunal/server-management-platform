@@ -32,12 +32,15 @@ public class ProjectServiceTests
     private readonly FakeSecretProtector _protector = new();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
+    private readonly IGitIntegrationRegistry _gitIntegrations = Substitute.For<IGitIntegrationRegistry>();
     private readonly Server _server = ProjectTestData.Server();
     private readonly ProjectService _service;
 
     public ProjectServiceTests()
     {
         _currentUser.UserName.Returns("admin@example.com");
+        _gitIntegrations.Find(Arg.Any<string>()).Returns((IGitIntegration?)null);
+        _gitIntegrations.GetEnabled().Returns([]);
         _serverRepository.GetByIdAsync(_server.Id, Arg.Any<CancellationToken>()).Returns(_server);
         _service = new ProjectService(
             _repository,
@@ -49,6 +52,8 @@ public class ProjectServiceTests
             _currentUser,
             new CreateProjectDtoValidator(),
             new UpdateProjectDtoValidator(),
+            new RemoteBranchQueryDtoValidator(),
+            _gitIntegrations,
             Options.Create(new DeploymentOptions { GitTimeoutSeconds = 300 }),
             new FixedTimeProvider(Now),
             NullLogger<ProjectService>.Instance);
@@ -196,6 +201,190 @@ public class ProjectServiceTests
         Assert.True(result.IsSuccess);
         Assert.True(result.Data!.ConfiguredBranchExists);
         Assert.Equal(["develop", "main"], result.Data.Branches);
+    }
+
+    private IGitIntegration EnableIntegration()
+    {
+        var integration = Substitute.For<IGitIntegration>();
+        integration.SystemName.Returns("Git.GitHub");
+        integration.DisplayName.Returns("GitHub App");
+        integration.Provider.Returns(GitProvider.GitHub);
+        _gitIntegrations.Find("Git.GitHub").Returns(integration);
+        _gitIntegrations.GetEnabled().Returns([integration]);
+        return integration;
+    }
+
+    [Fact]
+    public async Task Create_with_integration_takes_clone_url_from_integration_and_drops_manual_credentials()
+    {
+        var integration = EnableIntegration();
+        integration.GetRepositoryAsync("app:42", "acme/api", Arg.Any<CancellationToken>())
+            .Returns(ServiceResult<GitRepositoryDto>.Success(new GitRepositoryDto("Acme/Api", "https://github.com/Acme/Api.git", "main", true, null)));
+        DeploymentProject? added = null;
+        await _repository.AddProjectAsync(Arg.Do<DeploymentProject>(p => added = p), Arg.Any<CancellationToken>());
+        var dto = ProjectTestData.ValidCreateDto(_server.Id);
+        dto.GitSource = "Git.GitHub|app:42";
+        dto.GitRepository = "acme/api";
+        dto.RepositoryUrl = "https://evil.example.com/x.git";
+        dto.AccessToken = "ghp_manual";
+        dto.GitUsername = "someone";
+        dto.GitProvider = GitProvider.SelfHosted;
+
+        var result = await _service.CreateAsync(dto, Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(added);
+        Assert.Equal("Git.GitHub", added.GitIntegration);
+        Assert.Equal("app:42", added.GitSourceId);
+        Assert.Equal("Acme/Api", added.GitRepository);
+        Assert.Equal("https://github.com/Acme/Api.git", added.RepositoryUrl);
+        Assert.Equal(GitProvider.GitHub, added.GitProvider);
+        Assert.Null(added.EncryptedAccessToken);
+        Assert.Null(added.GitUsername);
+    }
+
+    [Fact]
+    public async Task Create_with_unknown_repository_returns_field_error()
+    {
+        var integration = EnableIntegration();
+        integration.GetRepositoryAsync("app:42", "acme/other", Arg.Any<CancellationToken>())
+            .Returns(ServiceResult<GitRepositoryDto>.NotFound("Depo bu kurulumda yok."));
+        var dto = ProjectTestData.ValidCreateDto(_server.Id);
+        dto.GitSource = "Git.GitHub|app:42";
+        dto.GitRepository = "acme/other";
+
+        var result = await _service.CreateAsync(dto, Ct);
+
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(ProjectFormDto.GitRepository) && e.Message == "Depo bu kurulumda yok.");
+        await _repository.DidNotReceiveWithAnyArgs().AddProjectAsync(default!, Ct);
+    }
+
+    [Fact]
+    public async Task Create_with_disabled_integration_is_rejected()
+    {
+        var dto = ProjectTestData.ValidCreateDto(_server.Id);
+        dto.GitSource = "Git.GitHub|app:42";
+        dto.GitRepository = "acme/api";
+
+        var result = await _service.CreateAsync(dto, Ct);
+
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(ProjectFormDto.GitSource));
+    }
+
+    [Fact]
+    public async Task Integration_exception_is_reported_without_crashing()
+    {
+        var integration = EnableIntegration();
+        integration.ListSourcesAsync(Arg.Any<CancellationToken>()).Returns<Task<ServiceResult<IReadOnlyList<GitSourceDto>>>>(_ => throw new InvalidOperationException("boom"));
+
+        var result = await _service.GetGitSourcesAsync(Ct);
+
+        Assert.Empty(result.Sources);
+        Assert.Single(result.Warnings);
+        Assert.DoesNotContain("boom", result.Warnings[0]);
+    }
+
+    [Fact]
+    public async Task Git_sources_are_prefixed_with_integration_name()
+    {
+        var integration = EnableIntegration();
+        integration.ListSourcesAsync(Arg.Any<CancellationToken>())
+            .Returns(ServiceResult<IReadOnlyList<GitSourceDto>>.Success([new GitSourceDto("app:42", "acme · Server Manager")]));
+
+        var result = await _service.GetGitSourcesAsync(Ct);
+
+        var source = Assert.Single(result.Sources);
+        Assert.Equal("Git.GitHub|app:42", source.Key);
+        Assert.Equal("GitHub App", source.IntegrationName);
+    }
+
+    [Fact]
+    public async Task Update_switching_to_integration_removes_stored_token()
+    {
+        var integration = EnableIntegration();
+        integration.GetRepositoryAsync("app:42", "acme/api", Arg.Any<CancellationToken>())
+            .Returns(ServiceResult<GitRepositoryDto>.Success(new GitRepositoryDto("acme/api", "https://github.com/acme/api.git", "main", true, null)));
+        var project = ProjectTestData.Project(_server);
+        project.EncryptedAccessToken = _protector.Protect("old-token");
+        _repository.GetProjectAsync(project.Id, Arg.Any<CancellationToken>()).Returns(project);
+        var dto = ProjectTestData.ValidUpdateDto(project);
+        dto.GitSource = "Git.GitHub|app:42";
+        dto.GitRepository = "acme/api";
+
+        var result = await _service.UpdateAsync(dto, Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Null(project.EncryptedAccessToken);
+        Assert.Equal("Git.GitHub", project.GitIntegration);
+    }
+
+    [Fact]
+    public async Task Update_rejects_stored_token_when_repository_host_changes()
+    {
+        var project = ProjectTestData.Project(_server);
+        project.EncryptedAccessToken = _protector.Protect("old-token");
+        _repository.GetProjectAsync(project.Id, Arg.Any<CancellationToken>()).Returns(project);
+        var dto = ProjectTestData.ValidUpdateDto(project);
+        dto.RepositoryUrl = "https://attacker.example.com/acme/api.git";
+
+        var result = await _service.UpdateAsync(dto, Ct);
+
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(UpdateProjectDto.AccessToken));
+        Assert.Equal("https://github.com/acme/api.git", project.RepositoryUrl);
+    }
+
+    [Fact]
+    public async Task Remote_branches_use_stored_token_only_for_same_host()
+    {
+        var project = ProjectTestData.Project(_server);
+        project.EncryptedAccessToken = _protector.Protect("ghp_secret");
+        _repository.GetProjectAsync(project.Id, Arg.Any<CancellationToken>()).Returns(project);
+        var context = new RemoteExecutionContext { Connection = new SshConnectionRequest { Host = "203.0.113.10", Username = "deploy" } };
+        _connectionProvider.GetAsync(_server.Id, Arg.Any<CancellationToken>())
+            .Returns(ServiceResult<ServerConnection>.Success(new ServerConnection { ServerId = _server.Id, ServerName = _server.Name, Context = context }));
+        _provider.ListBranchesAsync(context, Arg.Any<GitSource>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
+            .Returns(ServiceResult<IReadOnlyList<string>>.Success(["main"]));
+
+        await _service.ListRemoteBranchesAsync(new RemoteBranchQueryDto
+        {
+            ServerId = _server.Id,
+            ProjectId = project.Id,
+            GitProvider = GitProvider.GitHub,
+            RepositoryUrl = "https://github.com/acme/other.git"
+        }, Ct);
+        await _service.ListRemoteBranchesAsync(new RemoteBranchQueryDto
+        {
+            ServerId = _server.Id,
+            ProjectId = project.Id,
+            GitProvider = GitProvider.SelfHosted,
+            RepositoryUrl = "https://attacker.example.com/acme/api.git"
+        }, Ct);
+
+        await _provider.Received(1).ListBranchesAsync(context,
+            Arg.Is<GitSource>(s => s.RepositoryUrl == "https://github.com/acme/other.git" && s.AccessToken == "ghp_secret"),
+            Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>());
+        await _provider.Received(1).ListBranchesAsync(context,
+            Arg.Is<GitSource>(s => s.RepositoryUrl == "https://attacker.example.com/acme/api.git" && s.AccessToken == null),
+            Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task List_branches_of_integration_project_asks_the_integration()
+    {
+        var integration = EnableIntegration();
+        integration.ListBranchesAsync("app:42", "acme/api", Arg.Any<CancellationToken>())
+            .Returns(ServiceResult<IReadOnlyList<string>>.Success(["main", "release"]));
+        var project = ProjectTestData.Project(_server);
+        project.GitIntegration = "Git.GitHub";
+        project.GitSourceId = "app:42";
+        project.GitRepository = "acme/api";
+        _repository.GetProjectAsync(project.Id, Arg.Any<CancellationToken>()).Returns(project);
+
+        var result = await _service.ListBranchesAsync(project.Id, Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(["main", "release"], result.Data!.Branches);
+        await _provider.DidNotReceiveWithAnyArgs().ListBranchesAsync(default!, default!, default, Ct);
     }
 
     [Fact]

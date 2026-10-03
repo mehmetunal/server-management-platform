@@ -26,11 +26,21 @@ public abstract partial class ProjectFormDtoValidator<T> : AbstractValidator<T> 
         RuleFor(x => x.GitProvider)
             .IsInEnum().WithMessage("Geçerli bir Git sağlayıcısı seçin.");
 
+        RuleFor(x => x.GitSource)
+            .Must(source => GitSourceKeys.TryParse(source?.Trim(), out _, out _))
+            .WithMessage("Geçerli bir Git bağlantısı seçin.")
+            .When(x => x.UsesIntegration);
+
+        RuleFor(x => x.GitRepository)
+            .Must(repository => GitSourceKeys.IsValidRepository(repository?.Trim()))
+            .WithMessage("Bağlantıdaki depolardan birini seçin.")
+            .When(x => x.UsesIntegration);
+
         RuleFor(x => x.RepositoryUrl).Custom((url, context) =>
         {
             if (!GitRepositoryUrls.TryValidate(url?.Trim(), out var error))
                 context.AddFailure(nameof(ProjectFormDto.RepositoryUrl), error!);
-        });
+        }).When(x => !x.UsesIntegration);
 
         RuleFor(x => x.Branch)
             .Must(branch => GitRefs.IsValidBranch(branch?.Trim()))
@@ -45,7 +55,7 @@ public abstract partial class ProjectFormDtoValidator<T> : AbstractValidator<T> 
             .MaximumLength(4096).WithMessage("Erişim anahtarı en fazla 4096 karakter olabilir.")
             .Must(token => !token!.Any(char.IsControl)).WithMessage("Erişim anahtarı satır sonu veya kontrol karakteri içeremez.")
             .Must((dto, _) => GitRepositoryUrls.IsHttps(dto.RepositoryUrl?.Trim())).WithMessage("Erişim anahtarı yalnızca https:// depo adresleriyle kullanılabilir.")
-            .When(x => !string.IsNullOrEmpty(x.AccessToken));
+            .When(x => !string.IsNullOrEmpty(x.AccessToken) && !x.UsesIntegration);
 
         RuleFor(x => x.DeployPath).Custom((path, context) =>
         {

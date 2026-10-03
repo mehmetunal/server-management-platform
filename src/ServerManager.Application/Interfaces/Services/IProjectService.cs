@@ -24,4 +24,14 @@ public interface IProjectService
     Task<ServiceResult> DeleteAsync(Guid id, string? confirmationName, CancellationToken cancellationToken = default);
 
     Task<ServiceResult<GitBranchListDto>> ListBranchesAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>Etkin Git entegrasyonlarındaki bağlantılar (GitHub App kurulumları vb.).</summary>
+    Task<GitSourceListDto> GetGitSourcesAsync(CancellationToken cancellationToken = default);
+
+    Task<ServiceResult<IReadOnlyList<GitRepositoryDto>>> ListGitRepositoriesAsync(string? sourceKey, CancellationToken cancellationToken = default);
+
+    Task<ServiceResult<IReadOnlyList<string>>> ListGitBranchesAsync(string? sourceKey, string? repository, CancellationToken cancellationToken = default);
+
+    /// <summary>Henüz kaydedilmemiş bir depo adresindeki dalları hedef sunucudan (git ls-remote) okur.</summary>
+    Task<ServiceResult<IReadOnlyList<string>>> ListRemoteBranchesAsync(RemoteBranchQueryDto dto, CancellationToken cancellationToken = default);
 }

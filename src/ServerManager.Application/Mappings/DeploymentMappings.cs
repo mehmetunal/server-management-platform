@@ -20,8 +20,16 @@ public static class DeploymentMappings
         LastDeployment = lastDeployment?.ToListItemDto()
     };
 
-    public static ProjectDetailsDto ToDetailsDto(this DeploymentProject project, IReadOnlyList<string> environmentKeys, bool environmentUnreadable, Guid? runningDeploymentId) => new()
+    public static ProjectDetailsDto ToDetailsDto(
+        this DeploymentProject project,
+        IReadOnlyList<string> environmentKeys,
+        bool environmentUnreadable,
+        Guid? runningDeploymentId,
+        string? gitIntegrationName = null) => new()
     {
+        GitIntegration = project.GitIntegration,
+        GitIntegrationName = gitIntegrationName,
+        GitRepository = project.GitRepository,
         Id = project.Id,
         Name = project.Name,
         Slug = project.Slug,
@@ -59,6 +67,8 @@ public static class DeploymentMappings
         ServerId = project.ServerId,
         Name = project.Name,
         Description = project.Description,
+        GitSource = project.GitIntegration is null || project.GitSourceId is null ? null : GitSourceKeys.Format(project.GitIntegration, project.GitSourceId),
+        GitRepository = project.GitRepository,
         GitProvider = project.GitProvider,
         RepositoryUrl = project.RepositoryUrl,
         Branch = project.Branch,

@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using ServerManager.Web.Framework.Security;
 
 namespace ServerManager.Web.Middleware;
 
@@ -24,6 +25,7 @@ public class SecurityHeadersMiddleware
                 ? $" {(context.Request.IsHttps ? "wss" : "ws")}://{context.Request.Host.Value}"
                 : string.Empty;
             var sameOriginFraming = context.IsSameOriginFramingAllowed();
+            var formActionOrigins = string.Concat(context.GetFormActionOrigins().Select(origin => " " + origin));
             headers.XContentTypeOptions = "nosniff";
             headers.XFrameOptions = sameOriginFraming ? "SAMEORIGIN" : "DENY";
             headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
@@ -38,7 +40,7 @@ public class SecurityHeadersMiddleware
                 $"connect-src 'self'{webSocketOrigin}; " +
                 "object-src 'none'; " +
                 (sameOriginFraming ? "frame-ancestors 'self'; " : "frame-ancestors 'none'; ") +
-                "form-action 'self'; " +
+                $"form-action 'self'{formActionOrigins}; " +
                 "base-uri 'self'";
             return Task.CompletedTask;
         });

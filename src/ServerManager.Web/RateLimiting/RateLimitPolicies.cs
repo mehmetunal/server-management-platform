@@ -8,4 +8,5 @@ public static class RateLimitPolicies
     public const string DockerAction = "docker-action";
     public const string FileAction = "file-action";
     public const string DeploymentAction = "deployment-action";
+    public const string DeploymentLookup = "deployment-lookup";
 }

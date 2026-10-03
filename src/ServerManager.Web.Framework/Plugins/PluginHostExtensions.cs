@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.FileProviders;
 using ServerManager.Application.Plugins;
+using ServerManager.Web.Framework.Navigation;
 using ServerManager.Web.Framework.Servers;
 
 namespace ServerManager.Web.Framework.Plugins;
@@ -22,6 +23,7 @@ public static class PluginHostExtensions
         builder.Services.AddSingleton<IPluginCatalog>(result.Catalog);
         builder.Services.AddSingleton(result);
         builder.Services.AddSingleton<ServerTabRegistry>();
+        builder.Services.AddSingleton<MenuRegistry>();
         builder.Services.Configure<MvcOptions>(mvc => mvc.Filters.Add<PluginEnabledFilter>());
         builder.Services.Configure<HubOptions>(hub => hub.AddFilter<PluginHubFilter>());
 

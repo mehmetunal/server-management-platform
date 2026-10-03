@@ -70,6 +70,16 @@ public static partial class GitRepositoryUrls
     public static bool IsHttps(string? url) =>
         url is not null && url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// İki https adresi aynı sunucuya mı gidiyor. Kayıtlı erişim anahtarı yalnızca girildiği sunucuya gönderilir;
+    /// adres başka bir sunucuya çevrilirse anahtar yeniden istenir.
+    /// </summary>
+    public static bool HaveSameHost(string? first, string? second) =>
+        Uri.TryCreate(first, UriKind.Absolute, out var a)
+        && Uri.TryCreate(second, UriKind.Absolute, out var b)
+        && string.Equals(a.Scheme, b.Scheme, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(a.Authority, b.Authority, StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Erişim anahtarıyla HTTPS kimlik doğrulamasında sağlayıcının beklediği kullanıcı adı.</summary>
     public static string TokenUsername(GitProvider provider, string? username) =>
         !string.IsNullOrWhiteSpace(username)

@@ -30,6 +30,7 @@ public class DeploymentService : IDeploymentService
     private readonly ISecretProtector _secretProtector;
     private readonly IAuditLogService _auditLogService;
     private readonly IValidator<StartDeploymentDto> _startValidator;
+    private readonly IGitIntegrationRegistry _gitIntegrations;
     private readonly DeploymentOptions _options;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<DeploymentService> _logger;
@@ -41,6 +42,7 @@ public class DeploymentService : IDeploymentService
         ISecretProtector secretProtector,
         IAuditLogService auditLogService,
         IValidator<StartDeploymentDto> startValidator,
+        IGitIntegrationRegistry gitIntegrations,
         IOptions<DeploymentOptions> options,
         TimeProvider timeProvider,
         ILogger<DeploymentService> logger)
@@ -51,6 +53,7 @@ public class DeploymentService : IDeploymentService
         _secretProtector = secretProtector;
         _auditLogService = auditLogService;
         _startValidator = startValidator;
+        _gitIntegrations = gitIntegrations;
         _options = options.Value;
         _timeProvider = timeProvider;
         _logger = logger;
@@ -202,6 +205,22 @@ public class DeploymentService : IDeploymentService
             return Failed("Erişim anahtarı veya ortam değişkenleri çözülemedi. Master key değişmiş olabilir; projeyi düzenleyip yeniden girin.");
         }
 
+        var username = GitRepositoryUrls.TokenUsername(project.GitProvider, project.GitUsername);
+        if (project.GitIntegration is not null)
+        {
+            var integration = _gitIntegrations.Find(project.GitIntegration);
+            if (integration is null)
+                return Failed($"Projenin Git entegrasyonu ({project.GitIntegration}) kurulu veya etkin değil; Eklentiler sayfasından etkinleştirin.");
+
+            await recorder.InfoAsync($"{integration.DisplayName}: {project.GitRepository} için erişim anahtarı alınıyor", cancellationToken);
+            var access = await integration.CreateAccessTokenAsync(project.GitSourceId ?? string.Empty, project.GitRepository ?? string.Empty, cancellationToken);
+            if (!access.IsSuccess)
+                return Failed(access.Message ?? "Git entegrasyonundan erişim anahtarı alınamadı.");
+
+            username = access.Data!.Username;
+            token = access.Data.Token;
+        }
+
         PortMappings.TryParse(project.PortMappings, out var ports, out _);
         var plan = new DeploymentPlan
         {
@@ -209,7 +228,7 @@ public class DeploymentService : IDeploymentService
             Source = new GitSource
             {
                 RepositoryUrl = project.RepositoryUrl,
-                Username = GitRepositoryUrls.TokenUsername(project.GitProvider, project.GitUsername),
+                Username = username,
                 AccessToken = token
             },
             Branch = project.Branch,

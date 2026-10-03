@@ -1,0 +1,6 @@
+@model string
+@inject ServerManager.Web.Framework.Navigation.MenuRegistry Menu
+@foreach (var item in Menu.GetItems(Model, User))
+{
+    <a asp-controller="@item.Controller" asp-action="@item.Action" class="nav-link @NavigationHelper.ActiveClass(ViewContext, item.Controller)" title="@item.Tooltip">@Icons.Render(item.Icon) @item.Title</a>
+}

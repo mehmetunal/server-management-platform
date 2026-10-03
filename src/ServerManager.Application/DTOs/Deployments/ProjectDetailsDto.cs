@@ -26,6 +26,14 @@ public sealed class ProjectDetailsDto
 
     public bool HasAccessToken { get; init; }
 
+    /// <summary>Depo bir Git entegrasyonuyla bağlıysa eklentinin SystemName'i.</summary>
+    public string? GitIntegration { get; init; }
+
+    /// <summary>Entegrasyonun görünen adı; eklenti devre dışıysa null.</summary>
+    public string? GitIntegrationName { get; init; }
+
+    public string? GitRepository { get; init; }
+
     public string DeployPath { get; init; } = string.Empty;
 
     public DeploymentBuildType BuildType { get; init; }

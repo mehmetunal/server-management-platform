@@ -8,9 +8,11 @@
   </Folder>
   <Folder Name="/src/Plugins/">
     <Project Path="src/Plugins/ServerManager.Plugin.DevOps.Dokploy/ServerManager.Plugin.DevOps.Dokploy.csproj" />
+    <Project Path="src/Plugins/ServerManager.Plugin.Git.GitHub/ServerManager.Plugin.Git.GitHub.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ServerManager.Application.Tests/ServerManager.Application.Tests.csproj" />
     <Project Path="tests/ServerManager.Plugin.DevOps.Dokploy.Tests/ServerManager.Plugin.DevOps.Dokploy.Tests.csproj" />
+    <Project Path="tests/ServerManager.Plugin.Git.GitHub.Tests/ServerManager.Plugin.Git.GitHub.Tests.csproj" />
   </Folder>
 </Solution>

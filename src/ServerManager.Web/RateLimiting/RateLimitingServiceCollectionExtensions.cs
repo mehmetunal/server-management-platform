@@ -29,7 +29,8 @@ public static class RateLimitingServiceCollectionExtensions
                 .AddPerUserPolicy(RateLimitPolicies.MetricsCollect, 10)
                 .AddPerUserPolicy(RateLimitPolicies.DockerAction, 30)
                 .AddPerUserPolicy(RateLimitPolicies.FileAction, 60)
-                .AddPerUserPolicy(RateLimitPolicies.DeploymentAction, 20);
+                .AddPerUserPolicy(RateLimitPolicies.DeploymentAction, 20)
+                .AddPerUserPolicy(RateLimitPolicies.DeploymentLookup, 60);
 
             options.OnRejected = async (context, cancellationToken) =>
             {

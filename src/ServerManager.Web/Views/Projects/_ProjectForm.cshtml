@@ -3,6 +3,7 @@
     var edit = Model as UpdateProjectDto;
     var isEdit = edit is not null;
     var servers = ViewData[ServerManager.Web.Controllers.ProjectsController.ServerOptionsKey] as IReadOnlyList<ServerOptionDto> ?? [];
+    var integrations = ViewData[ServerManager.Web.Controllers.ProjectsController.GitIntegrationsKey] as IReadOnlyList<string> ?? [];
     var compose = ((int)DeploymentBuildType.DockerCompose).ToString();
     var dockerfile = ((int)DeploymentBuildType.Dockerfile).ToString();
     var commands = ((int)DeploymentBuildType.Commands).ToString();
@@ -47,15 +48,49 @@
             </div>
         </section>
 
-        <section class="panel">
+        <section class="panel"
+                 data-git-panel
+                 data-sources-url="@Url.Action("GitSources", "Projects")"
+                 data-repositories-url="@Url.Action("GitRepositories", "Projects")"
+                 data-branches-url="@Url.Action("GitBranches", "Projects")"
+                 data-remote-branches-url="@Url.Action("RemoteBranches", "Projects")"
+                 data-project-id="@edit?.Id"
+                 data-current-source="@Model.GitSource"
+                 data-current-repository="@Model.GitRepository">
             <div class="panel-header"><h2 class="panel-title">Git deposu</h2></div>
             <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-3">
-                <div>
+                @if (integrations.Count > 0)
+                {
+                    <div class="sm:col-span-3">
+                        <label asp-for="GitSource" class="form-label">Kaynak</label>
+                        <select asp-for="GitSource" class="form-control" data-git-source>
+                            <option value="">Depo adresiyle (elle)</option>
+                            @if (Model.UsesIntegration)
+                            {
+                                <option value="@Model.GitSource" selected>Kayıtlı bağlantı</option>
+                            }
+                        </select>
+                        <p class="form-hint" data-git-source-hint>@string.Join(", ", integrations) bağlantılarındaki depolar listelenir; erişim anahtarı gerekmez.</p>
+                        <span asp-validation-for="GitSource" class="field-validation-error"></span>
+                    </div>
+                    <div class="sm:col-span-2" data-git-mode="integration">
+                        <label asp-for="GitRepository" class="form-label">Depo *</label>
+                        <select asp-for="GitRepository" class="form-control font-mono" data-git-repository>
+                            @if (!string.IsNullOrEmpty(Model.GitRepository))
+                            {
+                                <option value="@Model.GitRepository" selected>@Model.GitRepository</option>
+                            }
+                        </select>
+                        <p class="form-hint" data-git-repository-hint>Bağlantının erişebildiği depolar.</p>
+                        <span asp-validation-for="GitRepository" class="field-validation-error"></span>
+                    </div>
+                }
+                <div data-git-mode="manual">
                     <label asp-for="GitProvider" class="form-label">Sağlayıcı *</label>
                     <select asp-for="GitProvider" class="form-control" asp-items="DeploymentDisplay.GitProviderOptions(Model.GitProvider)"></select>
                     <span asp-validation-for="GitProvider" class="field-validation-error"></span>
                 </div>
-                <div class="sm:col-span-2">
+                <div class="sm:col-span-2" data-git-mode="manual">
                     <label asp-for="RepositoryUrl" class="form-label">Depo adresi *</label>
                     <input asp-for="RepositoryUrl" class="form-control font-mono" placeholder="https://github.com/firma/uygulama.git" maxlength="500" spellcheck="false" />
                     <p class="form-hint">https:// veya SSH (git@github.com:firma/uygulama.git). SSH adreslerinde hedef sunucudaki kullanıcının anahtarı depoda yetkili olmalıdır.</p>
@@ -63,16 +98,21 @@
                 </div>
                 <div>
                     <label asp-for="Branch" class="form-label">Dal *</label>
-                    <input asp-for="Branch" class="form-control font-mono" placeholder="main" maxlength="200" spellcheck="false" />
+                    <div class="branch-picker">
+                        <input asp-for="Branch" class="form-control font-mono" placeholder="main" maxlength="200" spellcheck="false" data-branch-input />
+                        <select class="form-control font-mono" data-branch-select hidden aria-label="Dal"></select>
+                        <button type="button" class="btn-secondary branch-picker-button" data-branch-load title="Depodaki dalları getir">@Icons.Render("refresh", "h-4 w-4")</button>
+                    </div>
+                    <p class="form-hint" data-branch-hint>Dalları listelemek için yenile düğmesine basın.</p>
                     <span asp-validation-for="Branch" class="field-validation-error"></span>
                 </div>
-                <div>
+                <div data-git-mode="manual">
                     <label asp-for="GitUsername" class="form-label">Kullanıcı adı</label>
                     <input asp-for="GitUsername" class="form-control font-mono" placeholder="Sağlayıcı varsayılanı" maxlength="128" autocomplete="off" spellcheck="false" />
                     <p class="form-hint">Yalnızca kendi sunucunuzdaki Git için gerekebilir.</p>
                     <span asp-validation-for="GitUsername" class="field-validation-error"></span>
                 </div>
-                <div>
+                <div data-git-mode="manual">
                     <label asp-for="AccessToken" class="form-label">Erişim anahtarı (token)</label>
                     <input asp-for="AccessToken" type="password" class="form-control" autocomplete="new-password" />
                     <p class="form-hint">
@@ -89,13 +129,17 @@
                 </div>
                 @if (edit?.HasAccessToken == true)
                 {
-                    <label class="check-card sm:col-span-3">
+                    <label class="check-card sm:col-span-3" data-git-mode="manual">
                         <input name="RemoveAccessToken" value="true" type="checkbox" class="form-check" checked="@edit.RemoveAccessToken" />
                         <span>
                             <span class="check-card-title">Kayıtlı erişim anahtarını kaldır</span>
                             <span class="check-card-text">Depo herkese açıksa veya SSH adresine geçiyorsanız işaretleyin.</span>
                         </span>
                     </label>
+                }
+                @if (integrations.Count == 0)
+                {
+                    <p class="form-hint sm:col-span-3">Depoları GitHub App gibi bir bağlantıdan seçmek için <span class="font-medium">Eklentiler</span> sayfasından bir Git eklentisi (ör. GitHub) etkinleştirin.</p>
                 }
             </div>
         </section>
@@ -206,7 +250,7 @@
 
         <div class="alert-info flex gap-3">
             @Icons.Render("lock", "h-5 w-5 shrink-0")
-            <p>Git komutları sunucuya kayıtlı SSH kullanıcısıyla, Docker komutları sunucunun sudo ayarıyla çalışır. Erişim anahtarı komut satırına yazılmaz ve sunucuda diske kaydedilmez.</p>
+            <p>Git komutları sunucuya kayıtlı SSH kullanıcısıyla, Docker komutları sunucunun sudo ayarıyla çalışır. Erişim anahtarı komut satırına yazılmaz ve sunucuda diske kaydedilmez. Bağlantıyla seçilen depolarda her işlem için kısa ömürlü anahtar alınır.</p>
         </div>
     </div>
 </div>

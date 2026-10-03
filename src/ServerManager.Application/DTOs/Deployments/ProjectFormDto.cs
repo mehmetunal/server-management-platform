@@ -10,6 +10,12 @@ public abstract class ProjectFormDto
 
     public string? Description { get; set; }
 
+    /// <summary>Boşsa depo adresiyle çalışılır; doluysa <c>GitSourceKeys</c> biçiminde entegrasyon bağlantısıdır.</summary>
+    public string? GitSource { get; set; }
+
+    /// <summary>Entegrasyondaki depo adı (<see cref="GitSource"/> doluyken zorunlu).</summary>
+    public string? GitRepository { get; set; }
+
     public GitProvider GitProvider { get; set; } = GitProvider.GitHub;
 
     public string RepositoryUrl { get; set; } = string.Empty;
@@ -37,6 +43,8 @@ public abstract class ProjectFormDto
     public bool UseSudoForCommands { get; set; }
 
     public string? Environment { get; set; }
+
+    public bool UsesIntegration => !string.IsNullOrWhiteSpace(GitSource);
 
     public void ClearSecrets()
     {

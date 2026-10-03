@@ -29,6 +29,16 @@ public class GitRepositoryUrlsTests
     }
 
     [Theory]
+    [InlineData("https://github.com/acme/api.git", "https://github.com/acme/other.git", true)]
+    [InlineData("https://github.com/acme/api.git", "https://GITHUB.com/acme/api", true)]
+    [InlineData("https://github.com/acme/api.git", "https://github.com.evil.example/acme/api.git", false)]
+    [InlineData("https://github.com/acme/api.git", "http://github.com/acme/api.git", false)]
+    [InlineData("https://git.local:8443/a/b.git", "https://git.local/a/b.git", false)]
+    [InlineData("git@github.com:acme/api.git", "https://github.com/acme/api.git", false)]
+    public void Same_host_check_compares_scheme_host_and_port(string first, string second, bool expected) =>
+        Assert.Equal(expected, GitRepositoryUrls.HaveSameHost(first, second));
+
+    [Theory]
     [InlineData(GitProvider.GitHub, null, "x-access-token")]
     [InlineData(GitProvider.GitLab, "", "oauth2")]
     [InlineData(GitProvider.Bitbucket, null, "x-token-auth")]

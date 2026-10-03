@@ -10,6 +10,30 @@
   @apply space-y-6;
 }
 
+.branch-picker {
+  @apply flex items-stretch gap-2;
+
+  > .form-control {
+    @apply min-w-0 flex-1;
+  }
+}
+
+.branch-picker-button {
+  @apply shrink-0 px-3;
+
+  &[aria-busy="true"] svg {
+    @apply animate-spin;
+  }
+}
+
+.form-hint[data-tone="error"] {
+  @apply text-red-600 dark:text-red-400;
+}
+
+.form-hint[data-tone="warning"] {
+  @apply text-amber-600 dark:text-amber-400;
+}
+
 .project-form-actions {
   @apply mt-6 flex justify-end gap-3;
 }

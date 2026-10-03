@@ -30,6 +30,7 @@ public class DeploymentServiceTests
     private readonly FakeSecretProtector _protector = new();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly IDeploymentObserver _observer = Substitute.For<IDeploymentObserver>();
+    private readonly IGitIntegrationRegistry _gitIntegrations = Substitute.For<IGitIntegrationRegistry>();
     private readonly RemoteExecutionContext _context = new() { Connection = new SshConnectionRequest { Host = "203.0.113.10", Username = "deploy" } };
     private readonly DeploymentActor _actor = new("u1", "admin@example.com", "127.0.0.1");
     private readonly Server _server = ProjectTestData.Server();
@@ -39,6 +40,8 @@ public class DeploymentServiceTests
     public DeploymentServiceTests()
     {
         _project = ProjectTestData.Project(_server);
+        _gitIntegrations.Find(Arg.Any<string>()).Returns((IGitIntegration?)null);
+        _gitIntegrations.GetEnabled().Returns([]);
         _repository.GetProjectAsync(_project.Id, Arg.Any<CancellationToken>()).Returns(_project);
         _connectionProvider.GetAsync(_server.Id, Arg.Any<CancellationToken>())
             .Returns(ServiceResult<ServerConnection>.Success(new ServerConnection { ServerId = _server.Id, ServerName = _server.Name, Context = _context }));
@@ -49,6 +52,7 @@ public class DeploymentServiceTests
             _protector,
             _auditLog,
             new StartDeploymentDtoValidator(),
+            _gitIntegrations,
             Options.Create(new DeploymentOptions { GitTimeoutSeconds = 300, BuildTimeoutMinutes = 30, DeployTimeoutMinutes = 10, MaxStoredLogKilobytes = 1024 }),
             new FixedTimeProvider(Now),
             NullLogger<DeploymentService>.Instance);
@@ -174,6 +178,50 @@ public class DeploymentServiceTests
         await _auditLog.Received(1).LogAsync(
             Arg.Is<AuditEntry>(e => e.Action == AuditActions.DeploymentComplete && e.IsSuccess),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Run_with_integration_uses_short_lived_token_instead_of_stored_one()
+    {
+        var deployment = Started();
+        _project.EncryptedAccessToken = _protector.Protect("ghp_old");
+        _project.GitIntegration = "Git.GitHub";
+        _project.GitSourceId = "app:42";
+        _project.GitRepository = "acme/api";
+        var integration = Substitute.For<IGitIntegration>();
+        integration.DisplayName.Returns("GitHub App");
+        integration.CreateAccessTokenAsync("app:42", "acme/api", Arg.Any<CancellationToken>())
+            .Returns(ServiceResult<GitAccessToken>.Success(new GitAccessToken("x-access-token", "ghs_short")));
+        _gitIntegrations.Find("Git.GitHub").Returns(integration);
+        _provider.DeployAsync(_context, Arg.Any<DeploymentPlan>(), Arg.Any<IDeploymentObserver>(), Arg.Any<CancellationToken>())
+            .Returns(ServiceResult<DeploymentRunResult>.Success(new DeploymentRunResult { Succeeded = true, CommitSha = ProjectTestData.Sha }));
+        using var cancellation = new DeploymentCancellation(CancellationToken.None);
+
+        var result = await _service.RunAsync(deployment.Id, _actor, _observer, cancellation);
+
+        Assert.True(result.IsSuccess);
+        Assert.DoesNotContain("ghs_short", deployment.Log);
+        await _provider.Received(1).DeployAsync(
+            _context,
+            Arg.Is<DeploymentPlan>(p => p.Source.AccessToken == "ghs_short" && p.Source.Username == "x-access-token"),
+            Arg.Any<IDeploymentObserver>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Run_fails_when_project_integration_is_disabled()
+    {
+        var deployment = Started();
+        _project.GitIntegration = "Git.GitHub";
+        _project.GitSourceId = "app:42";
+        _project.GitRepository = "acme/api";
+        using var cancellation = new DeploymentCancellation(CancellationToken.None);
+
+        await _service.RunAsync(deployment.Id, _actor, _observer, cancellation);
+
+        Assert.Equal(DeploymentStatus.Failed, deployment.Status);
+        Assert.Contains("Git.GitHub", deployment.FailureReason);
+        await _provider.DidNotReceiveWithAnyArgs().DeployAsync(default!, default!, default!, Ct);
     }
 
     [Fact]

@@ -29,12 +29,14 @@
         <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("squares") Gruplar <span class="nav-soon">Yakında</span></span>
         <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("cloud") Sağlayıcılar <span class="nav-soon">Yakında</span></span>
 
+        <partial name="_PluginMenuItems" model="MenuGroups.Infrastructure" />
         <p class="nav-group">Konteynerler</p>
         <span class="nav-link is-disabled" title="Sunucu sayfasındaki Docker sekmesinden kullanılabilir">@Icons.Render("cube") Docker <span class="nav-soon">Yakında</span></span>
         <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("photo") İmajlar <span class="nav-soon">Yakında</span></span>
         <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("database") Volume'lar <span class="nav-soon">Yakında</span></span>
         <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("globe") Ağlar <span class="nav-soon">Yakında</span></span>
 
+        <partial name="_PluginMenuItems" model="MenuGroups.Containers" />
         <p class="nav-group">Deployment</p>
         @if (canDeployments)
         {
@@ -42,6 +44,7 @@
             <a asp-controller="Deployments" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "Deployments")" title="Tüm projelerin deployment geçmişi ve canlı logları">@Icons.Render("rocket") Deployment'lar</a>
         }
 
+        <partial name="_PluginMenuItems" model="MenuGroups.Deployment" />
         <p class="nav-group">Operasyon</p>
         <span class="nav-link is-disabled" title="Sunucu sayfasındaki Terminal sekmesinden kullanılabilir">@Icons.Render("terminal") Terminal <span class="nav-soon">Yakında</span></span>
         <span class="nav-link is-disabled" title="Sunucu sayfasındaki Files sekmesinden kullanılabilir">@Icons.Render("folder") Dosyalar <span class="nav-soon">Yakında</span></span>
@@ -49,12 +52,14 @@
         <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("list") Process'ler <span class="nav-soon">Yakında</span></span>
         <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("document") Loglar <span class="nav-soon">Yakında</span></span>
 
+        <partial name="_PluginMenuItems" model="MenuGroups.Operations" />
         <p class="nav-group">İzleme</p>
         <span class="nav-link is-disabled" title="Sunucu sayfasındaki Metrics sekmesinden kullanılabilir">@Icons.Render("chart") Metrikler <span class="nav-soon">Yakında</span></span>
         <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("signal") Uptime <span class="nav-soon">Yakında</span></span>
         <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("bell") Alarmlar <span class="nav-soon">Yakında</span></span>
         <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("lock") SSL <span class="nav-soon">Yakında</span></span>
 
+        <partial name="_PluginMenuItems" model="MenuGroups.Monitoring" />
         <p class="nav-group">Yönetim</p>
         <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("archive") Yedekleme <span class="nav-soon">Yakında</span></span>
         <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("shield") Güvenlik <span class="nav-soon">Yakında</span></span>
@@ -70,6 +75,7 @@
         {
             <a asp-controller="Plugins" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "Plugins")" title="Dokploy gibi DevOps eklentilerini kur, etkinleştir veya devre dışı bırak">@Icons.Render("puzzle") Eklentiler</a>
         }
+        <partial name="_PluginMenuItems" model="MenuGroups.Management" />
         <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("settings") Ayarlar <span class="nav-soon">Yakında</span></span>
     </nav>
 </aside>

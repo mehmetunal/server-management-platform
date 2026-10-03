@@ -1,0 +1,77 @@
+@model GitHubIndexViewModel
+@{
+    ViewData["Title"] = "GitHub";
+    ViewData["Page"] = "github";
+    ViewData[PluginContent.PagePluginKey] = GitHubPlugin.SystemName;
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">GitHub</h1>
+        <p class="page-lead">GitHub App oluşturup hesabınıza veya kurumunuza kurun; kurulan hesapların depoları ve dalları proje formunda listelenir.</p>
+    </div>
+    <button type="button" class="btn-secondary" data-github-refresh data-url="@Url.Action("Refresh")" title="Kurulumları ve depo listelerini GitHub'dan yeniden al">
+        <span class="spinner" data-spinner hidden></span>
+        @Icons.Render("refresh", "h-4 w-4") Yenile
+    </button>
+</div>
+
+@if (Model.Notice is not null)
+{
+    <p class="@(Model.NoticeIsError ? "alert-error" : "alert-success") mb-6">@Model.Notice</p>
+}
+
+<div class="github-grid">
+    <div class="github-main" data-app-list data-url="@Url.Action("AppList")" data-delete-url="@Url.Action("Delete")">
+        <partial name="_AppList" model="Model.Apps" />
+    </div>
+
+    <aside class="github-side">
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Yeni GitHub App oluştur</h2></div>
+            <form asp-action="Manifest" method="post" class="panel-body github-form" data-manifest-form novalidate>
+                <p class="alert-error" data-form-error hidden></p>
+                <div>
+                    <label for="manifest-name" class="form-label">Uygulama adı *</label>
+                    <input id="manifest-name" name="Name" class="form-control" value="@Model.DefaultAppName" maxlength="@GitHubManifestRequestDtoValidator.MaxNameLength" required />
+                    <span class="field-validation-valid" data-valmsg-for="Name"></span>
+                    <p class="form-hint">GitHub genelinde benzersiz olmalı; GitHub sayfasında değiştirebilirsiniz.</p>
+                </div>
+                <div>
+                    <label for="manifest-organization" class="form-label">Kurum (isteğe bağlı)</label>
+                    <input id="manifest-organization" name="Organization" class="form-control" placeholder="ornek-kurum" maxlength="39" autocomplete="off" />
+                    <span class="field-validation-valid" data-valmsg-for="Organization"></span>
+                    <p class="form-hint">Boş bırakılırsa uygulama GitHub'da giriş yaptığınız hesapta oluşturulur.</p>
+                </div>
+                <p class="form-hint">
+                    Yalnızca <strong>depo içeriği</strong> ve <strong>meta veri</strong> okuma izni istenir. GitHub onaydan sonra
+                    <span class="font-mono break-all">@Model.PanelBaseUrl</span> adresine döner; tarayıcınızın bu adrese erişebilmesi yeterlidir.
+                </p>
+                <button type="submit" class="btn-primary w-full justify-center" title="GitHub'da uygulama oluşturma sayfasını aç; onaydan sonra panele dönülür">
+                    @Icons.Render("plus", "h-4 w-4") GitHub'da oluştur
+                </button>
+            </form>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Mevcut bir App'i ekle</h2></div>
+            <form asp-action="Create" method="post" class="panel-body github-form" data-manual-form novalidate>
+                <p class="alert-error" data-form-error hidden></p>
+                <div>
+                    <label for="manual-app-id" class="form-label">App ID *</label>
+                    <input id="manual-app-id" name="AppId" type="number" min="1" class="form-control" inputmode="numeric" autocomplete="off" required />
+                    <span class="field-validation-valid" data-valmsg-for="AppId"></span>
+                </div>
+                <div>
+                    <label for="manual-private-key" class="form-label">Özel anahtar (.pem) *</label>
+                    <textarea id="manual-private-key" name="PrivateKey" class="form-control font-mono text-xs" rows="6" spellcheck="false" autocomplete="off" placeholder="-----BEGIN RSA PRIVATE KEY-----" required></textarea>
+                    <span class="field-validation-valid" data-valmsg-for="PrivateKey"></span>
+                    <p class="form-hint">Anahtar şifreli saklanır ve bir daha gösterilmez. Uygulamanın Contents: Read izni olmalıdır.</p>
+                </div>
+                <button type="submit" class="btn-secondary w-full justify-center" title="Uygulama kimliğini ve özel anahtarı GitHub'da doğrulayıp ekle">
+                    @Icons.Render("key", "h-4 w-4") Doğrula ve ekle
+                </button>
+            </form>
+        </section>
+    </aside>
+</div>

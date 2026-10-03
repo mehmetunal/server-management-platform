@@ -115,6 +115,56 @@ public class ProjectDtoValidatorTests
         Assert.Contains(result.Errors, e => e.PropertyName == nameof(UpdateProjectDto.Id));
     }
 
+    [Fact]
+    public async Task Integration_mode_ignores_repository_url_and_requires_valid_repository()
+    {
+        var dto = ProjectTestData.ValidCreateDto(Guid.NewGuid());
+        dto.GitSource = "Git.GitHub|app:42";
+        dto.GitRepository = "acme/api";
+        dto.RepositoryUrl = string.Empty;
+        dto.AccessToken = "ignored";
+
+        Assert.Empty(await InvalidPropertiesAsync(dto));
+
+        dto.GitRepository = "../api";
+        Assert.Contains(nameof(ProjectFormDto.GitRepository), await InvalidPropertiesAsync(dto));
+
+        dto.GitRepository = "acme/api";
+        dto.GitSource = "not a key";
+        Assert.Contains(nameof(ProjectFormDto.GitSource), await InvalidPropertiesAsync(dto));
+    }
+
+    [Theory]
+    [InlineData("https://github.com/acme/api.git", true)]
+    [InlineData("git@github.com:acme/api.git", true)]
+    [InlineData("", false)]
+    [InlineData("https://github.com/acme/api.git; id", false)]
+    public async Task Remote_branch_query_validates_repository_url(string url, bool expected)
+    {
+        var result = await new RemoteBranchQueryDtoValidator().ValidateAsync(new RemoteBranchQueryDto
+        {
+            ServerId = Guid.NewGuid(),
+            GitProvider = GitProvider.GitHub,
+            RepositoryUrl = url
+        }, Ct);
+
+        Assert.Equal(expected, result.IsValid);
+    }
+
+    [Fact]
+    public async Task Remote_branch_query_rejects_token_for_ssh_address()
+    {
+        var result = await new RemoteBranchQueryDtoValidator().ValidateAsync(new RemoteBranchQueryDto
+        {
+            ServerId = Guid.NewGuid(),
+            GitProvider = GitProvider.GitHub,
+            RepositoryUrl = "git@github.com:acme/api.git",
+            AccessToken = "ghp_x"
+        }, Ct);
+
+        Assert.False(result.IsValid);
+    }
+
     [Theory]
     [InlineData(null, true)]
     [InlineData("", true)]

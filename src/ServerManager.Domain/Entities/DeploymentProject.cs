@@ -26,6 +26,18 @@ public class DeploymentProject : BaseEntity
 
     public string? EncryptedAccessToken { get; set; }
 
+    /// <summary>
+    /// Depo bir Git entegrasyonu (ör. GitHub App) üzerinden bağlandıysa entegrasyon eklentisinin SystemName'i.
+    /// Bu durumda erişim anahtarı saklanmaz; her işlemde entegrasyondan kısa ömürlü anahtar alınır.
+    /// </summary>
+    public string? GitIntegration { get; set; }
+
+    /// <summary>Entegrasyon içindeki bağlantı (GitHub App kurulumu gibi); biçimi entegrasyona aittir.</summary>
+    public string? GitSourceId { get; set; }
+
+    /// <summary>Entegrasyondaki depo adı (ör. <c>firma/uygulama</c>).</summary>
+    public string? GitRepository { get; set; }
+
     public string DeployPath { get; set; } = string.Empty;
 
     public DeploymentBuildType BuildType { get; set; } = DeploymentBuildType.DockerCompose;

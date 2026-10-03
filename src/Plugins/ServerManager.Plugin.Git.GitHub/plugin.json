@@ -1,0 +1,10 @@
+{
+  "SystemName": "Git.GitHub",
+  "FriendlyName": "GitHub App",
+  "Group": "Git",
+  "Version": "1.0.0",
+  "Author": "Server Manager",
+  "Description": "GitHub App oluşturup hesaplara/kurumlara kurarak depoları ve dallarını proje formunda listeler; deployment sırasında depo başına kısa ömürlü erişim anahtarı kullanır.",
+  "DisplayOrder": 10,
+  "AssemblyFileName": "ServerManager.Plugin.Git.GitHub.dll"
+}
