@@ -2656,7 +2656,11 @@ Git deposundaki bir uygulamayı kayıtlı bir sunucuya SSH üzerinden (agentless
 
 Proje ayarları:
 
-- **Git:** sağlayıcı (GitHub, GitLab, Bitbucket, kendi sunucusu), `https://` veya SSH depo adresi, dal, isteğe bağlı kullanıcı adı ve erişim anahtarı (token). SSH adreslerinde hedef sunucudaki kullanıcının anahtarı depoda yetkili olmalıdır.
+- **Git kaynağı:** iki yol vardır.
+  - *Depo adresiyle (elle):* sağlayıcı (GitHub, GitLab, Bitbucket, kendi sunucusu), `https://` veya SSH depo adresi, dal, isteğe bağlı kullanıcı adı ve erişim anahtarı (token). SSH adreslerinde hedef sunucudaki kullanıcının anahtarı depoda yetkili olmalıdır.
+  - *Bağlantıyla:* etkin bir Git entegrasyon eklentisinin (ör. [GitHub App](#github-app)) bağlantılarından biri seçilir, bağlantının erişebildiği depolar listelenir. Erişim anahtarı girilmez ve saklanmaz; her depo kontrolü ve deployment için bağlantıdan yalnızca o depoya okuma yetkili kısa ömürlü bir anahtar alınır. Projede yalnızca eklenti adı, bağlantı kimliği ve depo adı (`sahip/ad`) tutulur.
+- **Dal seçimi:** "Depodaki dalları getir" düğmesi dalları listeler. Bağlantılı projelerde dallar sağlayıcı API'sinden, elle girilen adreslerde hedef sunucudan `git ls-remote --heads` ile okunur (bu yüzden önce sunucu seçilmelidir). Listeden seçilebilir veya dal adı elle yazılabilir.
+- **Kayıtlı erişim anahtarı:** düzenlemede boş bırakılırsa korunur. Depo adresinin sunucusu (host) değişirse kayıtlı anahtar yeni adrese gönderilmez; yeni anahtar girilmeli veya "kaldır" seçilmelidir. Bağlantılı kaynağa geçildiğinde kayıtlı anahtar silinir.
 - **Build türü:** Docker Compose (compose dosyası; proje adı `sm-<proje>`), Dockerfile (image `sm-<proje>:<kısa-sha>` ve `:latest`, tek container `sm-<proje>`, `--restart unless-stopped`, `sm.project` etiketi, isteğe bağlı port eşlemeleri) veya Komutlar (proje klasöründe `sh` ile çalışan build ve deploy komutları; isteğe bağlı sudo).
 - **Sunucudaki klasör:** mutlak yol; sistem klasörleri (`/etc`, `/usr`, `/bin`, `/root` vb.) reddedilir. SSH kullanıcısının yazabildiği bir yer olmalıdır.
 - **Ortam değişkenleri:** `.env` içeriği; değerler `Security:MasterKey` ile şifrelenir ve arayüzde geri gösterilmez (yalnızca anahtar adları listelenir). Düzenlemede boş bırakılırsa korunur, yazılırsa tamamı değişir.
@@ -2681,6 +2685,7 @@ Güvenlik notları:
 - Hiçbir adım dosya silmez (`git clean` / `rm -rf` yok). Dolu ve git deposu olmayan bir klasör reddedilir; mevcut bir git deposunda çalışma ağacı çekilen commit'e zorla alınır, izlenmeyen dosyalar kalır.
 - Submodule'ler çekilmez. Git komutları SSH kullanıcısıyla, Docker komutları sunucunun sudo ayarıyla çalışır.
 - Proje silme kaydı listeden gizler (soft delete); sunucudaki dosyalara, container'lara ve deployment geçmişine dokunulmaz.
+- Bağlantılı projelerde bağlantıyı sağlayan eklenti devre dışıysa proje detayında "(eklenti etkin değil)" görünür, depo kontrolü ve deployment açık bir hatayla durur; proje kaydı korunur.
 
 | Anahtar (`Deployment:`) | Varsayılan | Açıklama |
 | --- | --- | --- |
@@ -2710,12 +2715,47 @@ Sistem nopCommerce'teki plugin mantığıyla genişler: Dokploy, Dokku ve diğer
 | Anahtar (`Plugins:`) | Varsayılan | Açıklama |
 | --- | --- | --- |
 | `Directory` | `Plugins` | Eklenti klasörlerinin bulunduğu dizin (uygulama kök dizinine göre) |
-| `InstallOnStartup` | `["DevOps.Dokploy"]` | Daha önce hiç kurulmamışsa açılışta otomatik kurulan eklentiler; sonradan devre dışı bırakılan eklenti yeniden etkinleştirilmez |
+| `InstallOnStartup` | `["DevOps.Dokploy", "Git.GitHub"]` | Daha önce hiç kurulmamışsa açılışta otomatik kurulan eklentiler; sonradan devre dışı bırakılan eklenti yeniden etkinleştirilmez |
 
 | Eklenti | Grup | Durum |
 | --- | --- | --- |
 | `DevOps.Dokploy` | DevOps | Hazır (bkz. [Dokploy](#dokploy)) |
+| `Git.GitHub` | Git | Hazır (bkz. [GitHub App](#github-app)) |
 | `DevOps.Dokku` | DevOps | Planlandı |
+| `Git.GitLab` | Git | Planlandı |
+
+### GitHub App
+
+> Eklenti: `Git.GitHub` (`src/Plugins/ServerManager.Plugin.Git.GitHub`). Varsayılan olarak `Plugins:InstallOnStartup` listesindedir. Devre dışı bırakılırsa menü ve sayfa kapanır, bağlantılı projelerin deployment'ı durur; kayıtlar silinmez.
+
+GitHub hesaplarındaki veya kurumlarındaki depoları projelere erişim anahtarı girmeden tanıtır. Menüde **Deployment → GitHub** sayfası bulunur (`github.manage`, varsayılan SuperAdmin ve Admin).
+
+Bağlantı kurma:
+
+1. **GitHub'da oluştur (manifest):** uygulama adı ve isteğe bağlı kurum adı girilir; panel GitHub'a hazır bir App tanımı gönderir. GitHub'da "Create GitHub App" onaylanınca uygulama oluşur, kimlik bilgileri panele döner ve şifrelenerek saklanır; ardından kurulum sayfası açılır.
+2. **Elle ekle:** GitHub'da oluşturulmuş bir App'in **App ID**'si ve **private key** (`.pem`, en az 2048 bit RSA) girilir; kaydetmeden önce GitHub'da doğrulanır.
+3. **Hesaba kur:** uygulama bir veya daha fazla hesaba/kuruma kurulur ve depo erişimi seçilir (tümü veya seçili depolar). Kurulumdan sonra GitHub panele geri yönlendirir ve liste yenilenir.
+
+Sayfa her uygulamanın kurulumlarını (hesap, tür, depo erişimi, askıya alınmış mı) ve onu kullanan projeleri gösterir. Proje formundaki **Kaynak** listesinde her kurulum "hesap · uygulama" olarak çıkar.
+
+- **İzinler:** manifestle oluşturulan uygulama yalnızca `contents: read` ve `metadata: read` ister; webhook tanımlanmaz. Elle eklenen uygulamaya da bundan fazlası gerekmez.
+- **Erişim anahtarları:** App private key ile 10 dakikadan kısa ömürlü bir JWT imzalanır, buradan kurulum anahtarı alınır. Deployment ve depo kontrolü için anahtar yalnızca o depoya ve okuma iznine daraltılır, önbelleğe alınmaz, kullanıcı adı `x-access-token` ile stdin üzerinden git'e verilir; projede, logda ve sunucuda diske yazılmaz. Depo/kurulum listeleri `ListCacheSeconds` süresince önbellekte tutulur; **Yenile** düğmesi ve kurulum dönüşü önbelleği temizler.
+- **Gizli bilgiler:** private key, client secret ve webhook secret `Security:MasterKey` ile şifrelenir, arayüzde gösterilmez.
+- **Kaldırma:** bir uygulamayı kullanan proje varsa kaldırılamaz. Kaldırma kaydı gizler (soft delete); GitHub'daki uygulamayı ve kurulumları silmez, bunlar GitHub ayarlarından kaldırılır.
+- **Geri dönüş adresi:** GitHub'a bildirilen dönüş adresleri `GitHub:PublicBaseUrl`'den (boşsa isteğin adresinden) üretilir. Panel ters vekil arkasındaysa veya GitHub'ın kullanıcıyı döndüreceği adres farklıysa bu ayarı doldurun.
+- **Oturum çerezi:** giriş çerezi `SameSite=Strict` olduğundan GitHub'dan gelen yönlendirmede gönderilmez. Bu yüzden `GitHub/Callback` ve `GitHub/Setup` girişsiz bir ara sayfa döner; sayfa aynı siteden `CompleteManifest`/`Installed` adreslerine geçer ve işlem orada oturum ve `github.manage` iznine göre yapılır. Manifest isteği tek kullanımlıktır, 1 saat geçerlidir ve başlatan kullanıcıya bağlıdır.
+- **CSP:** manifest formunun GitHub'a gönderilebilmesi için yalnızca GitHub sayfasında `form-action` politikasına `GitHub:WebUrl` eklenir (`HttpContext.AllowFormAction`).
+- **Audit:** `github.app_create`, `github.app_delete`. Aksiyonlar kullanıcı başına dakikada 20 istekle sınırlandırılır.
+
+| Anahtar (`GitHub:`) | Varsayılan | Açıklama |
+| --- | --- | --- |
+| `ApiUrl` | `https://api.github.com` | GitHub REST API adresi (GitHub Enterprise için değiştirin) |
+| `WebUrl` | `https://github.com` | Manifest ve kurulum sayfalarının adresi |
+| `PublicBaseUrl` | boş | Panelin dışarıdan görünen adresi; boşsa isteğin adresi kullanılır |
+| `HttpTimeoutSeconds` | `15` | GitHub API isteklerinin zaman aşımı |
+| `ListCacheSeconds` | `60` | Kurulum ve depo listelerinin önbellek süresi |
+
+Yerel test için gerçek GitHub yerine sahte bir API kullanın (`GitHub__ApiUrl` ve `GitHub__WebUrl` ortam değişkenleriyle); canlı hesaplarda test uygulaması oluşturmayın.
 
 ### Eklenti geliştirme
 
@@ -2788,6 +2828,17 @@ public IEnumerable<ServerTab> GetTabs() =>
         DokkuPermissions.View, Controller: "Dokku", Order: 20)
 ];
 ```
+
+Sunucuya bağlı olmayan sayfalar için sol menüye bağlantı `IMenuItemProvider` ile eklenir; bağlantı yalnızca eklenti etkinse ve kullanıcının izni varsa görünür:
+
+```csharp
+public IEnumerable<MenuItem> GetItems() =>
+[
+    new(MenuGroups.Deployment, "Dokku", "Dokku uygulamaları", "server", DokkuPermissions.View, "Dokku")
+];
+```
+
+Projelere depo tanıtan Git sağlayıcıları (GitLab, Gitea vb.) `ServerManager.Application.Interfaces.Deployments.IGitIntegration` arayüzünü uygulayıp scoped olarak kaydeder; proje formu, dal listesi ve deployment bu arayüz üzerinden çalışır (örnek: `GitHubGitIntegration`).
 
 Her tip kendi dosyasındadır (bir dosyada tek tip kuralı eklentiler için de geçerlidir).
 
