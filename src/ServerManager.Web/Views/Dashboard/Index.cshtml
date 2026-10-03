@@ -19,19 +19,19 @@
 <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
     <div class="stat-card">
         <span class="stat-label">Toplam sunucu</span>
-        <span class="stat-value">@Model.TotalServers</span>
+        <span class="stat-value" data-live-dashboard="totalServers">@Model.TotalServers</span>
     </div>
     <div class="stat-card">
         <span class="stat-label">Online</span>
-        <span class="stat-value text-emerald-600 dark:text-emerald-400">@Model.OnlineServers</span>
+        <span class="stat-value text-emerald-600 dark:text-emerald-400" data-live-dashboard="onlineServers">@Model.OnlineServers</span>
     </div>
     <div class="stat-card">
         <span class="stat-label">Offline</span>
-        <span class="stat-value">@Model.OfflineServers</span>
+        <span class="stat-value" data-live-dashboard="offlineServers">@Model.OfflineServers</span>
     </div>
     <div class="stat-card">
         <span class="stat-label">Kritik</span>
-        <span class="stat-value text-red-600 dark:text-red-400">@Model.CriticalServers</span>
+        <span class="stat-value text-red-600 dark:text-red-400" data-live-dashboard="criticalServers">@Model.CriticalServers</span>
     </div>
 </div>
 
@@ -44,16 +44,46 @@
     <span class="badge-neutral"><span class="badge-dot"></span> Bilinmiyor · @Model.UnknownServers</span>
 </div>
 
+@{
+    var resources = Model.Resources;
+    var hasResources = resources.ReportingServers > 0;
+    var reportingText = hasResources ? $"{resources.ReportingServers} sunucunun ortalaması" : "Henüz metrik gelmedi";
+}
 <div class="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-    @foreach (var (label, icon) in new[] { ("CPU kullanımı", "chart"), ("RAM kullanımı", "database"), ("Disk kullanımı", "archive"), ("Docker container", "cube") })
-    {
-        <div class="stat-card">
-            <span class="stat-label flex items-center gap-2">@Icons.Render(icon, "h-4 w-4") @label</span>
-            <span class="stat-value text-slate-300 dark:text-slate-700">—</span>
-            <span class="text-xs text-slate-400 dark:text-slate-500">Metrik toplama sonraki fazda etkinleşecek.</span>
-        </div>
-    }
+    <div class="stat-card">
+        <span class="stat-label flex items-center gap-2">@Icons.Render("chart", "h-4 w-4") CPU kullanımı</span>
+        <span class="stat-value" data-live-dashboard="cpuText">@MetricDisplay.Percent(resources.AverageCpuUsagePercent)</span>
+        <span class="text-xs text-slate-400 dark:text-slate-500" data-live-dashboard="reportingText">@reportingText</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label flex items-center gap-2">@Icons.Render("database", "h-4 w-4") RAM kullanımı</span>
+        <span class="stat-value" data-live-dashboard="memoryText">@MetricDisplay.Percent(resources.AverageMemoryUsagePercent)</span>
+        <span class="text-xs text-slate-400 dark:text-slate-500" data-live-dashboard="reportingText">@reportingText</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label flex items-center gap-2">@Icons.Render("archive", "h-4 w-4") Disk kullanımı</span>
+        <span class="stat-value" data-live-dashboard="diskText">@MetricDisplay.Percent(resources.AverageDiskUsagePercent)</span>
+        <span class="text-xs text-slate-400 dark:text-slate-500">En dolu bölümlerin ortalaması</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label flex items-center gap-2">@Icons.Render("signal", "h-4 w-4") Ağ trafiği</span>
+        <span class="stat-value text-xl" data-live-dashboard="rxText">@MetricDisplay.Rate(hasResources ? resources.TotalNetworkRxBytesPerSecond : null)</span>
+        <span class="text-xs text-slate-400 dark:text-slate-500">Giden: <span data-live-dashboard="txText">@MetricDisplay.Rate(hasResources ? resources.TotalNetworkTxBytesPerSecond : null)</span></span>
+    </div>
 </div>
+
+<section class="panel mt-6" data-metric-charts data-series-url="@Url.Action("FleetSeries", "Dashboard", new { range = "24h" })" data-live-range="false">
+    <div class="panel-header">
+        <h2 class="panel-title">Son 24 saat · ortalama kaynak kullanımı</h2>
+        <span class="text-xs text-slate-400">%</span>
+    </div>
+    <div class="panel-body">
+        <div class="relative h-64">
+            <canvas data-metric-chart="fleet" aria-label="Ortalama kaynak kullanımı grafiği" role="img"></canvas>
+            <p class="absolute inset-0 flex items-center justify-center text-sm text-slate-400" data-chart-empty hidden>Henüz metrik verisi yok.</p>
+        </div>
+    </div>
+</section>
 
 <div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
     <section class="panel">
@@ -78,14 +108,14 @@
             <ul class="divide-y divide-slate-100 dark:divide-slate-800">
                 @foreach (var server in Model.RecentServers)
                 {
-                    <li>
+                    <li data-live-server-row="@server.Id">
                         <a asp-controller="Servers" asp-action="Details" asp-route-id="@server.Id" class="flex items-center gap-4 px-5 py-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
                             <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">@Icons.Render("server", "h-5 w-5")</span>
                             <span class="min-w-0 flex-1">
                                 <span class="block truncate text-sm font-medium text-slate-900 dark:text-slate-100">@server.Name</span>
                                 <span class="block truncate font-mono text-xs text-slate-500">@server.IpAddress · @ServerDisplay.EnvironmentText(server.Environment)</span>
                             </span>
-                            <span class="@ServerDisplay.StatusBadgeClass(server.Status)"><span class="badge-dot"></span>@ServerDisplay.StatusText(server.Status)</span>
+                            <span class="@ServerDisplay.StatusBadgeClass(server.Status)" data-live-status><span class="badge-dot"></span><span data-live-status-text>@ServerDisplay.StatusText(server.Status)</span></span>
                         </a>
                     </li>
                 }
@@ -131,3 +161,11 @@
         }
     </section>
 </div>
+
+<div data-live-fleet data-hub-url="@Url.Content("~" + MonitoringHub.Path)" data-dashboard-url="@Url.Action("Live", "Dashboard")" hidden></div>
+
+@section Scripts {
+    <script src="~/lib/chart.js/chart.umd.min.js"></script>
+    <script src="~/lib/signalr/signalr.min.js"></script>
+    <script src="~/js/monitoring.js" asp-append-version="true"></script>
+}

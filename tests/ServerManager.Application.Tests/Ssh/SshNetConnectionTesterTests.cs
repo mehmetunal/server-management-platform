@@ -11,7 +11,7 @@ public class SshNetConnectionTesterTests
         var hostKey = new byte[] { 1, 2, 3, 4, 5 };
         var expected = "SHA256:" + Convert.ToBase64String(SHA256.HashData(hostKey)).TrimEnd('=');
 
-        var fingerprint = SshNetConnectionTester.ComputeSha256Fingerprint(hostKey);
+        var fingerprint = HostKeyVerifier.ComputeSha256Fingerprint(hostKey);
 
         Assert.Equal(expected, fingerprint);
         Assert.DoesNotContain("=", fingerprint);

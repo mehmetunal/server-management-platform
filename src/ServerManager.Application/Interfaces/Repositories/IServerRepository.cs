@@ -18,4 +18,6 @@ public interface IServerRepository : IRepository<Server>
     Task<IReadOnlyList<Server>> GetRecentAsync(int count, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<string>> GetTagNamesAsync(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Guid>> GetMonitorableIdsAsync(CancellationToken cancellationToken = default);
 }

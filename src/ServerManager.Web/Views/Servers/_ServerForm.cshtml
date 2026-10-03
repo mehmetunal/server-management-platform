@@ -124,6 +124,14 @@
                     <p class="form-hint">@(KeepHint(edit?.HasSudoPassword == true)) NOPASSWD tanımlıysa boş bırakın.</p>
                     <span asp-validation-for="SudoPassword" class="field-validation-error"></span>
                 </div>
+
+                <label class="flex items-start gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                    <input asp-for="MonitoringEnabled" type="checkbox" class="form-check mt-0.5" />
+                    <span>
+                        <span class="block text-sm font-medium text-slate-800 dark:text-slate-200">Otomatik izleme</span>
+                        <span class="block text-xs text-slate-500">CPU, RAM, disk ve ağ metrikleri SSH üzerinden düzenli toplanır. Host key doğrulandıktan sonra başlar.</span>
+                    </span>
+                </label>
             </div>
         </section>
 

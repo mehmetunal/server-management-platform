@@ -2326,6 +2326,8 @@ Bu sıra değiştirilmeden önce her fazın stabil ve güvenli çalışması do�
 
 Phase 1 (Foundation) kapsamındaki özellikler: Identity ile giriş/çıkış, rol ve izin tabanlı yetkilendirme (RBAC), dashboard, sunucu ekleme/düzenleme/silme, şifreli kimlik bilgileri (AES-256-GCM), SSH bağlantı testi (host key fingerprint TOFU), kullanıcı yönetimi ve audit log.
 
+Phase 2 (Monitoring) kapsamındaki özellikler: agentless SSH ile CPU, RAM, swap, disk, inode, network, load, uptime ve process metrikleri; otomatik sunucu durumu (Healthy / Warning / Critical / Offline); sağlık kontrolleri; saatlik özetleme ve saklama süresi politikası; SignalR ile canlı güncelleme; Chart.js grafikleri (1 saat – 30 gün).
+
 ### Teknoloji
 
 | Katman | Teknoloji |
@@ -2335,6 +2337,7 @@ Phase 1 (Foundation) kapsamındaki özellikler: Identity ile giriş/çıkış, r
 | Veri | MSSQL, EF Core (yalnızca sorgu), FluentMigrator (tüm şema) |
 | Doğrulama | FluentValidation |
 | SSH | SSH.NET |
+| Canlı veri | ASP.NET Core SignalR, Chart.js |
 | Log | Serilog (konsol + `logs/` dosyası) |
 | Test | xUnit v3, NSubstitute |
 
@@ -2390,6 +2393,13 @@ npm run build:css:watch      # geliştirme sırasında izleme modu
 
 Derlenmiş `wwwroot/css/site.css` repoya dahildir; sadece `Styles/input.css` veya view'larda sınıf değişikliği yapıldığında yeniden derlenmelidir.
 
+Chart.js ve SignalR istemcisi CDN yerine `wwwroot/lib` altından sunulur (CSP `script-src 'self'`). Dosyalar repoya dahildir; paket sürümü güncellendiğinde yeniden kopyalanır:
+
+```bash
+npm install
+npm run build:vendor         # chart.umd.min.js ve signalr.min.js → wwwroot/lib
+```
+
 ### 4. Çalıştırma
 
 ```bash
@@ -2419,11 +2429,47 @@ Testler veritabanına veya gerçek sunuculara bağlanmaz. `global.json` içinde 
 
 İzinler `AspNetRoleClaims` tablosunda `permission` claim'i olarak tutulur. Seeder yalnızca eksik izinleri ekler; elle eklenmiş izinleri kaldırmaz.
 
+Metrik ve grafik görüntüleme `server.view`, "Şimdi topla" (anlık metrik toplama) `server.connect` izni gerektirir.
+
+### İzleme (Monitoring)
+
+Arka plan servisi (`MetricsCollectorWorker`) izlemesi açık ve host key fingerprint'i doğrulanmış her sunucuya belirlenen aralıkla SSH ile bağlanır, tek bir salt okunur komutla `/proc`, `df`, `ps` ve `ip` çıktısını okur. Sunucuya agent kurulmaz, dosya yazılmaz. Toplama sırasında fingerprint ilk kez kaydedilmez (TOFU yalnızca bağlantı testinde); farklı bir anahtar gelirse sunucu hemen Offline olur.
+
+| Anahtar (`Monitoring:`) | Varsayılan | Açıklama |
+| --- | --- | --- |
+| `Enabled` | `true` | Toplayıcı ve bakım servislerini açar/kapatır |
+| `IntervalSeconds` | `30` | Toplama aralığı (en az 10 sn) |
+| `MaxConcurrency` | `4` | Aynı anda bağlanılan en fazla sunucu |
+| `OfflineAfterFailures` | `2` | Kaç ardışık başarısız toplamadan sonra Offline sayılır |
+| `CpuWarningPercent` / `CpuCriticalPercent` | `80` / `95` | CPU eşikleri |
+| `MemoryWarningPercent` / `MemoryCriticalPercent` | `85` / `95` | RAM eşikleri |
+| `DiskWarningPercent` / `DiskCriticalPercent` | `80` / `90` | En dolu disk bölümü eşikleri |
+| `RawRetentionHours` | `48` | Ham ölçümlerin saklama süresi |
+| `HourlyRetentionDays` | `90` | Saatlik özetlerin saklama süresi |
+| `HealthCheckRetentionDays` | `30` | Sağlık kontrolü kayıtlarının saklama süresi |
+| `MaintenanceIntervalMinutes` | `10` | Özetleme ve saklama işinin çalışma aralığı |
+
+Durum kuralları:
+
+- Eşik aşımı yoksa **Healthy**, uyarı eşiği aşılırsa **Warning**, kritik eşik aşılırsa **Critical**.
+- Ardışık başarısız toplama sayısı `OfflineAfterFailures` değerine ulaşırsa **Offline**.
+- **Bakımda** durumundaki sunucunun durumu otomatik değiştirilmez; metrikleri toplanmaya devam eder.
+- Her durum değişikliği audit log'a `server.status_changed` olarak (kullanıcı: "Sistem") yazılır.
+
+Saklama politikası (`MetricsMaintenanceWorker`):
+
+- Tamamlanmış saatler önce `ServerMetricsHourly` tablosuna özetlenir, ardından süresi dolan ham kayıtlar silinir. 1 saat – 24 saat grafikleri ham veriden, 7 gün ve 30 gün grafikleri saatlik özetten çizilir.
+- Silme yalnızca geçici metrik tablolarında (`ServerMetrics`, `ServerMetricsHourly`, `ServerHealthChecks`) çalışır; bu liste dışında bir tablo veya sütun istenirse işlem hata verip durur.
+- Her sunucunun en son ölçümü ve son 50 sağlık kontrolü süre dolsa bile korunur. Sunucu, kullanıcı ve audit kayıtlarına dokunulmaz.
+- Silme 5000 satırlık partilerle yapılır; her çalışmanın özeti (özetlenen saat ve silinen kayıt sayıları) loglanır.
+
+Canlı güncelleme `/hubs/monitoring` SignalR hub'ı üzerinden yapılır; sunucu detay sayfası yalnızca kendi sunucusunun, liste ve dashboard tüm sunucuların güncellemelerini alır. Hub `server.view` izni gerektirir.
+
 ### Güvenlik notları
 
 - Tüm sayfalar varsayılan olarak giriş gerektirir; her controller/action izin kontrolüyle korunur.
 - Tüm POST istekleri antiforgery token ile doğrulanır; AJAX istekleri `RequestVerificationToken` başlığını gönderir.
-- Giriş ve bağlantı testi uç noktaları rate limit ile sınırlandırılır (dakikada 10 istek).
+- Giriş, bağlantı testi ve anlık metrik toplama uç noktaları rate limit ile sınırlandırılır (dakikada 10 istek).
 - 5 başarısız girişte hesap 15 dakika kilitlenir. Pasifleştirilen veya kilitlenen kullanıcının açık oturumu en geç 1 dakika içinde sonlanır.
 - SSH host key fingerprint ilk başarılı bağlantıda kaydedilir; sonraki bağlantılarda farklı bir anahtar gelirse bağlantı reddedilir. Sunucu adresi veya portu değiştirildiğinde fingerprint sıfırlanır.
 - Sunucu silme işlemi sunucu adının birebir yazılmasıyla onaylanır ve soft delete olarak yapılır; audit kayıtları korunur.

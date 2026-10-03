@@ -74,7 +74,8 @@
                         <th>Adres</th>
                         <th>Ortam</th>
                         <th>Durum</th>
-                        <th>Etiketler</th>
+                        <th>Kaynaklar</th>
+                        <th class="hidden xl:table-cell">Etiketler</th>
                         <th>Son test</th>
                         <th class="text-right">İşlem</th>
                     </tr>
@@ -82,16 +83,24 @@
                 <tbody>
                     @foreach (var server in Model.Servers.Items)
                     {
-                        <tr>
+                        var resources = Model.Resources.GetValueOrDefault(server.Id);
+                        <tr data-live-server-row="@server.Id">
                             <td>
-                                <a asp-action="Details" asp-route-id="@server.Id" class="font-medium text-slate-900 hover:text-brand-600 dark:text-slate-100 dark:hover:text-brand-400">@server.Name</a>
+                                <a asp-action="Details" asp-route-id="@server.Id" class="whitespace-nowrap font-medium text-slate-900 hover:text-brand-600 dark:text-slate-100 dark:hover:text-brand-400">@server.Name</a>
                                 <p class="text-xs text-slate-500">@(server.OperatingSystem ?? server.Hostname)</p>
                             </td>
                             <td class="font-mono text-xs">@server.IpAddress:@server.SshPort</td>
                             <td><span class="@ServerDisplay.EnvironmentBadgeClass(server.Environment)">@ServerDisplay.EnvironmentText(server.Environment)</span></td>
-                            <td><span class="@ServerDisplay.StatusBadgeClass(server.Status)"><span class="badge-dot"></span>@ServerDisplay.StatusText(server.Status)</span></td>
-                            <td>
-                                <div class="flex max-w-[16rem] flex-wrap gap-1">
+                            <td><span class="@ServerDisplay.StatusBadgeClass(server.Status)" data-live-status><span class="badge-dot"></span><span data-live-status-text>@ServerDisplay.StatusText(server.Status)</span></span></td>
+                            <td class="min-w-[12rem]">
+                                <div class="space-y-1">
+                                    @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("CPU", "cpu", resources?.CpuUsagePercent, Model.Thresholds.CpuWarningPercent, Model.Thresholds.CpuCriticalPercent, Compact: true))
+                                    @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("RAM", "memory", resources?.MemoryUsagePercent, Model.Thresholds.MemoryWarningPercent, Model.Thresholds.MemoryCriticalPercent, Compact: true))
+                                    @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("Disk", "disk", resources?.DiskUsagePercent, Model.Thresholds.DiskWarningPercent, Model.Thresholds.DiskCriticalPercent, Compact: true))
+                                </div>
+                            </td>
+                            <td class="hidden xl:table-cell">
+                                <div class="flex max-w-[12rem] flex-wrap gap-1">
                                     @foreach (var tag in server.Tags)
                                     {
                                         <a asp-action="Index" asp-route-tag="@tag" class="tag hover:bg-slate-200 dark:hover:bg-slate-700">@tag</a>
@@ -112,3 +121,10 @@
         <partial name="_Pager" model="Model.ToPager()" />
     }
 </section>
+
+<div data-live-fleet data-hub-url="@Url.Content("~" + MonitoringHub.Path)" hidden></div>
+
+@section Scripts {
+    <script src="~/lib/signalr/signalr.min.js"></script>
+    <script src="~/js/monitoring.js" asp-append-version="true"></script>
+}

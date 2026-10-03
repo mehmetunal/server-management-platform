@@ -159,6 +159,7 @@ public class ServerService : IServerService
         if (hostChanged)
         {
             server.HostKeyFingerprint = null;
+            server.ConsecutiveFailureCount = 0;
             if (server.Status != ServerStatus.Maintenance)
                 server.Status = ServerStatus.Unknown;
         }
@@ -256,8 +257,19 @@ public class ServerService : IServerService
         server.LastConnectionSucceeded = result.IsSuccess;
         server.LastConnectionMessage = TextHelper.Truncate(result.Message, 500);
 
+        if (result.IsSuccess)
+        {
+            server.LastSeenAt = now;
+            server.ConsecutiveFailureCount = 0;
+        }
+
         if (server.Status != ServerStatus.Maintenance)
-            server.Status = result.IsSuccess ? ServerStatus.Healthy : ServerStatus.Offline;
+        {
+            // Başarılı testte izleme eşiklerinden gelen Warning/Critical durumu korunur.
+            server.Status = result.IsSuccess
+                ? server.Status is ServerStatus.Unknown or ServerStatus.Offline ? ServerStatus.Healthy : server.Status
+                : ServerStatus.Offline;
+        }
 
         await _serverRepository.SaveChangesAsync(cancellationToken);
 
@@ -298,6 +310,7 @@ public class ServerService : IServerService
         server.Username = dto.Username.Trim();
         server.AuthenticationType = dto.AuthenticationType;
         server.UseSudo = dto.UseSudo;
+        server.MonitoringEnabled = dto.MonitoringEnabled;
         server.Description = TextHelper.NullIfEmpty(dto.Description);
         server.Environment = dto.Environment;
         server.Location = TextHelper.NullIfEmpty(dto.Location);

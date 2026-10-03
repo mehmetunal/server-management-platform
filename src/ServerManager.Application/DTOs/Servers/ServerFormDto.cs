@@ -18,6 +18,8 @@ public abstract class ServerFormDto
 
     public bool UseSudo { get; set; }
 
+    public bool MonitoringEnabled { get; set; } = true;
+
     public string? Password { get; set; }
 
     public string? PrivateKey { get; set; }

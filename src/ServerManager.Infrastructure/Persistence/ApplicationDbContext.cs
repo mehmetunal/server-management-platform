@@ -19,6 +19,14 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    public DbSet<ServerMetric> ServerMetrics => Set<ServerMetric>();
+
+    public DbSet<ServerMetricHourly> ServerMetricsHourly => Set<ServerMetricHourly>();
+
+    public DbSet<ServerHealthCheck> ServerHealthChecks => Set<ServerHealthCheck>();
+
+    public DbSet<ServerMetricSnapshot> ServerMetricSnapshots => Set<ServerMetricSnapshot>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

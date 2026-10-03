@@ -1,14 +1,10 @@
 using System.Diagnostics;
-using System.Net.Sockets;
-using System.Security.Cryptography;
-using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Renci.SshNet;
 using Renci.SshNet.Common;
 using ServerManager.Application.DTOs.Ssh;
 using ServerManager.Application.Interfaces.Ssh;
-using ServerManager.Domain.Enums;
 
 namespace ServerManager.Infrastructure.Ssh;
 
@@ -28,13 +24,11 @@ public sealed class SshNetConnectionTester : ISshConnectionTester
     public async Task<SshConnectionTestResult> TestAsync(SshConnectionRequest request, CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
-        string? receivedFingerprint = null;
-        var fingerprintMismatch = false;
 
         AuthenticationMethod authenticationMethod;
         try
         {
-            authenticationMethod = CreateAuthenticationMethod(request);
+            authenticationMethod = SshAuthenticationFactory.Create(request);
         }
         catch (Exception ex) when (ex is SshException or InvalidOperationException or ArgumentException)
         {
@@ -49,19 +43,8 @@ public sealed class SshNetConnectionTester : ISshConnectionTester
         };
 
         using var client = new SshClient(connectionInfo);
-        client.HostKeyReceived += (_, e) =>
-        {
-            receivedFingerprint = ComputeSha256Fingerprint(e.HostKey);
-            if (request.ExpectedHostKeyFingerprint is not null
-                && !string.Equals(request.ExpectedHostKeyFingerprint, receivedFingerprint, StringComparison.Ordinal))
-            {
-                fingerprintMismatch = true;
-                e.CanTrust = false;
-                return;
-            }
-
-            e.CanTrust = true;
-        };
+        var hostKeyVerifier = new HostKeyVerifier(request.ExpectedHostKeyFingerprint);
+        hostKeyVerifier.Attach(client);
 
         try
         {
@@ -77,56 +60,28 @@ public sealed class SshNetConnectionTester : ISshConnectionTester
             {
                 IsSuccess = true,
                 Message = $"Bağlantı başarılı ({stopwatch.ElapsedMilliseconds} ms).",
-                HostKeyFingerprint = receivedFingerprint,
+                HostKeyFingerprint = hostKeyVerifier.ReceivedFingerprint,
                 OperatingSystem = operatingSystem,
                 DurationMs = stopwatch.ElapsedMilliseconds
             };
         }
-        catch (Exception ex) when (fingerprintMismatch)
+        catch (Exception ex) when (hostKeyVerifier.Mismatch)
         {
             _logger.LogWarning("Host key fingerprint uyuşmuyor. Target: {Target}, Error: {ErrorType}", request, ex.GetType().Name);
             return new SshConnectionTestResult
             {
                 IsSuccess = false,
                 FingerprintMismatch = true,
-                HostKeyFingerprint = receivedFingerprint,
-                Message = "Host key fingerprint kayıtlı değerle uyuşmuyor. Sunucu değişmiş veya bağlantı araya giren bir saldırıya maruz kalıyor olabilir.",
+                HostKeyFingerprint = hostKeyVerifier.ReceivedFingerprint,
+                Message = HostKeyVerifier.MismatchMessage,
                 DurationMs = stopwatch.ElapsedMilliseconds
             };
         }
-        catch (SshAuthenticationException)
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested
+                                   && SshErrorTranslator.TryTranslate(ex, request, _logger, out var message))
         {
-            return Failure("Kimlik doğrulama başarısız. Kullanıcı adı, parola veya anahtarı kontrol edin.", stopwatch, receivedFingerprint);
+            return Failure(message, stopwatch, hostKeyVerifier.ReceivedFingerprint);
         }
-        catch (SshOperationTimeoutException)
-        {
-            return Failure("Bağlantı zaman aşımına uğradı.", stopwatch, receivedFingerprint);
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            return Failure("Bağlantı zaman aşımına uğradı.", stopwatch, receivedFingerprint);
-        }
-        catch (SocketException ex)
-        {
-            _logger.LogInformation("SSH soket hatası. Target: {Target}, SocketError: {SocketError}", request, ex.SocketErrorCode);
-            return Failure($"Sunucuya ulaşılamadı ({ex.SocketErrorCode}).", stopwatch, receivedFingerprint);
-        }
-        catch (SshConnectionException ex)
-        {
-            _logger.LogInformation("SSH bağlantı hatası. Target: {Target}, Reason: {Reason}", request, ex.DisconnectReason);
-            return Failure("SSH bağlantısı kurulamadı.", stopwatch, receivedFingerprint);
-        }
-        catch (SshException ex)
-        {
-            _logger.LogWarning("SSH hatası. Target: {Target}, Error: {ErrorType}", request, ex.GetType().Name);
-            return Failure("SSH bağlantısı sırasında bir hata oluştu.", stopwatch, receivedFingerprint);
-        }
-    }
-
-    internal static string ComputeSha256Fingerprint(byte[] hostKey)
-    {
-        var hash = SHA256.HashData(hostKey);
-        return "SHA256:" + Convert.ToBase64String(hash).TrimEnd('=');
     }
 
     internal static string? ParseOperatingSystem(string? output)
@@ -157,33 +112,6 @@ public sealed class SshNetConnectionTester : ISshConnectionTester
         {
             _logger.LogInformation("İşletim sistemi bilgisi okunamadı: {ErrorType}", ex.GetType().Name);
             return null;
-        }
-    }
-
-    private static AuthenticationMethod CreateAuthenticationMethod(SshConnectionRequest request)
-    {
-        switch (request.AuthenticationType)
-        {
-            case AuthenticationType.Password:
-                if (string.IsNullOrEmpty(request.Password))
-                    throw new InvalidOperationException("Parola eksik.");
-                return new PasswordAuthenticationMethod(request.Username, request.Password);
-
-            case AuthenticationType.PrivateKey:
-            case AuthenticationType.PrivateKeyWithPassphrase:
-                if (string.IsNullOrWhiteSpace(request.PrivateKey))
-                    throw new InvalidOperationException("Private key eksik.");
-
-                using (var keyStream = new MemoryStream(Encoding.UTF8.GetBytes(request.PrivateKey)))
-                {
-                    var keyFile = string.IsNullOrEmpty(request.Passphrase)
-                        ? new PrivateKeyFile(keyStream)
-                        : new PrivateKeyFile(keyStream, request.Passphrase);
-                    return new PrivateKeyAuthenticationMethod(request.Username, keyFile);
-                }
-
-            default:
-                throw new InvalidOperationException("Desteklenmeyen kimlik doğrulama yöntemi.");
         }
     }
 

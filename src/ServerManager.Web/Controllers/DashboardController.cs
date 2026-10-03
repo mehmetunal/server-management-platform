@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using ServerManager.Application.Authorization;
 using ServerManager.Application.Interfaces.Services;
+using ServerManager.Application.Monitoring;
 using ServerManager.Web.Authorization;
+using ServerManager.Web.Models;
 
 namespace ServerManager.Web.Controllers;
 
@@ -9,10 +11,12 @@ namespace ServerManager.Web.Controllers;
 public class DashboardController : Controller
 {
     private readonly IDashboardService _dashboardService;
+    private readonly IMonitoringService _monitoringService;
 
-    public DashboardController(IDashboardService dashboardService)
+    public DashboardController(IDashboardService dashboardService, IMonitoringService monitoringService)
     {
         _dashboardService = dashboardService;
+        _monitoringService = monitoringService;
     }
 
     [HttpGet]
@@ -20,5 +24,20 @@ public class DashboardController : Controller
     {
         var summary = await _dashboardService.GetSummaryAsync(cancellationToken);
         return View(summary);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Live(CancellationToken cancellationToken)
+    {
+        var summary = await _dashboardService.GetSummaryAsync(cancellationToken);
+        return Ok(ApiResponse<DashboardLiveModel>.Success(DashboardLiveModel.From(summary)));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> FleetSeries(string? range, CancellationToken cancellationToken)
+    {
+        var metricRange = MetricRanges.Parse(range);
+        var points = await _monitoringService.GetFleetSeriesAsync(metricRange, cancellationToken);
+        return Ok(ApiResponse<MetricSeriesModel>.Success(MetricSeriesModel.From(metricRange, points)));
     }
 }

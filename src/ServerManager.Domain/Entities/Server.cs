@@ -39,6 +39,12 @@ public class Server : BaseEntity
 
     public string? LastConnectionMessage { get; set; }
 
+    public bool MonitoringEnabled { get; set; } = true;
+
+    public DateTime? LastSeenAt { get; set; }
+
+    public int ConsecutiveFailureCount { get; set; }
+
     public bool IsDeleted { get; set; }
 
     public DateTime? DeletedAt { get; set; }

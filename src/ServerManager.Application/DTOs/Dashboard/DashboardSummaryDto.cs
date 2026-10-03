@@ -1,4 +1,5 @@
 using ServerManager.Application.DTOs.AuditLogs;
+using ServerManager.Application.DTOs.Monitoring;
 using ServerManager.Application.DTOs.Servers;
 
 namespace ServerManager.Application.DTOs.Dashboard;
@@ -21,7 +22,11 @@ public sealed class DashboardSummaryDto
 
     public int UnknownServers { get; init; }
 
+    public FleetResourceSummaryDto Resources { get; init; } = new();
+
     public IReadOnlyList<ServerListItemDto> RecentServers { get; init; } = [];
+
+    public IReadOnlyDictionary<Guid, ServerResourceSummaryDto> RecentServerResources { get; init; } = new Dictionary<Guid, ServerResourceSummaryDto>();
 
     public IReadOnlyList<AuditLogDto> RecentEvents { get; init; } = [];
 }

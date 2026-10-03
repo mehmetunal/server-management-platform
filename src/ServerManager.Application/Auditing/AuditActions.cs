@@ -10,6 +10,8 @@ public static class AuditActions
     public const string ServerUpdate = "server.update";
     public const string ServerDelete = "server.delete";
     public const string ServerConnectionTest = "server.connection_test";
+    public const string ServerStatusChanged = "server.status_changed";
+    public const string ServerMetricsCollect = "server.metrics_collect";
 
     public const string UserCreate = "user.create";
     public const string UserUpdate = "user.update";
@@ -25,6 +27,8 @@ public static class AuditActions
         [ServerUpdate] = "Sunucu güncelleme",
         [ServerDelete] = "Sunucu silme",
         [ServerConnectionTest] = "Bağlantı testi",
+        [ServerStatusChanged] = "Sunucu durumu değişti",
+        [ServerMetricsCollect] = "Metrik toplama",
         [UserCreate] = "Kullanıcı ekleme",
         [UserUpdate] = "Kullanıcı güncelleme",
         [UserLock] = "Kullanıcı kilitleme",

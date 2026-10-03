@@ -19,6 +19,10 @@ public class SecurityHeadersMiddleware
         context.Response.OnStarting(() =>
         {
             var headers = context.Response.Headers;
+            // Eski Safari sürümleri WebSocket için 'self' eşleşmesini desteklemez; SignalR için host açıkça yazılır.
+            var webSocketOrigin = context.Request.Host.HasValue
+                ? $" {(context.Request.IsHttps ? "wss" : "ws")}://{context.Request.Host.Value}"
+                : string.Empty;
             headers.XContentTypeOptions = "nosniff";
             headers.XFrameOptions = "DENY";
             headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
@@ -30,7 +34,7 @@ public class SecurityHeadersMiddleware
                 "style-src 'self' 'unsafe-inline'; " +
                 "img-src 'self' data:; " +
                 "font-src 'self'; " +
-                "connect-src 'self'; " +
+                $"connect-src 'self'{webSocketOrigin}; " +
                 "object-src 'none'; " +
                 "frame-ancestors 'none'; " +
                 "form-action 'self'; " +

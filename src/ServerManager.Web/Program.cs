@@ -8,9 +8,13 @@ using Microsoft.Extensions.WebEncoders;
 using Serilog;
 using ServerManager.Application;
 using ServerManager.Application.Interfaces;
+using ServerManager.Application.Interfaces.Monitoring;
+using ServerManager.Application.Monitoring;
 using ServerManager.Infrastructure;
 using ServerManager.Web.Authorization;
+using ServerManager.Web.BackgroundJobs;
 using ServerManager.Web.Extensions;
+using ServerManager.Web.Hubs;
 using ServerManager.Web.Middleware;
 using ServerManager.Web.Models;
 using ServerManager.Web.Options;
@@ -33,6 +37,14 @@ try
 
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+    builder.Services.AddSignalR();
+    builder.Services.AddSingleton<IMonitoringNotifier, SignalRMonitoringNotifier>();
+    if (builder.Configuration.GetValue($"{MonitoringOptions.SectionName}:Enabled", true))
+    {
+        builder.Services.AddHostedService<MetricsCollectorWorker>();
+        builder.Services.AddHostedService<MetricsMaintenanceWorker>();
+    }
     builder.Services.Configure<WebEncoderOptions>(options =>
         options.TextEncoderSettings = new TextEncoderSettings(UnicodeRanges.All));
 
@@ -134,6 +146,7 @@ try
     app.UseAuthorization();
 
     app.MapControllerRoute(name: "default", pattern: "{controller=Dashboard}/{action=Index}/{id?}");
+    app.MapHub<MonitoringHub>(MonitoringHub.Path);
 
     await app.RunAsync();
 }

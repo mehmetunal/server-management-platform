@@ -1,5 +1,7 @@
 using ServerManager.Application.Common;
+using ServerManager.Application.DTOs.Monitoring;
 using ServerManager.Application.DTOs.Servers;
+using ServerManager.Application.Monitoring;
 
 namespace ServerManager.Web.Models;
 
@@ -10,6 +12,10 @@ public sealed class ServerIndexViewModel
     public required ServerFilterDto Filter { get; init; }
 
     public IReadOnlyList<string> Tags { get; init; } = [];
+
+    public IReadOnlyDictionary<Guid, ServerResourceSummaryDto> Resources { get; init; } = new Dictionary<Guid, ServerResourceSummaryDto>();
+
+    public MonitoringOptions Thresholds { get; init; } = new();
 
     public PagerModel ToPager() => new()
     {

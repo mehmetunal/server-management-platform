@@ -1,5 +1,6 @@
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using ServerManager.Application.Interfaces.Services;
 using ServerManager.Application.Services;
 
@@ -14,6 +15,8 @@ public static class DependencyInjection
         services.AddScoped<IAuditLogService, AuditLogService>();
         services.AddScoped<IServerService, ServerService>();
         services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IMonitoringService, MonitoringService>();
+        services.TryAddSingleton(TimeProvider.System);
 
         return services;
     }

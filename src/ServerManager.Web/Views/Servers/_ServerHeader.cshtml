@@ -1,0 +1,119 @@
+@model ServerPageViewModel
+@{
+    var server = Model.Server;
+    var monitoring = Model.Monitoring;
+    var latest = monitoring.Latest;
+    var thresholds = Model.Thresholds;
+    var canEdit = User.HasPermission(Permissions.ServerEdit);
+    var canDelete = User.HasPermission(Permissions.ServerDelete);
+    var canConnect = User.HasPermission(Permissions.ServerConnect);
+    var disabledTabs = new[] { "Docker", "Terminal", "Files", "Services", "Processes", "Logs", "Network", "Storage", "Security", "Deployments", "Backups", "Alerts", "Activity" };
+}
+
+<div data-live-server="@server.Id" data-hub-url="@Url.Content("~" + MonitoringHub.Path)">
+    <div class="page-header">
+        <div class="min-w-0">
+            <a asp-action="Index" class="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">@Icons.Render("chevron-left", "h-4 w-4") Sunucular</a>
+            <div class="flex flex-wrap items-center gap-3">
+                <h1 class="page-title truncate">@server.Name</h1>
+                <span class="@ServerDisplay.StatusBadgeClass(server.Status)" data-live-status><span class="badge-dot"></span><span data-live-status-text>@ServerDisplay.StatusText(server.Status)</span></span>
+                <span class="@ServerDisplay.EnvironmentBadgeClass(server.Environment)">@ServerDisplay.EnvironmentText(server.Environment)</span>
+            </div>
+            <p class="page-lead font-mono">@server.Username@@@server.IpAddress:@server.SshPort · @(server.OperatingSystem ?? "İşletim sistemi bilinmiyor")</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            @if (canConnect)
+            {
+                <button type="button" class="btn-primary" data-connection-test data-url="@Url.Action("TestConnection", new { id = server.Id })" data-result-target="#connection-test-result">
+                    <span class="spinner" data-spinner hidden></span>
+                    @Icons.Render("bolt", "h-4 w-4")
+                    <span data-label>Bağlantıyı Test Et</span>
+                </button>
+                @if (monitoring.HasTrustedHostKey)
+                {
+                    <button type="button" class="btn-secondary" data-collect-metrics data-url="@Url.Action("CollectMetrics", new { id = server.Id })">
+                        <span class="spinner" data-spinner hidden></span>
+                        @Icons.Render("refresh", "h-4 w-4")
+                        <span data-label>Şimdi topla</span>
+                    </button>
+                }
+            }
+            @if (canEdit)
+            {
+                <a asp-action="Edit" asp-route-id="@server.Id" class="btn-secondary">@Icons.Render("pencil", "h-4 w-4") Düzenle</a>
+            }
+            @if (canDelete)
+            {
+                <button type="button" class="btn-ghost text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950" data-modal-open="delete-server-modal">@Icons.Render("trash", "h-4 w-4") Sil</button>
+            }
+        </div>
+    </div>
+
+    <div id="connection-test-result" class="mb-6" hidden></div>
+
+    <section class="panel mb-6">
+        <div class="grid grid-cols-2 gap-x-6 gap-y-4 p-5 md:grid-cols-3 xl:grid-cols-6">
+            @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("CPU", "cpu", latest?.CpuUsagePercent, thresholds.CpuWarningPercent, thresholds.CpuCriticalPercent))
+            @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("RAM", "memory", latest?.MemoryUsagePercent, thresholds.MemoryWarningPercent, thresholds.MemoryCriticalPercent))
+            @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("Disk", "disk", latest?.DiskUsagePercent, thresholds.DiskWarningPercent, thresholds.DiskCriticalPercent))
+            <div>
+                <span class="block text-xs font-medium text-slate-500 dark:text-slate-400">Uptime</span>
+                <span class="mt-1 block text-sm font-semibold text-slate-900 dark:text-slate-100" data-live-uptime>@MetricDisplay.Uptime(latest?.UptimeSeconds)</span>
+            </div>
+            <div>
+                <span class="block text-xs font-medium text-slate-500 dark:text-slate-400">Load (1 dk)</span>
+                <span class="mt-1 block text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100" data-live-load>@MetricDisplay.Number(latest?.LoadAverage1)</span>
+            </div>
+            <div>
+                <span class="block text-xs font-medium text-slate-500 dark:text-slate-400">Son veri</span>
+                <span class="mt-1 block text-sm font-semibold text-slate-900 dark:text-slate-100" data-live-collected>@(latest is null ? "—" : DateDisplay.Format(latest.CollectedAt, "HH:mm:ss"))</span>
+            </div>
+        </div>
+        @if (!monitoring.HasTrustedHostKey)
+        {
+            <p class="border-t border-slate-200 px-5 py-3 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">İzleme, ilk başarılı bağlantı testinde host key kaydedildikten sonra başlar.</p>
+        }
+        else if (!monitoring.MonitoringEnabled)
+        {
+            <p class="border-t border-slate-200 px-5 py-3 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">Otomatik izleme bu sunucu için kapalı. "Şimdi topla" ile elle metrik alabilirsiniz.</p>
+        }
+    </section>
+
+    <nav class="tab-list mb-6" aria-label="Sunucu sekmeleri">
+        <a asp-action="Details" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.OverviewTab ? "is-active" : "")">Overview</a>
+        <a asp-action="Metrics" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.MetricsTab ? "is-active" : "")">Metrics</a>
+        @foreach (var tab in disabledTabs)
+        {
+            <span class="tab is-disabled" title="Sonraki fazda etkinleşecek">@tab</span>
+        }
+    </nav>
+</div>
+
+@if (canDelete)
+{
+    <div id="delete-server-modal" class="modal-backdrop" data-modal hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-server-title">
+            <form asp-action="Delete" asp-route-id="@server.Id" method="post">
+                <div class="p-6">
+                    <div class="flex items-start gap-4">
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400">@Icons.Render("warning", "h-5 w-5")</span>
+                        <div>
+                            <h2 id="delete-server-title" class="text-base font-semibold">Sunucuyu sil</h2>
+                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                <strong class="text-slate-800 dark:text-slate-200">@server.Name</strong> sunucusunu silmek üzeresiniz. Sunucu listeden kaldırılır ve panelden yönetilemez. Audit kayıtları korunur.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="mt-5">
+                        <label for="confirmationName" class="form-label">Onaylamak için sunucu adını yazın: <span class="font-mono text-red-600 dark:text-red-400">@server.Name</span></label>
+                        <input id="confirmationName" name="confirmationName" class="form-control" autocomplete="off" data-confirm-input data-confirm-value="@server.Name" />
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 border-t border-slate-200 px-6 py-4 dark:border-slate-800">
+                    <button type="button" class="btn-secondary" data-modal-close>Vazgeç</button>
+                    <button type="submit" class="btn-danger" data-confirm-submit disabled>@Icons.Render("trash", "h-4 w-4") Sunucuyu sil</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}

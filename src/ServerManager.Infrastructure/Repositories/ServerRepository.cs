@@ -90,4 +90,12 @@ public class ServerRepository : Repository<Server>, IServerRepository
             .Distinct()
             .OrderBy(n => n)
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Guid>> GetMonitorableIdsAsync(CancellationToken cancellationToken = default) =>
+        await _dbSet
+            .AsNoTracking()
+            .Where(s => s.MonitoringEnabled && s.HostKeyFingerprint != null)
+            .OrderBy(s => s.Name)
+            .Select(s => s.Id)
+            .ToListAsync(cancellationToken);
 }

@@ -20,6 +20,10 @@ public sealed class ServerDetailsDto
 
     public bool UseSudo { get; init; }
 
+    public bool MonitoringEnabled { get; init; }
+
+    public DateTime? LastSeenAt { get; init; }
+
     public string? Description { get; init; }
 
     public ServerEnvironment Environment { get; init; }

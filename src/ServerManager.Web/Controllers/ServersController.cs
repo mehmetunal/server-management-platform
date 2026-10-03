@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 using ServerManager.Application.Authorization;
 using ServerManager.Application.Common;
 using ServerManager.Application.DTOs.Servers;
 using ServerManager.Application.Interfaces.Services;
+using ServerManager.Application.Monitoring;
 using ServerManager.Web.Authorization;
 using ServerManager.Web.Extensions;
 using ServerManager.Web.Models;
@@ -23,10 +25,14 @@ public class ServersController : Controller
     ];
 
     private readonly IServerService _serverService;
+    private readonly IMonitoringService _monitoringService;
+    private readonly MonitoringOptions _monitoringOptions;
 
-    public ServersController(IServerService serverService)
+    public ServersController(IServerService serverService, IMonitoringService monitoringService, IOptions<MonitoringOptions> monitoringOptions)
     {
         _serverService = serverService;
+        _monitoringService = monitoringService;
+        _monitoringOptions = monitoringOptions.Value;
     }
 
     [HttpGet]
@@ -34,20 +40,67 @@ public class ServersController : Controller
     {
         var servers = await _serverService.SearchAsync(filter, cancellationToken);
         var tags = await _serverService.GetTagNamesAsync(cancellationToken);
+        var resources = await _monitoringService.GetLatestSummariesAsync(servers.Items.Select(s => s.Id).ToList(), cancellationToken);
 
         return View(new ServerIndexViewModel
         {
             Servers = servers,
             Filter = filter,
-            Tags = tags
+            Tags = tags,
+            Resources = resources,
+            Thresholds = _monitoringOptions
         });
     }
 
     [HttpGet]
     public async Task<IActionResult> Details(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _serverService.GetDetailsAsync(id, cancellationToken);
-        return result.IsSuccess ? View(result.Data) : NotFound();
+        var model = await BuildPageAsync(id, ServerPageViewModel.OverviewTab, MetricRange.OneHour, cancellationToken);
+        return model is null ? NotFound() : View(model);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Metrics(Guid id, string? range, CancellationToken cancellationToken)
+    {
+        var model = await BuildPageAsync(id, ServerPageViewModel.MetricsTab, MetricRanges.Parse(range), cancellationToken);
+        return model is null ? NotFound() : View(model);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> MetricSeries(Guid id, string? range, CancellationToken cancellationToken)
+    {
+        var metricRange = MetricRanges.Parse(range);
+        var result = await _monitoringService.GetSeriesAsync(id, metricRange, cancellationToken);
+        if (!result.IsSuccess)
+            return NotFound(ApiResponse<MetricSeriesModel>.Fail(result.Message ?? "Sunucu bulunamadı.", StatusCodes.Status404NotFound));
+
+        return Ok(ApiResponse<MetricSeriesModel>.Success(MetricSeriesModel.From(metricRange, result.Data!)));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> MetricsPanel(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _monitoringService.GetOverviewAsync(id, cancellationToken);
+        if (!result.IsSuccess)
+            return NotFound();
+
+        return PartialView("_MetricsPanel", new MetricsPanelViewModel { Monitoring = result.Data!, Thresholds = _monitoringOptions });
+    }
+
+    [HttpPost]
+    [HasPermission(Permissions.ServerConnect)]
+    [EnableRateLimiting(RateLimitPolicies.MetricsCollect)]
+    public async Task<IActionResult> CollectMetrics(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _monitoringService.CollectAsync(id, manual: true, cancellationToken);
+        if (result.ErrorType == ServiceErrorType.NotFound)
+            return NotFound(ApiResponse<MonitoringUpdatePayload>.Fail(result.Message ?? "Sunucu bulunamadı.", StatusCodes.Status404NotFound));
+
+        if (!result.IsSuccess)
+            return BadRequest(ApiResponse<MonitoringUpdatePayload>.Fail(result.Message ?? "Metrikler toplanamadı.", StatusCodes.Status400BadRequest));
+
+        var payload = MonitoringUpdatePayload.From(result.Data!);
+        return Ok(ApiResponse<MonitoringUpdatePayload>.Success(payload, payload.Message));
     }
 
     [HttpGet]
@@ -130,6 +183,26 @@ public class ServersController : Controller
             return BadRequest(ApiResponse<ConnectionTestResultDto>.Fail(result.Message ?? "Bağlantı testi yapılamadı.", StatusCodes.Status400BadRequest));
 
         return Ok(ApiResponse<ConnectionTestResultDto>.Success(result.Data, result.Data!.Message));
+    }
+
+    private async Task<ServerPageViewModel?> BuildPageAsync(Guid id, string activeTab, MetricRange range, CancellationToken cancellationToken)
+    {
+        var details = await _serverService.GetDetailsAsync(id, cancellationToken);
+        if (!details.IsSuccess)
+            return null;
+
+        var monitoring = await _monitoringService.GetOverviewAsync(id, cancellationToken);
+        if (!monitoring.IsSuccess)
+            return null;
+
+        return new ServerPageViewModel
+        {
+            Server = details.Data!,
+            Monitoring = monitoring.Data!,
+            Thresholds = _monitoringOptions,
+            ActiveTab = activeTab,
+            Range = range
+        };
     }
 
     private void ClearSecrets(ServerFormDto dto)

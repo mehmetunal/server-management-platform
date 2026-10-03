@@ -5,12 +5,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using ServerManager.Application.Interfaces.Monitoring;
 using ServerManager.Application.Interfaces.Repositories;
+using ServerManager.Application.Monitoring;
 using ServerManager.Application.Interfaces.Security;
 using ServerManager.Application.Interfaces.Services;
 using ServerManager.Application.Interfaces.Ssh;
 using ServerManager.Application.Validators.Users;
 using ServerManager.Infrastructure.Identity;
+using ServerManager.Infrastructure.Monitoring;
 using ServerManager.Infrastructure.Persistence;
 using ServerManager.Infrastructure.Repositories;
 using ServerManager.Infrastructure.Security;
@@ -57,12 +60,15 @@ public static class DependencyInjection
         services.AddSingleton<IValidateOptions<SecurityOptions>, SecurityOptionsValidator>();
         services.Configure<SshOptions>(configuration.GetSection(SshOptions.SectionName));
         services.Configure<SeedOptions>(configuration.GetSection(SeedOptions.SectionName));
+        services.Configure<MonitoringOptions>(configuration.GetSection(MonitoringOptions.SectionName));
 
         services.AddSingleton<ISecretProtector, AesGcmSecretProtector>();
         services.AddSingleton<ISshConnectionTester, SshNetConnectionTester>();
+        services.AddSingleton<IMetricsCollector, SshMetricsCollector>();
 
         services.AddScoped<IServerRepository, ServerRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+        services.AddScoped<IServerMetricRepository, ServerMetricRepository>();
 
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<IUserManagementService, UserManagementService>();

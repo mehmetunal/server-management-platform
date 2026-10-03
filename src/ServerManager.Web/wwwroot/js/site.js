@@ -239,6 +239,11 @@
         });
     }
 
+    window.ServerManager = {
+        postJson: postJson,
+        showToast: showToast
+    };
+
     document.addEventListener('DOMContentLoaded', function () {
         initTheme();
         initDropdowns();

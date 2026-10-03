@@ -3,10 +3,13 @@
   "private": true,
   "scripts": {
     "build:css": "tailwindcss -i ./Styles/input.css -o ./wwwroot/css/site.css --minify",
-    "build:css:watch": "tailwindcss -i ./Styles/input.css -o ./wwwroot/css/site.css --watch"
+    "build:css:watch": "tailwindcss -i ./Styles/input.css -o ./wwwroot/css/site.css --watch",
+    "build:vendor": "mkdir -p wwwroot/lib/chart.js wwwroot/lib/signalr && cp node_modules/chart.js/dist/chart.umd.min.js wwwroot/lib/chart.js/ && cp node_modules/chart.js/LICENSE.md wwwroot/lib/chart.js/ && cp node_modules/@microsoft/signalr/dist/browser/signalr.min.js wwwroot/lib/signalr/"
   },
   "devDependencies": {
+    "@microsoft/signalr": "^10.0.11",
     "@tailwindcss/cli": "^4.1.0",
+    "chart.js": "^4.5.1",
     "tailwindcss": "^4.1.0"
   }
 }

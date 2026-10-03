@@ -1,0 +1,28 @@
+@model ResourceBarModel
+@{
+    var warning = Model.Warning.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    var critical = Model.Critical.ToString(System.Globalization.CultureInfo.InvariantCulture);
+}
+
+@if (Model.Compact)
+{
+    <div class="flex items-center gap-2" data-resource="@Model.Key" data-warning="@warning" data-critical="@critical">
+        <span class="w-8 shrink-0 text-[11px] font-medium text-slate-500 dark:text-slate-400">@Model.Label</span>
+        <div class="usage-track h-1.5 flex-1">
+            <div class="usage-bar @MetricDisplay.UsageBarClass(Model.Percent, Model.Warning, Model.Critical)" style="width: @MetricDisplay.BarWidth(Model.Percent)" data-resource-bar></div>
+        </div>
+        <span class="w-11 shrink-0 text-right text-[11px] font-semibold tabular-nums text-slate-700 dark:text-slate-200" data-resource-text>@MetricDisplay.Percent(Model.Percent)</span>
+    </div>
+}
+else
+{
+    <div data-resource="@Model.Key" data-warning="@warning" data-critical="@critical">
+        <div class="mb-1 flex items-baseline justify-between gap-2">
+            <span class="text-xs font-medium text-slate-500 dark:text-slate-400">@Model.Label</span>
+            <span class="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100" data-resource-text>@MetricDisplay.Percent(Model.Percent)</span>
+        </div>
+        <div class="usage-track h-2">
+            <div class="usage-bar @MetricDisplay.UsageBarClass(Model.Percent, Model.Warning, Model.Critical)" style="width: @MetricDisplay.BarWidth(Model.Percent)" data-resource-bar></div>
+        </div>
+    </div>
+}

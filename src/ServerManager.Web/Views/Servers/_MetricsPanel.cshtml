@@ -1,0 +1,193 @@
+@model MetricsPanelViewModel
+@{
+    var monitoring = Model.Monitoring;
+    var snapshot = monitoring.Snapshot;
+    var thresholds = Model.Thresholds;
+}
+
+@if (snapshot is null)
+{
+    <section class="panel">
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("chart", "h-6 w-6")</span>
+            <p class="font-medium text-slate-700 dark:text-slate-200">Henüz ayrıntılı metrik yok</p>
+            <p>@(monitoring.HasTrustedHostKey ? "İlk ölçüm geldiğinde disk, ağ ve process bilgileri burada görünecek." : "Önce \"Bağlantıyı Test Et\" ile host key'i doğrulayın.")</p>
+        </div>
+    </section>
+}
+else
+{
+    <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <section class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title">Sistem bilgisi</h2>
+                <span class="text-xs text-slate-400">@DateDisplay.Format(monitoring.SnapshotCollectedAt, "dd.MM.yyyy HH:mm:ss")</span>
+            </div>
+            <dl class="panel-body space-y-3 text-sm">
+                <div class="flex justify-between gap-4"><dt class="text-slate-500">Hostname</dt><dd class="truncate font-mono">@(snapshot.System.Hostname ?? "—")</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-500">İşletim sistemi</dt><dd class="truncate text-right">@(snapshot.System.OperatingSystem ?? "—")</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-500">Kernel</dt><dd class="truncate font-mono">@(snapshot.System.Kernel ?? "—")</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-500">Mimari</dt><dd class="font-mono">@(snapshot.System.Architecture ?? "—")</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-500">Zaman dilimi</dt><dd>@(snapshot.System.Timezone ?? "—")</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-500">Açılış</dt><dd>@DateDisplay.Format(snapshot.System.BootTimeUtc)</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-500">Uptime</dt><dd>@MetricDisplay.Uptime(snapshot.System.UptimeSeconds)</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-500">CPU</dt><dd>@snapshot.CpuCores çekirdek · @snapshot.CpuThreads thread</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-500">Load average</dt><dd class="font-mono">@MetricDisplay.Number(snapshot.LoadAverage1) · @MetricDisplay.Number(snapshot.LoadAverage5) · @MetricDisplay.Number(snapshot.LoadAverage15)</dd></div>
+                <div class="flex justify-between gap-4"><dt class="text-slate-500">CPU sıcaklığı</dt><dd>@(snapshot.CpuTemperatureCelsius.HasValue ? $"{MetricDisplay.Number(snapshot.CpuTemperatureCelsius, "0.#")} °C" : "—")</dd></div>
+            </dl>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Bellek</h2></div>
+            <div class="panel-body space-y-4 text-sm">
+                @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("RAM", "memory-detail", snapshot.MemoryUsagePercent, thresholds.MemoryWarningPercent, thresholds.MemoryCriticalPercent))
+                <dl class="space-y-3">
+                    <div class="flex justify-between gap-4"><dt class="text-slate-500">Toplam</dt><dd>@MetricDisplay.Bytes(snapshot.MemoryTotalBytes)</dd></div>
+                    <div class="flex justify-between gap-4"><dt class="text-slate-500">Kullanılan</dt><dd>@MetricDisplay.Bytes(snapshot.MemoryUsedBytes)</dd></div>
+                    <div class="flex justify-between gap-4"><dt class="text-slate-500">Kullanılabilir</dt><dd>@MetricDisplay.Bytes(snapshot.MemoryAvailableBytes)</dd></div>
+                    <div class="flex justify-between gap-4"><dt class="text-slate-500">Boş</dt><dd>@MetricDisplay.Bytes(snapshot.MemoryFreeBytes)</dd></div>
+                    <div class="flex justify-between gap-4"><dt class="text-slate-500">Cache / buffer</dt><dd>@MetricDisplay.Bytes(snapshot.MemoryCachedBytes)</dd></div>
+                    <div class="flex justify-between gap-4"><dt class="text-slate-500">Swap</dt><dd>@(snapshot.SwapTotalBytes > 0 ? $"{MetricDisplay.Bytes(snapshot.SwapUsedBytes)} / {MetricDisplay.Bytes(snapshot.SwapTotalBytes)}" : "Yok")</dd></div>
+                </dl>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title">Sağlık kontrolleri</h2>
+                <span class="text-xs text-slate-500">24 saat: @MetricDisplay.Percent(monitoring.UptimePercent24h)</span>
+            </div>
+            @if (monitoring.RecentHealthChecks.Count == 0)
+            {
+                <p class="panel-body text-sm text-slate-500">Henüz kontrol yapılmadı.</p>
+            }
+            else
+            {
+                <ul class="max-h-80 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
+                    @foreach (var check in monitoring.RecentHealthChecks)
+                    {
+                        <li class="flex items-start gap-3 px-5 py-2.5 text-sm">
+                            <span class="mt-1.5 h-2 w-2 shrink-0 rounded-full @(check.IsSuccess ? "bg-emerald-500" : "bg-red-500")"></span>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-slate-800 dark:text-slate-200" title="@check.Message">@(check.Message ?? (check.IsSuccess ? "Başarılı" : "Başarısız"))</p>
+                                <p class="text-xs text-slate-500">@DateDisplay.Format(check.CheckedAt, "dd.MM HH:mm:ss") · @check.ResponseTimeMs ms</p>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+    </div>
+
+    <section class="panel mt-6">
+        <div class="panel-header"><h2 class="panel-title">Diskler</h2></div>
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Bağlama noktası</th>
+                        <th>Dosya sistemi</th>
+                        <th class="text-right">Boyut</th>
+                        <th class="text-right">Kullanılan</th>
+                        <th class="text-right">Boş</th>
+                        <th class="w-48">Doluluk</th>
+                        <th class="text-right">Inode</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (snapshot.Disks.Count == 0)
+                    {
+                        <tr><td colspan="7" class="text-center text-slate-500">Disk bilgisi alınamadı.</td></tr>
+                    }
+                    @foreach (var disk in snapshot.Disks)
+                    {
+                        <tr>
+                            <td class="font-mono">@disk.MountPoint</td>
+                            <td class="font-mono text-xs text-slate-500">@disk.FileSystem</td>
+                            <td class="text-right tabular-nums">@MetricDisplay.Bytes(disk.TotalBytes)</td>
+                            <td class="text-right tabular-nums">@MetricDisplay.Bytes(disk.UsedBytes)</td>
+                            <td class="text-right tabular-nums">@MetricDisplay.Bytes(disk.AvailableBytes)</td>
+                            <td>
+                                <div class="flex items-center gap-2">
+                                    <div class="usage-track h-2 flex-1">
+                                        <div class="usage-bar @MetricDisplay.UsageBarClass(disk.UsagePercent, thresholds.DiskWarningPercent, thresholds.DiskCriticalPercent)" style="width: @MetricDisplay.BarWidth(disk.UsagePercent)"></div>
+                                    </div>
+                                    <span class="w-12 text-right text-xs tabular-nums">@MetricDisplay.Percent(disk.UsagePercent)</span>
+                                </div>
+                            </td>
+                            <td class="text-right tabular-nums">@MetricDisplay.Percent(disk.InodeUsagePercent)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Ağ arayüzleri</h2></div>
+            <div class="overflow-x-auto">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Arayüz</th>
+                            <th>Adresler</th>
+                            <th class="text-right">Gelen</th>
+                            <th class="text-right">Giden</th>
+                            <th class="text-right">Toplam RX / TX</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (snapshot.NetworkInterfaces.Count == 0)
+                        {
+                            <tr><td colspan="5" class="text-center text-slate-500">Ağ bilgisi alınamadı.</td></tr>
+                        }
+                        @foreach (var nic in snapshot.NetworkInterfaces)
+                        {
+                            <tr class="@(nic.IsVirtual ? "text-slate-400 dark:text-slate-500" : "")">
+                                <td class="font-mono">@nic.Name @(nic.IsVirtual ? "(sanal)" : "")</td>
+                                <td class="font-mono text-xs">@(nic.Addresses.Count == 0 ? "—" : string.Join(", ", nic.Addresses))</td>
+                                <td class="text-right tabular-nums">@MetricDisplay.Rate(nic.RxBytesPerSecond)</td>
+                                <td class="text-right tabular-nums">@MetricDisplay.Rate(nic.TxBytesPerSecond)</td>
+                                <td class="text-right text-xs tabular-nums">@MetricDisplay.Bytes(nic.RxBytes) / @MetricDisplay.Bytes(nic.TxBytes)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">En çok kaynak kullanan process'ler</h2></div>
+            <div class="overflow-x-auto">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th class="text-right">PID</th>
+                            <th>Process</th>
+                            <th>Kullanıcı</th>
+                            <th class="text-right">CPU</th>
+                            <th class="text-right">RAM</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (snapshot.TopProcesses.Count == 0)
+                        {
+                            <tr><td colspan="5" class="text-center text-slate-500">Process bilgisi alınamadı (ps komutu desteklenmiyor olabilir).</td></tr>
+                        }
+                        @foreach (var process in snapshot.TopProcesses)
+                        {
+                            <tr>
+                                <td class="text-right font-mono text-xs">@process.Pid</td>
+                                <td class="font-mono">@process.Name</td>
+                                <td class="text-slate-500">@(process.User ?? "—")</td>
+                                <td class="text-right tabular-nums">@MetricDisplay.Percent(process.CpuPercent)</td>
+                                <td class="text-right tabular-nums">@MetricDisplay.Percent(process.MemoryPercent)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+}
