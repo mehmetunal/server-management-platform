@@ -1,0 +1,10 @@
+{
+  "SystemName": "Notifications.Discord",
+  "FriendlyName": "Discord Bildirimleri",
+  "Group": "Bildirim",
+  "Version": "1.0.0",
+  "Author": "Server Manager",
+  "Description": "Alarm, düzelme ve hatırlatma bildirimlerini Discord kanal webhook'u ile renkli kart (embed) olarak gönderir.",
+  "DisplayOrder": 40,
+  "AssemblyFileName": "ServerManager.Plugin.Notifications.Discord.dll"
+}

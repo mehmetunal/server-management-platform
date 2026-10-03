@@ -1,0 +1,98 @@
+@model SslIndexViewModel
+@{
+    var canManage = User.HasPermission(Permissions.AlertManage);
+    var hasFilter = !string.IsNullOrWhiteSpace(Model.Filter.Search) || Model.Filter.Status.HasValue;
+}
+
+@if (Model.Monitors.Items.Count == 0)
+{
+    <div class="empty-state">
+        <span class="empty-state-icon">@Icons.Render("lock", "h-6 w-6")</span>
+        @if (hasFilter)
+        {
+            <p class="empty-state-title">Filtreye uyan kayıt bulunamadı</p>
+            <p>Arama kriterlerini değiştirmeyi deneyin.</p>
+        }
+        else
+        {
+            <p class="empty-state-title">Henüz izlenen alan adı yok</p>
+            <p>Bir alan adı ekleyin; sertifikanın bitiş tarihi, yayıncısı ve geçerliliği takip edilir.</p>
+            @if (canManage)
+            {
+                <a asp-action="Create" class="btn-primary btn-sm mt-3" title="Sertifikası izlenecek alan adı ekle">@Icons.Render("plus", "h-4 w-4") Alan adı ekle</a>
+            }
+        }
+    </div>
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Alan adı</th>
+                    <th>Durum</th>
+                    <th>Kalan</th>
+                    <th>Bitiş</th>
+                    <th>Yayıncı</th>
+                    <th>Son kontrol</th>
+                    <th class="text-right">İşlem</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var monitor in Model.Monitors.Items)
+                {
+                    <tr class="@(monitor.IsEnabled ? null : "ssl-row-disabled")">
+                        <td>
+                            <span class="block font-mono text-sm font-medium">@monitor.Host@(monitor.Port == 443 ? string.Empty : $":{monitor.Port}")</span>
+                            @if (monitor.ServerName is not null)
+                            {
+                                <span class="text-xs text-slate-500">@monitor.ServerName</span>
+                            }
+                            @if (monitor.Subject is not null && !string.Equals(monitor.Subject, monitor.Host, StringComparison.OrdinalIgnoreCase))
+                            {
+                                <span class="block text-xs text-slate-500">Sertifika: @monitor.Subject</span>
+                            }
+                        </td>
+                        <td>
+                            @if (!monitor.IsEnabled)
+                            {
+                                <span class="badge-neutral"><span class="badge-dot"></span>Durduruldu</span>
+                            }
+                            else
+                            {
+                                <span class="@AlertingDisplay.SslStatusBadgeClass(monitor.Status)"><span class="badge-dot"></span>@AlertingDisplay.SslStatusText(monitor.Status)</span>
+                            }
+                            @if (monitor.LastError is not null)
+                            {
+                                <p class="ssl-error">@monitor.LastError</p>
+                            }
+                        </td>
+                        <td class="whitespace-nowrap text-sm font-medium">@AlertingDisplay.DaysText(monitor.DaysRemaining)</td>
+                        <td class="whitespace-nowrap text-sm">@DateDisplay.Format(monitor.NotAfter, "dd.MM.yyyy")</td>
+                        <td class="text-sm">@(monitor.Issuer ?? "—")</td>
+                        <td class="whitespace-nowrap text-sm" title="@DateDisplay.Format(monitor.LastCheckedAt)">@DateDisplay.Relative(monitor.LastCheckedAt, "Bekleniyor")</td>
+                        <td class="text-right whitespace-nowrap">
+                            @if (canManage)
+                            {
+                                <button type="button" class="btn-ghost btn-sm" title="Sertifikayı şimdi oku" data-ajax-action
+                                        data-url="@Url.Action("CheckNow", new { id = monitor.Id })">
+                                    @Icons.Render("refresh", "h-4 w-4")
+                                </button>
+                                <a asp-action="Edit" asp-route-id="@monitor.Id" class="btn-ghost btn-sm" title="Düzenle">@Icons.Render("pencil", "h-4 w-4")</a>
+                                <button type="button" class="btn-ghost-danger btn-sm" title="İzlemeyi sil" data-ajax-action
+                                        data-url="@Url.Action("Delete", new { id = monitor.Id })"
+                                        data-confirm-title="SSL izleme silinsin mi?"
+                                        data-confirm-message="@monitor.Host sertifikası artık izlenmez; açık alarmı varsa kapatılır."
+                                        data-confirm-label="İzlemeyi sil">
+                                    @Icons.Render("trash", "h-4 w-4")
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <partial name="_Pager" model="Model.ToPager()" />
+}

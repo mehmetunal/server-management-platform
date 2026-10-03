@@ -1,0 +1,80 @@
+@model UptimeCheckFormDto
+@{
+    var servers = ViewData[ServerManager.Web.Controllers.UptimeController.ServerOptionsKey] as IReadOnlyList<ServerOptionDto> ?? [];
+}
+
+<p class="alert-error mb-6" data-form-error hidden></p>
+
+<section class="panel uptime-form">
+    <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div>
+            <label asp-for="Name" class="form-label">Ad *</label>
+            <input asp-for="Name" class="form-control" maxlength="128" placeholder="Şirket web sitesi" />
+            <span asp-validation-for="Name" class="field-validation-error"></span>
+        </div>
+        <div>
+            <label asp-for="Type" class="form-label">Tür *</label>
+            <select asp-for="Type" class="form-control" data-uptime-type>
+                @foreach (var type in Enum.GetValues<UptimeCheckType>())
+                {
+                    <option value="@((int)type)" selected="@(type == Model.Type)">@AlertingDisplay.UptimeTypeText(type)</option>
+                }
+            </select>
+        </div>
+
+        <div class="sm:col-span-2" data-uptime-mode="@((int)UptimeCheckType.Http)">
+            <label asp-for="Url" class="form-label">Adres *</label>
+            <input asp-for="Url" type="url" class="form-control font-mono" maxlength="500" placeholder="https://example.com/health" />
+            <p class="form-hint">GET isteği atılır; en fazla 5 yönlendirme izlenir. Sertifika geçersizse kontrol başarısız sayılır.</p>
+            <span asp-validation-for="Url" class="field-validation-error"></span>
+        </div>
+        <div data-uptime-mode="@((int)UptimeCheckType.Http)">
+            <label asp-for="AcceptedStatusCodes" class="form-label">Kabul edilen durum kodları</label>
+            <input asp-for="AcceptedStatusCodes" class="form-control font-mono" maxlength="100" placeholder="@StatusCodeRanges.Default" />
+            <p class="form-hint">Örn. 200-399 veya 200,204,301-302.</p>
+            <span asp-validation-for="AcceptedStatusCodes" class="field-validation-error"></span>
+        </div>
+
+        <div data-uptime-mode="@((int)UptimeCheckType.Tcp)">
+            <label asp-for="Host" class="form-label">Sunucu adresi *</label>
+            <input asp-for="Host" class="form-control font-mono" maxlength="253" placeholder="db.example.com veya 10.0.0.5" />
+            <span asp-validation-for="Host" class="field-validation-error"></span>
+        </div>
+        <div data-uptime-mode="@((int)UptimeCheckType.Tcp)">
+            <label asp-for="Port" class="form-label">Port *</label>
+            <input asp-for="Port" type="number" min="1" max="65535" class="form-control" placeholder="5432" />
+            <p class="form-hint">Bağlantı kurulabiliyorsa erişilebilir sayılır.</p>
+            <span asp-validation-for="Port" class="field-validation-error"></span>
+        </div>
+
+        <div>
+            <label asp-for="IntervalSeconds" class="form-label">Kontrol aralığı (sn) *</label>
+            <input asp-for="IntervalSeconds" type="number" min="10" max="86400" class="form-control" />
+            <span asp-validation-for="IntervalSeconds" class="field-validation-error"></span>
+        </div>
+        <div>
+            <label asp-for="TimeoutSeconds" class="form-label">Zaman aşımı (sn) *</label>
+            <input asp-for="TimeoutSeconds" type="number" min="1" max="60" class="form-control" />
+            <span asp-validation-for="TimeoutSeconds" class="field-validation-error"></span>
+        </div>
+        <div class="sm:col-span-2">
+            <label asp-for="ServerId" class="form-label">İlgili sunucu</label>
+            <select asp-for="ServerId" class="form-control">
+                <option value="">Yok</option>
+                @foreach (var server in servers)
+                {
+                    <option value="@server.Id" selected="@(server.Id == Model.ServerId)">@server.Name (@server.IpAddress)</option>
+                }
+            </select>
+            <p class="form-hint">İsteğe bağlı; alarm mesajında ve sunucuya göre filtrelemede kullanılır.</p>
+            <span asp-validation-for="ServerId" class="field-validation-error"></span>
+        </div>
+        <label class="check-card sm:col-span-2">
+            <input asp-for="IsEnabled" type="checkbox" class="form-check" />
+            <span>
+                <span class="check-card-title">Etkin</span>
+                <span class="check-card-text">Durdurulan kontroller çalışmaz ve alarm üretmez.</span>
+            </span>
+        </label>
+    </div>
+</section>

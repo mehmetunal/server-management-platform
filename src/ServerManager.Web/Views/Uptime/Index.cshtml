@@ -1,0 +1,48 @@
+@model UptimeIndexViewModel
+@{
+    ViewData["Title"] = "Uptime";
+    ViewData["Page"] = "uptime-index";
+    var canManage = User.HasPermission(Permissions.AlertManage);
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Uptime</h1>
+        <p class="page-lead">Web siteleri ve servis portları panelden düzenli aralıkla kontrol edilir. Erişilemeyen kontroller için "Uptime kontrolü erişilemiyor" kuralı alarm açar.</p>
+    </div>
+    @if (canManage)
+    {
+        <a asp-action="Create" class="btn-primary" title="HTTP adresi veya TCP portu için yeni kontrol ekle">@Icons.Render("plus", "h-4 w-4") Kontrol ekle</a>
+    }
+</div>
+
+<section class="panel">
+    <form method="get" asp-action="Index" class="panel-toolbar uptime-filters" data-list-filter>
+        <div class="search-field lg:col-span-2">
+            <span class="search-field-icon">@Icons.Render("search", "h-4 w-4")</span>
+            <input type="search" name="search" value="@Model.Filter.Search" class="form-control" placeholder="Ad, adres veya sunucu ara…" data-live-search aria-label="Kontrol ara" />
+        </div>
+        <select name="status" class="form-control" data-auto-submit aria-label="Durum">
+            <option value="">Tüm durumlar</option>
+            @foreach (var option in AlertingDisplay.UptimeStatusOptions(Model.Filter.Status))
+            {
+                <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+            }
+        </select>
+        <select name="serverId" class="form-control" data-auto-submit aria-label="Sunucu">
+            <option value="">Tüm sunucular</option>
+            @foreach (var server in Model.Servers)
+            {
+                <option value="@server.Id" selected="@(server.Id == Model.Filter.ServerId)">@server.Name</option>
+            }
+        </select>
+        <div class="uptime-filter-actions">
+            <button type="submit" class="btn-secondary btn-sm" title="Listeyi arama ve filtrelere göre süz">@Icons.Render("search", "h-4 w-4") Filtrele</button>
+            <a asp-action="Index" class="btn-ghost btn-sm" data-list-link title="Tüm filtreleri kaldır">Filtreleri temizle</a>
+        </div>
+    </form>
+
+    <div data-ajax-list data-auto-refresh="30">
+        <partial name="_UptimeList" model="Model" />
+    </div>
+</section>

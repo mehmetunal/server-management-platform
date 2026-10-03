@@ -41,13 +41,45 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     public DbSet<Deployment> Deployments => Set<Deployment>();
 
+    public DbSet<AlertRule> AlertRules => Set<AlertRule>();
+
+    public DbSet<AlertRuleChannel> AlertRuleChannels => Set<AlertRuleChannel>();
+
+    public DbSet<AlertEvent> AlertEvents => Set<AlertEvent>();
+
+    public DbSet<NotificationChannel> NotificationChannels => Set<NotificationChannel>();
+
+    public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
+
+    public DbSet<UptimeCheck> UptimeChecks => Set<UptimeCheck>();
+
+    public DbSet<UptimeCheckResult> UptimeCheckResults => Set<UptimeCheckResult>();
+
+    public DbSet<SslCertificateMonitor> SslCertificateMonitors => Set<SslCertificateMonitor>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
         builder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
         // Model bir kez kurulup önbelleğe alınır; eklenti listesi açılışta sabitlendiği için bu güvenlidir.
-        foreach (var assembly in _pluginCatalog?.LoadedAssemblies ?? [])
+        foreach (var assembly in (_pluginCatalog?.LoadedAssemblies ?? []).Where(HasEntityConfigurations))
             builder.ApplyConfigurationsFromAssembly(assembly);
+    }
+
+    private static bool HasEntityConfigurations(System.Reflection.Assembly assembly)
+    {
+        Type?[] types;
+        try
+        {
+            types = assembly.GetTypes();
+        }
+        catch (System.Reflection.ReflectionTypeLoadException ex)
+        {
+            types = ex.Types;
+        }
+
+        return types.Any(t => t is { IsAbstract: false, IsGenericTypeDefinition: false }
+                              && t.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEntityTypeConfiguration<>)));
     }
 }

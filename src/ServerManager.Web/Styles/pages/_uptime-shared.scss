@@ -1,0 +1,23 @@
+.uptime-target {
+  @apply mt-0.5 max-w-md truncate font-mono text-xs text-slate-500 dark:text-slate-400;
+}
+
+.uptime-percent {
+  @apply rounded-md px-2 py-0.5 text-sm font-semibold;
+}
+
+.uptime-bar-good {
+  @apply bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300;
+}
+
+.uptime-bar-warn {
+  @apply bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300;
+}
+
+.uptime-bar-bad {
+  @apply bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300;
+}
+
+.uptime-bar-unknown {
+  @apply bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400;
+}

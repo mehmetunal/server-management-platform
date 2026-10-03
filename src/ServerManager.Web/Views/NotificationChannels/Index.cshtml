@@ -1,0 +1,49 @@
+@model NotificationChannelIndexViewModel
+@{
+    ViewData["Title"] = "Bildirim kanalları";
+    ViewData["Page"] = "notification-channels-index";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Bildirim kanalları</h1>
+        <p class="page-lead">Alarm, düzelme ve hatırlatma mesajlarının gideceği yerler. Kanalı ekledikten sonra test mesajı gönderin ve kurallara bağlayın.</p>
+    </div>
+</div>
+
+<partial name="_AlertingTabs" />
+
+<section class="panel mb-6">
+    <div class="panel-header">
+        <h2 class="panel-title">Kanal ekle</h2>
+    </div>
+    <div class="panel-body">
+        @if (Model.Providers.Count == 0)
+        {
+            <p class="text-sm text-slate-500">
+                Etkin bildirim eklentisi yok.
+                @if (User.HasPermission(Permissions.PluginManage))
+                {
+                    <a asp-controller="Plugins" asp-action="Index" class="font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400" title="E-posta, Telegram veya Discord eklentisini etkinleştir">Eklentiler</a>
+                }
+                sayfasından E-posta, Telegram veya Discord bildirim eklentisini etkinleştirin.
+            </p>
+        }
+        else
+        {
+            <div class="provider-grid">
+                @foreach (var provider in Model.Providers)
+                {
+                    <a asp-action="Create" asp-route-provider="@provider.SystemName" class="provider-card" title="@provider.DisplayName kanalı ekle">
+                        <span class="provider-card-title">@Icons.Render("plus", "h-4 w-4") @provider.DisplayName</span>
+                        <span class="provider-card-text">@provider.Description</span>
+                    </a>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+<div data-ajax-list>
+    <partial name="_ChannelList" model="Model" />
+</div>

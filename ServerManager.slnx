@@ -9,10 +9,14 @@
   <Folder Name="/src/Plugins/">
     <Project Path="src/Plugins/ServerManager.Plugin.DevOps.Dokploy/ServerManager.Plugin.DevOps.Dokploy.csproj" />
     <Project Path="src/Plugins/ServerManager.Plugin.Git.GitHub/ServerManager.Plugin.Git.GitHub.csproj" />
+    <Project Path="src/Plugins/ServerManager.Plugin.Notifications.Email/ServerManager.Plugin.Notifications.Email.csproj" />
+    <Project Path="src/Plugins/ServerManager.Plugin.Notifications.Telegram/ServerManager.Plugin.Notifications.Telegram.csproj" />
+    <Project Path="src/Plugins/ServerManager.Plugin.Notifications.Discord/ServerManager.Plugin.Notifications.Discord.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ServerManager.Application.Tests/ServerManager.Application.Tests.csproj" />
     <Project Path="tests/ServerManager.Plugin.DevOps.Dokploy.Tests/ServerManager.Plugin.DevOps.Dokploy.Tests.csproj" />
     <Project Path="tests/ServerManager.Plugin.Git.GitHub.Tests/ServerManager.Plugin.Git.GitHub.Tests.csproj" />
+    <Project Path="tests/ServerManager.Plugin.Notifications.Tests/ServerManager.Plugin.Notifications.Tests.csproj" />
   </Folder>
 </Solution>

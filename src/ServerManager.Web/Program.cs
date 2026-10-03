@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.WebEncoders;
 using Serilog;
 using ServerManager.Application;
+using ServerManager.Application.Alerting;
 using ServerManager.Application.Interfaces;
 using ServerManager.Application.Interfaces.Monitoring;
 using ServerManager.Application.Monitoring;
@@ -57,6 +58,13 @@ try
         builder.Services.AddHostedService<MetricsCollectorWorker>();
         builder.Services.AddHostedService<MetricsMaintenanceWorker>();
     }
+    if (builder.Configuration.GetValue($"{AlertingOptions.SectionName}:Enabled", true))
+    {
+        builder.Services.AddHostedService<AlertEvaluationWorker>();
+        builder.Services.AddHostedService<UptimeCheckWorker>();
+        builder.Services.AddHostedService<SslCheckWorker>();
+        builder.Services.AddHostedService<AlertingMaintenanceWorker>();
+    }
     builder.Services.Configure<WebEncoderOptions>(options =>
         options.TextEncoderSettings = new TextEncoderSettings(UnicodeRanges.All));
 
@@ -81,6 +89,14 @@ try
         options.Cookie.SecurePolicy = cookieSecurePolicy;
         options.ExpireTimeSpan = TimeSpan.FromMinutes(authCookieOptions.SessionTimeoutMinutes);
         options.SlidingExpiration = true;
+
+        // Arka plan yoklamaları (alarm zili) oturum zaman aşımını uzatmaz; kullanıcı işlem yapmazsa oturum yine düşer.
+        options.Events.OnCheckSlidingExpiration = context =>
+        {
+            if (context.Request.Headers.ContainsKey(BackgroundPoll.HeaderName))
+                context.ShouldRenew = false;
+            return Task.CompletedTask;
+        };
 
         options.Events.OnRedirectToLogin = context =>
         {

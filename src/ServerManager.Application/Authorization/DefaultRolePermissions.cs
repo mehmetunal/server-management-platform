@@ -32,6 +32,9 @@ public static class DefaultRolePermissions
             Permissions.DeploymentView,
             Permissions.DeploymentManage,
             Permissions.DeploymentExecute,
+            Permissions.AlertView,
+            Permissions.AlertAcknowledge,
+            Permissions.AlertManage,
             Permissions.AuditView
         ],
         [Roles.Operator] =
@@ -52,7 +55,9 @@ public static class DefaultRolePermissions
             Permissions.FileUpload,
             Permissions.FileDownload,
             Permissions.DeploymentView,
-            Permissions.DeploymentExecute
+            Permissions.DeploymentExecute,
+            Permissions.AlertView,
+            Permissions.AlertAcknowledge
         ],
         [Roles.Developer] =
         [
@@ -63,14 +68,16 @@ public static class DefaultRolePermissions
             Permissions.FileView,
             Permissions.FileDownload,
             Permissions.DeploymentView,
-            Permissions.DeploymentExecute
+            Permissions.DeploymentExecute,
+            Permissions.AlertView
         ],
         [Roles.Viewer] =
         [
             Permissions.DashboardView,
             Permissions.ServerView,
             Permissions.DockerView,
-            Permissions.DeploymentView
+            Permissions.DeploymentView,
+            Permissions.AlertView
         ]
     };
 }

@@ -4,5 +4,7 @@ public enum RetentionTarget
 {
     RawMetrics = 1,
     HourlyMetrics = 2,
-    HealthChecks = 3
+    HealthChecks = 3,
+    UptimeResults = 4,
+    NotificationDeliveries = 5
 }

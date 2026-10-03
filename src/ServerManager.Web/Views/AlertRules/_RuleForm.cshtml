@@ -1,0 +1,127 @@
+@model AlertRuleFormDto
+@{
+    var servers = ViewData[ServerManager.Web.Controllers.AlertRulesController.ServerOptionsKey] as IReadOnlyList<ServerOptionDto> ?? [];
+    var channels = ViewData[ServerManager.Web.Controllers.AlertRulesController.ChannelOptionsKey] as IReadOnlyList<ChannelOptionDto> ?? [];
+    string ThresholdUnit(AlertRuleKind kind) =>
+        AlertRuleKinds.IsMetric(kind) ? "percent" : kind == AlertRuleKind.SslCertificateExpiry ? "days" : "none";
+}
+
+<p class="alert-error mb-6" data-form-error hidden></p>
+
+<div class="rule-form-grid">
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Koşul</h2></div>
+        <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+                <label asp-for="Name" class="form-label">Kural adı *</label>
+                <input asp-for="Name" class="form-control" maxlength="128" placeholder="Yüksek CPU" />
+                <span asp-validation-for="Name" class="field-validation-error"></span>
+            </div>
+            <div>
+                <label asp-for="Kind" class="form-label">Tür *</label>
+                <select asp-for="Kind" class="form-control" data-rule-kind>
+                    @foreach (var kind in Enum.GetValues<AlertRuleKind>())
+                    {
+                        <option value="@((int)kind)" selected="@(kind == Model.Kind)"
+                                data-threshold="@ThresholdUnit(kind)"
+                                data-duration="@AlertRuleKinds.UsesDuration(kind).ToString().ToLowerInvariant()">@AlertRuleKinds.DisplayName(kind)</option>
+                    }
+                </select>
+                <span asp-validation-for="Kind" class="field-validation-error"></span>
+            </div>
+            <div>
+                <label asp-for="Severity" class="form-label">Önem *</label>
+                <select asp-for="Severity" class="form-control">
+                    @foreach (var option in AlertingDisplay.SeverityOptions(Model.Severity))
+                    {
+                        <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+                    }
+                </select>
+                <p class="form-hint">Kanallar en düşük önem ayarına göre bildirimi alır veya atlar.</p>
+            </div>
+            <div data-rule-threshold>
+                <label asp-for="Threshold" class="form-label" data-threshold-label="percent">Eşik (%) *</label>
+                <label asp-for="Threshold" class="form-label" data-threshold-label="days" hidden>Kalan gün eşiği *</label>
+                <input asp-for="Threshold" type="number" step="any" min="0" class="form-control" />
+                <p class="form-hint" data-threshold-hint="percent">Değer bu yüzdenin üzerine çıkınca alarm açılır.</p>
+                <p class="form-hint" data-threshold-hint="days" hidden>Sertifikanın bitmesine bu kadar günden az kalınca alarm açılır; 30/15/7/3/1 gün kala hatırlatılır.</p>
+                <span asp-validation-for="Threshold" class="field-validation-error"></span>
+            </div>
+            <div data-rule-duration>
+                <label asp-for="DurationMinutes" class="form-label">Süre (dakika)</label>
+                <input asp-for="DurationMinutes" type="number" min="0" max="@AlertRuleKinds.MaxDurationMinutes" class="form-control" />
+                <p class="form-hint">Durum bu süre boyunca kesintisiz sürerse alarm açılır; 0 = hemen.</p>
+                <span asp-validation-for="DurationMinutes" class="field-validation-error"></span>
+            </div>
+            <div class="sm:col-span-2">
+                <label asp-for="ServerId" class="form-label">Kapsam</label>
+                <select asp-for="ServerId" class="form-control">
+                    <option value="">Tüm sunucular</option>
+                    @foreach (var server in servers)
+                    {
+                        <option value="@server.Id" selected="@(server.Id == Model.ServerId)">@server.Name (@server.IpAddress)</option>
+                    }
+                </select>
+                <p class="form-hint">Uptime, SSL ve deployment kurallarında yalnızca bu sunucuya bağlı kontroller değerlendirilir.</p>
+                <span asp-validation-for="ServerId" class="field-validation-error"></span>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Bildirim</h2></div>
+        <div class="panel-body space-y-5">
+            <div>
+                <span class="form-label">Kanallar</span>
+                @if (channels.Count == 0)
+                {
+                    <p class="form-hint">
+                        Henüz bildirim kanalı yok.
+                        @if (User.HasPermission(Permissions.AlertManage))
+                        {
+                            <a asp-controller="NotificationChannels" asp-action="Index" class="font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400" title="E-posta, Telegram veya Discord kanalı ekle">Kanal ekleyin</a>
+                        }
+                    </p>
+                }
+                else
+                {
+                    <div class="rule-channels">
+                        @foreach (var channel in channels)
+                        {
+                            <label class="check-card">
+                                <input type="checkbox" name="ChannelIds" value="@channel.Id" class="form-check" checked="@Model.ChannelIds.Contains(channel.Id)" />
+                                <span>
+                                    <span class="check-card-title">@channel.Name</span>
+                                    <span class="check-card-text">
+                                        @channel.ProviderName · en az @AlertingDisplay.SeverityText(channel.MinimumSeverity)@(channel.IsEnabled ? string.Empty : " · kapalı")
+                                    </span>
+                                </span>
+                            </label>
+                        }
+                    </div>
+                }
+                <span asp-validation-for="ChannelIds" class="field-validation-error"></span>
+            </div>
+            <div>
+                <label asp-for="RepeatIntervalMinutes" class="form-label">Hatırlatma aralığı (dakika)</label>
+                <input asp-for="RepeatIntervalMinutes" type="number" min="0" max="10080" class="form-control" />
+                <p class="form-hint">Alarm sürdükçe bu aralıkla tekrar bildirilir; 0 = hatırlatma yok. Üstlenilen alarmlar hatırlatılmaz.</p>
+                <span asp-validation-for="RepeatIntervalMinutes" class="field-validation-error"></span>
+            </div>
+            <label class="check-card">
+                <input asp-for="NotifyRecovery" type="checkbox" class="form-check" />
+                <span>
+                    <span class="check-card-title">Düzelince bildir</span>
+                    <span class="check-card-text">Sorun giderildiğinde kanallara "Düzeldi" mesajı gönderilir.</span>
+                </span>
+            </label>
+            <label class="check-card">
+                <input asp-for="IsEnabled" type="checkbox" class="form-check" />
+                <span>
+                    <span class="check-card-title">Etkin</span>
+                    <span class="check-card-text">Kapalı kurallar değerlendirilmez.</span>
+                </span>
+            </label>
+        </div>
+    </section>
+</div>

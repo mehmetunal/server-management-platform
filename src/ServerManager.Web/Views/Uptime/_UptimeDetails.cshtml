@@ -1,0 +1,129 @@
+@model UptimeCheckDetailsDto
+@{
+    var check = Model.Check;
+}
+
+<div class="uptime-stats">
+    <div class="stat-card">
+        <span class="stat-label">Durum</span>
+        <span class="stat-value">
+            @if (check.IsEnabled)
+            {
+                <span class="@AlertingDisplay.UptimeStatusBadgeClass(check.Status)"><span class="badge-dot"></span>@AlertingDisplay.UptimeStatusText(check.Status)</span>
+            }
+            else
+            {
+                <span class="badge-neutral"><span class="badge-dot"></span>Durduruldu</span>
+            }
+        </span>
+        @if (check.StatusChangedAt is not null)
+        {
+            <span class="text-xs text-slate-500" title="@DateDisplay.Format(check.StatusChangedAt)">@AlertingDisplay.Duration(check.StatusChangedAt.Value, null) süredir</span>
+        }
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Uptime 24 sa / 7 gün / 30 gün</span>
+        <span class="stat-value uptime-triple">
+            <span class="uptime-percent @AlertingDisplay.UptimeBarClass(check.UptimePercent24h)">@AlertingDisplay.Percent(check.UptimePercent24h)</span>
+            <span class="uptime-percent @AlertingDisplay.UptimeBarClass(Model.UptimePercent7d)">@AlertingDisplay.Percent(Model.UptimePercent7d)</span>
+            <span class="uptime-percent @AlertingDisplay.UptimeBarClass(Model.UptimePercent30d)">@AlertingDisplay.Percent(Model.UptimePercent30d)</span>
+        </span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Ortalama yanıt (24 sa)</span>
+        <span class="stat-value">@AlertingDisplay.Milliseconds(Model.AverageResponseMs24h)</span>
+        <span class="text-xs text-slate-500">Son: @AlertingDisplay.Milliseconds(check.LastResponseMs)</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Ardışık hata</span>
+        <span class="stat-value @(check.ConsecutiveFailures > 0 ? "text-red-600 dark:text-red-400" : null)">@check.ConsecutiveFailures</span>
+        <span class="text-xs text-slate-500" title="@DateDisplay.Format(check.LastCheckedAt)">Son kontrol: @DateDisplay.Relative(check.LastCheckedAt, "Bekleniyor")</span>
+    </div>
+</div>
+
+@if (check.LastError is not null)
+{
+    <p class="alert-error mb-6">@check.LastError</p>
+}
+
+<div class="uptime-details-grid">
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Son kontroller</h2></div>
+        @if (Model.RecentResults.Count == 0)
+        {
+            <p class="panel-body text-sm text-slate-500">Henüz sonuç yok; ilk kontrol birkaç saniye içinde çalışır.</p>
+        }
+        else
+        {
+            <div class="uptime-timeline" aria-label="Son kontrollerin zaman çizelgesi">
+                @foreach (var result in Model.RecentResults.Reverse())
+                {
+                    <span class="uptime-tick @(result.IsUp ? "is-up" : "is-down")" title="@DateDisplay.Format(result.CheckedAt) · @(result.IsUp ? "Erişilebilir" : "Erişilemiyor") · @result.ResponseMs ms"></span>
+                }
+            </div>
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Zaman</th>
+                            <th>Sonuç</th>
+                            <th>Yanıt</th>
+                            <th>Mesaj</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var result in Model.RecentResults)
+                        {
+                            <tr>
+                                <td class="whitespace-nowrap text-sm" title="@DateDisplay.Format(result.CheckedAt)">@DateDisplay.Relative(result.CheckedAt)</td>
+                                <td class="whitespace-nowrap">
+                                    <span class="@(result.IsUp ? "badge-success" : "badge-danger")"><span class="badge-dot"></span>@(result.IsUp ? "Erişilebilir" : "Erişilemiyor")</span>
+                                </td>
+                                <td class="whitespace-nowrap text-sm">@result.ResponseMs ms</td>
+                                <td class="text-sm text-slate-500">@result.Message</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Ayarlar</h2></div>
+        <dl class="panel-body detail-list">
+            <div>
+                <dt class="detail-term">Tür</dt>
+                <dd class="detail-value">@AlertingDisplay.UptimeTypeText(check.Type)</dd>
+            </div>
+            <div>
+                <dt class="detail-term">Hedef</dt>
+                <dd class="detail-value font-mono">@check.Target</dd>
+            </div>
+            <div>
+                <dt class="detail-term">Aralık / zaman aşımı</dt>
+                <dd class="detail-value">@AlertingDisplay.Interval(check.IntervalSeconds) / @Model.TimeoutSeconds sn</dd>
+            </div>
+            @if (check.Type == UptimeCheckType.Http)
+            {
+                <div>
+                    <dt class="detail-term">Kabul edilen durum kodları</dt>
+                    <dd class="detail-value font-mono">@(Model.AcceptedStatusCodes ?? StatusCodeRanges.Default)</dd>
+                </div>
+            }
+            <div>
+                <dt class="detail-term">Sunucu</dt>
+                <dd class="detail-value">
+                    @if (check.ServerId is not null)
+                    {
+                        <a asp-controller="Servers" asp-action="Details" asp-route-id="@check.ServerId" class="font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400" title="Sunucu sayfasını aç">@check.ServerName</a>
+                    }
+                    else
+                    {
+                        <span>—</span>
+                    }
+                </dd>
+            </div>
+        </dl>
+    </section>
+</div>

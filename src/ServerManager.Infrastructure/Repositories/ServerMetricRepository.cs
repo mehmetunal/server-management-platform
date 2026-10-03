@@ -13,7 +13,6 @@ namespace ServerManager.Infrastructure.Repositories;
 
 public class ServerMetricRepository : IServerMetricRepository
 {
-    private const int DeleteBatchSize = 5000;
     private const string BucketEpoch = "CAST('2020-01-01' AS datetime2)";
 
     private static readonly JsonSerializerOptions SnapshotJsonOptions = new(JsonSerializerDefaults.Web);
@@ -175,39 +174,12 @@ public class ServerMetricRepository : IServerMetricRepository
             cancellationToken);
     }
 
-    public async Task<int> DeleteExpiredAsync(RetentionTarget target, DateTime cutoffUtc, int keepLatestPerServer, CancellationToken cancellationToken = default)
+    public Task<int> DeleteExpiredAsync(RetentionTarget target, DateTime cutoffUtc, int keepLatestPerServer, CancellationToken cancellationToken = default)
     {
-        var (table, timeColumn) = RetentionAllowList.Resolve(target);
-        var keep = Math.Max(1, keepLatestPerServer);
+        if (target is RetentionTarget.UptimeResults or RetentionTarget.NotificationDeliveries)
+            throw new InvalidOperationException($"{target} bu depodan silinemez. Silme işlemi durduruldu.");
 
-        // Her sunucunun en yeni kayıtları süresi dolmuş olsa bile korunur.
-        var sql = $"""
-            DELETE TOP (@batch) t FROM {table} t
-            WHERE t.{timeColumn} < @cutoff
-              AND t.Id NOT IN (
-                  SELECT r.Id FROM (
-                      SELECT Id, ROW_NUMBER() OVER (PARTITION BY ServerId ORDER BY {timeColumn} DESC) AS RowNumber
-                      FROM {table}) r
-                  WHERE r.RowNumber <= @keep);
-            """;
-
-        var total = 0;
-        while (true)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var deleted = await _context.Database.ExecuteSqlRawAsync(sql,
-            [
-                new SqlParameter("@batch", SqlDbType.Int) { Value = DeleteBatchSize },
-                new SqlParameter("@cutoff", SqlDbType.DateTime2) { Value = cutoffUtc },
-                new SqlParameter("@keep", SqlDbType.Int) { Value = keep }
-            ], cancellationToken);
-
-            total += deleted;
-            if (deleted < DeleteBatchSize)
-                break;
-        }
-
-        return total;
+        return RetentionDeleter.DeleteExpiredAsync(_context, target, cutoffUtc, keepLatestPerServer, cancellationToken);
     }
 
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>

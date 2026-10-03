@@ -1,0 +1,71 @@
+@model AlertIndexViewModel
+@{
+    ViewData["Title"] = "Alarmlar";
+    ViewData["Page"] = "alerts-index";
+    var summary = Model.Summary;
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Alarmlar</h1>
+        <p class="page-lead">Kurallara göre açılan alarmlar; sorun düzelince alarm kendiliğinden kapanır ve bildirim kanallarına düzelme mesajı gider.</p>
+    </div>
+</div>
+
+<partial name="_AlertingTabs" />
+
+@if (summary is not null)
+{
+    <div class="alert-stats">
+        <div class="stat-card">
+            <span class="stat-label">Aktif alarm</span>
+            <span class="stat-value">@summary.FiringCount</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Kritik</span>
+            <span class="stat-value text-red-600 dark:text-red-400">@summary.CriticalCount</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Uyarı</span>
+            <span class="stat-value text-amber-600 dark:text-amber-400">@(summary.FiringCount - summary.CriticalCount)</span>
+        </div>
+    </div>
+}
+
+<section class="panel">
+    <form method="get" asp-action="Index" class="panel-toolbar alert-filters" data-list-filter>
+        <div class="search-field lg:col-span-2">
+            <span class="search-field-icon">@Icons.Render("search", "h-4 w-4")</span>
+            <input type="search" name="search" value="@Model.Filter.Search" class="form-control" placeholder="Kural, hedef, sunucu veya mesaj ara…" data-live-search aria-label="Alarm ara" />
+        </div>
+        <select name="status" class="form-control" data-auto-submit aria-label="Durum">
+            <option value="">Tüm durumlar</option>
+            @foreach (var option in AlertingDisplay.EventStatusOptions(Model.Filter.Status))
+            {
+                <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+            }
+        </select>
+        <select name="severity" class="form-control" data-auto-submit aria-label="Önem">
+            <option value="">Tüm önem dereceleri</option>
+            @foreach (var option in AlertingDisplay.SeverityOptions(Model.Filter.Severity))
+            {
+                <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+            }
+        </select>
+        <select name="serverId" class="form-control" data-auto-submit aria-label="Sunucu">
+            <option value="">Tüm sunucular</option>
+            @foreach (var server in Model.Servers)
+            {
+                <option value="@server.Id" selected="@(server.Id == Model.Filter.ServerId)">@server.Name</option>
+            }
+        </select>
+        <div class="alert-filter-actions">
+            <button type="submit" class="btn-secondary btn-sm" title="Listeyi arama ve filtrelere göre süz">@Icons.Render("search", "h-4 w-4") Filtrele</button>
+            <a asp-action="Index" class="btn-ghost btn-sm" data-list-link title="Tüm filtreleri kaldır">Filtreleri temizle</a>
+        </div>
+    </form>
+
+    <div data-ajax-list data-auto-refresh="30">
+        <partial name="_AlertList" model="Model" />
+    </div>
+</section>

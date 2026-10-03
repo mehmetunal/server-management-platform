@@ -1,0 +1,122 @@
+@model NotificationChannelIndexViewModel
+
+<section class="panel mb-6">
+    <div class="panel-header">
+        <h2 class="panel-title">Kanallar</h2>
+    </div>
+    @if (Model.Channels.Count == 0)
+    {
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("bell", "h-6 w-6")</span>
+            <p class="empty-state-title">Henüz kanal yok</p>
+            <p>Yukarıdan bir kanal türü seçin; kurallar bağlanan kanallara bildirim gönderir.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Kanal</th>
+                        <th>En düşük önem</th>
+                        <th>Kural</th>
+                        <th>Son gönderim</th>
+                        <th class="text-right">İşlem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var channel in Model.Channels)
+                    {
+                        <tr>
+                            <td>
+                                <span class="block font-medium">@channel.Name</span>
+                                <span class="text-xs text-slate-500">@channel.ProviderName</span>
+                                @if (!channel.ProviderAvailable)
+                                {
+                                    <span class="badge-warning ml-1" title="Eklenti devre dışı; bu kanala bildirim gönderilmez">Eklenti etkin değil</span>
+                                }
+                                else if (!channel.IsEnabled)
+                                {
+                                    <span class="badge-neutral ml-1">Kapalı</span>
+                                }
+                            </td>
+                            <td class="whitespace-nowrap"><span class="@AlertingDisplay.SeverityBadgeClass(channel.MinimumSeverity)">@AlertingDisplay.SeverityText(channel.MinimumSeverity)</span></td>
+                            <td class="whitespace-nowrap text-sm">@channel.RuleCount</td>
+                            <td class="text-sm">
+                                <span title="@DateDisplay.Format(channel.LastSentAt)">@DateDisplay.Relative(channel.LastSentAt)</span>
+                                @if (channel.LastError is not null)
+                                {
+                                    <p class="channel-error">@channel.LastError</p>
+                                }
+                            </td>
+                            <td class="text-right whitespace-nowrap">
+                                @if (channel.ProviderAvailable)
+                                {
+                                    <button type="button" class="btn-secondary btn-sm" title="Bu kanala test mesajı gönder" data-ajax-action
+                                            data-url="@Url.Action("Test", new { id = channel.Id })">
+                                        @Icons.Render("bolt", "h-4 w-4") Test
+                                    </button>
+                                    <a asp-action="Edit" asp-route-id="@channel.Id" class="btn-ghost btn-sm" title="Kanalı düzenle">@Icons.Render("pencil", "h-4 w-4")</a>
+                                }
+                                <button type="button" class="btn-ghost-danger btn-sm" title="Kanalı sil; kurallardan çıkarılır" data-ajax-action
+                                        data-url="@Url.Action("Delete", new { id = channel.Id })"
+                                        data-confirm-title="Kanal silinsin mi?"
+                                        data-confirm-message="@channel.Name kanalı silinir ve bağlı olduğu @channel.RuleCount kural artık bu kanala bildirim göndermez. Gönderim geçmişi korunur."
+                                        data-confirm-label="Kanalı sil">
+                                    @Icons.Render("trash", "h-4 w-4")
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+<section class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">Son gönderimler</h2>
+    </div>
+    @if (Model.Deliveries.Count == 0)
+    {
+        <p class="panel-body text-sm text-slate-500">Henüz bildirim gönderilmedi.</p>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Zaman</th>
+                        <th>Kanal</th>
+                        <th>Tür</th>
+                        <th>Sonuç</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var delivery in Model.Deliveries)
+                    {
+                        <tr>
+                            <td class="whitespace-nowrap text-sm" title="@DateDisplay.Format(delivery.SentAt)">@DateDisplay.Relative(delivery.SentAt)</td>
+                            <td class="text-sm">@delivery.ChannelName</td>
+                            <td class="whitespace-nowrap text-sm">@AlertingDisplay.NotificationKindText(delivery.Kind)</td>
+                            <td class="text-sm">
+                                @if (delivery.IsSuccess)
+                                {
+                                    <span class="badge-success"><span class="badge-dot"></span>Gönderildi</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-danger"><span class="badge-dot"></span>Hata</span>
+                                    <span class="ml-1 text-xs text-slate-500">@delivery.Message</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

@@ -5,6 +5,7 @@
     var canAudit = User.HasPermission(Permissions.AuditView);
     var canPlugins = User.HasPermission(Permissions.PluginManage);
     var canDeployments = User.HasPermission(Permissions.DeploymentView);
+    var canAlerts = User.HasPermission(Permissions.AlertView);
 }
 <aside class="app-sidebar" data-sidebar>
     <div class="flex h-16 shrink-0 items-center gap-3 border-b border-slate-800 px-5">
@@ -55,9 +56,12 @@
         <partial name="_PluginMenuItems" model="MenuGroups.Operations" />
         <p class="nav-group">İzleme</p>
         <span class="nav-link is-disabled" title="Sunucu sayfasındaki Metrics sekmesinden kullanılabilir">@Icons.Render("chart") Metrikler <span class="nav-soon">Yakında</span></span>
-        <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("signal") Uptime <span class="nav-soon">Yakında</span></span>
-        <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("bell") Alarmlar <span class="nav-soon">Yakında</span></span>
-        <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("lock") SSL <span class="nav-soon">Yakında</span></span>
+        @if (canAlerts)
+        {
+            <a asp-controller="Uptime" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "Uptime")" title="Web siteleri ve portların erişilebilirlik kontrolleri">@Icons.Render("signal") Uptime</a>
+            <a asp-controller="Alerts" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "Alerts", "AlertRules", "NotificationChannels")" title="Açık alarmlar, alarm kuralları ve bildirim kanalları">@Icons.Render("bell") Alarmlar</a>
+            <a asp-controller="SslCertificates" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "SslCertificates")" title="SSL sertifikalarının bitiş tarihleri">@Icons.Render("lock") SSL</a>
+        }
 
         <partial name="_PluginMenuItems" model="MenuGroups.Monitoring" />
         <p class="nav-group">Yönetim</p>

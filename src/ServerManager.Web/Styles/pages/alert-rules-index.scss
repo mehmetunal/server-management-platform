@@ -1,0 +1,13 @@
+@use "alerting-shared";
+
+.rule-name {
+  @apply flex items-center gap-3;
+}
+
+.rule-icon {
+  @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400;
+}
+
+.rule-row-disabled td {
+  @apply opacity-60;
+}

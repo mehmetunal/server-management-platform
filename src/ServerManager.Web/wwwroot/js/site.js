@@ -1,5 +1,6 @@
 import { initTooltips } from './components/tooltip.js';
 import { showPendingFlash } from './core/notify.js';
+import { initAlertBell } from './layout/alert-bell.js';
 import { closeAllDropdowns, initDropdowns } from './layout/dropdowns.js';
 import { initLogout } from './layout/session.js';
 import { initSidebar } from './layout/sidebar.js';
@@ -11,3 +12,4 @@ initSidebar();
 initLogout();
 initTooltips();
 showPendingFlash();
+initAlertBell();

@@ -1,0 +1,22 @@
+@model UptimeCheckFormDto
+@{
+    ViewData["Title"] = "Uptime kontrolünü düzenle";
+    ViewData["Page"] = "uptime-form";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Details" asp-route-id="@Model.Id" class="back-link" title="Kontrol sayfasına dön">@Icons.Render("chevron-left", "h-4 w-4") @Model.Name</a>
+        <h1 class="page-title">Uptime kontrolünü düzenle</h1>
+        <p class="page-lead">Adres veya tür değişirse durum sıfırlanır ve yeni hedef baştan ölçülür.</p>
+    </div>
+</div>
+
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" data-uptime-form novalidate autocomplete="off">
+    <partial name="_UptimeForm" model="Model" />
+
+    <div class="form-actions">
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn-secondary" title="Kaydetmeden geri dön">İptal</a>
+        <button type="submit" class="btn-primary" title="Değişiklikleri kaydet"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+    </div>
+</form>

@@ -1,0 +1,41 @@
+@model SslIndexViewModel
+@{
+    ViewData["Title"] = "SSL sertifikaları";
+    ViewData["Page"] = "ssl-index";
+    var canManage = User.HasPermission(Permissions.AlertManage);
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">SSL sertifikaları</h1>
+        <p class="page-lead">Alan adlarının sertifikaları birkaç saatte bir okunur. Bitiş tarihi yaklaşınca 30, 15, 7, 3 ve 1 gün kala bildirim gönderilir.</p>
+    </div>
+    @if (canManage)
+    {
+        <a asp-action="Create" class="btn-primary" title="Sertifikası izlenecek alan adı ekle">@Icons.Render("plus", "h-4 w-4") Alan adı ekle</a>
+    }
+</div>
+
+<section class="panel">
+    <form method="get" asp-action="Index" class="panel-toolbar ssl-filters" data-list-filter>
+        <div class="search-field lg:col-span-2">
+            <span class="search-field-icon">@Icons.Render("search", "h-4 w-4")</span>
+            <input type="search" name="search" value="@Model.Filter.Search" class="form-control" placeholder="Alan adı, sertifika veya sunucu ara…" data-live-search aria-label="Sertifika ara" />
+        </div>
+        <select name="status" class="form-control" data-auto-submit aria-label="Durum">
+            <option value="">Tüm durumlar</option>
+            @foreach (var option in AlertingDisplay.SslStatusOptions(Model.Filter.Status))
+            {
+                <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+            }
+        </select>
+        <div class="ssl-filter-actions">
+            <button type="submit" class="btn-secondary btn-sm" title="Listeyi arama ve filtrelere göre süz">@Icons.Render("search", "h-4 w-4") Filtrele</button>
+            <a asp-action="Index" class="btn-ghost btn-sm" data-list-link title="Tüm filtreleri kaldır">Filtreleri temizle</a>
+        </div>
+    </form>
+
+    <div data-ajax-list>
+        <partial name="_SslList" model="Model" />
+    </div>
+</section>

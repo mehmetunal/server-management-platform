@@ -1,0 +1,2 @@
+/*! tailwindcss v4.3.3 | MIT License | https://tailwindcss.com */
+.rule-form-grid{gap:calc(var(--spacing,.25rem) * 6);grid-template-columns:repeat(1,minmax(0,1fr));display:grid}@media (min-width:80rem){.rule-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}.rule-channels{margin-top:calc(var(--spacing,.25rem) * 2);gap:calc(var(--spacing,.25rem) * 3);grid-template-columns:repeat(1,minmax(0,1fr));display:grid}@media (min-width:40rem){.rule-channels{grid-template-columns:repeat(2,minmax(0,1fr))}}

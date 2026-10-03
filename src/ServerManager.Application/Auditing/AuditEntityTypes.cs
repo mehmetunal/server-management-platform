@@ -6,4 +6,9 @@ public static class AuditEntityTypes
     public const string User = "User";
     public const string Plugin = "Plugin";
     public const string Project = "Project";
+    public const string AlertRule = "AlertRule";
+    public const string AlertEvent = "AlertEvent";
+    public const string NotificationChannel = "NotificationChannel";
+    public const string UptimeCheck = "UptimeCheck";
+    public const string SslMonitor = "SslMonitor";
 }

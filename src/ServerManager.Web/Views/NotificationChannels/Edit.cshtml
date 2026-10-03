@@ -1,0 +1,23 @@
+@model NotificationChannelFormDto
+@{
+    var provider = (NotificationProviderDto)ViewData[ServerManager.Web.Controllers.NotificationChannelsController.ProviderKey]!;
+    ViewData["Title"] = "Kanalı düzenle";
+    ViewData["Page"] = "notification-channel-form";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Kanal listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Bildirim kanalları</a>
+        <h1 class="page-title">@Model.Name</h1>
+        <p class="page-lead">@provider.DisplayName kanalı. Gizli alanları boş bırakırsanız kayıtlı değerler korunur.</p>
+    </div>
+</div>
+
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" data-channel-form novalidate autocomplete="off">
+    <partial name="_ChannelForm" model="Model" />
+
+    <div class="form-actions">
+        <a asp-action="Index" class="btn-secondary" title="Kaydetmeden listeye dön">İptal</a>
+        <button type="submit" class="btn-primary" title="Değişiklikleri kaydet"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+    </div>
+</form>

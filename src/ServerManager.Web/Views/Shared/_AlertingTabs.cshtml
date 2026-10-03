@@ -1,0 +1,13 @@
+@{
+    var controller = ViewContext.RouteData.Values["controller"] as string;
+    var canManage = User.HasPermission(Permissions.AlertManage);
+    string Active(string name) => string.Equals(controller, name, StringComparison.OrdinalIgnoreCase) ? "is-active" : string.Empty;
+}
+<nav class="tab-list alerting-tabs" aria-label="Alarm sayfaları">
+    <a asp-controller="Alerts" asp-action="Index" class="tab @Active("Alerts")" title="Açık ve kapanmış alarmlar">Alarmlar</a>
+    <a asp-controller="AlertRules" asp-action="Index" class="tab @Active("AlertRules")" title="Hangi durumda alarm üretileceğini belirleyen kurallar">Kurallar</a>
+    @if (canManage)
+    {
+        <a asp-controller="NotificationChannels" asp-action="Index" class="tab @Active("NotificationChannels")" title="E-posta, Telegram, Discord bildirim kanalları">Bildirim kanalları</a>
+    }
+</nav>

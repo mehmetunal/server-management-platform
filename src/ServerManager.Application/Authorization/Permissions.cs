@@ -35,6 +35,10 @@ public static class Permissions
     public const string DeploymentManage = "deployment.manage";
     public const string DeploymentExecute = "deployment.execute";
 
+    public const string AlertView = "alert.view";
+    public const string AlertAcknowledge = "alert.acknowledge";
+    public const string AlertManage = "alert.manage";
+
     public const string PluginManage = "plugin.manage";
 
     public const string UserManage = "user.manage";
@@ -68,6 +72,9 @@ public static class Permissions
         DeploymentView,
         DeploymentManage,
         DeploymentExecute,
+        AlertView,
+        AlertAcknowledge,
+        AlertManage,
         PluginManage,
         UserManage,
         AuditView
@@ -100,6 +107,9 @@ public static class Permissions
         [DeploymentView] = "Deployment projeleri, geçmişi ve logları görüntüleme",
         [DeploymentManage] = "Deployment projesi ekleme, düzenleme, silme (Git erişim anahtarı ve ortam değişkenleri dahil)",
         [DeploymentExecute] = "Deployment başlatma, iptal etme ve yeniden dağıtma",
+        [AlertView] = "Alarmlar, uptime kontrolleri ve SSL sertifikalarını görüntüleme",
+        [AlertAcknowledge] = "Alarmı üstlenme (görüldü olarak işaretleme)",
+        [AlertManage] = "Alarm kuralları, bildirim kanalları, uptime ve SSL kontrollerini yönetme",
         [PluginManage] = "Eklenti kurma, etkinleştirme ve devre dışı bırakma",
         [UserManage] = "Kullanıcı yönetimi",
         [AuditView] = "Audit log görüntüleme"

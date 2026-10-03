@@ -1,0 +1,17 @@
+@if (User.HasPermission(Permissions.AlertView))
+{
+    <div class="relative" data-dropdown data-alert-bell data-url="@Url.Action("Summary", "Alerts")" data-alerts-url="@Url.Action("Index", "Alerts")">
+        <button type="button" class="btn-ghost alert-bell-button" data-dropdown-toggle title="Açık alarmlar" aria-label="Açık alarmlar">
+            @Icons.Render("bell")
+            <span class="alert-bell-count" data-alert-bell-count hidden></span>
+        </button>
+        <div class="dropdown-menu alert-bell-menu" data-dropdown-menu hidden>
+            <div class="alert-bell-header">
+                <span class="font-semibold">Açık alarmlar</span>
+                <span class="text-xs text-slate-500" data-alert-bell-summary>Yükleniyor…</span>
+            </div>
+            <div class="alert-bell-list" data-alert-bell-list></div>
+            <a asp-controller="Alerts" asp-action="Index" class="alert-bell-footer" title="Tüm alarmları görüntüle">Tüm alarmlar</a>
+        </div>
+    </div>
+}

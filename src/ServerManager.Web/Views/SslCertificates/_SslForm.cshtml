@@ -1,0 +1,40 @@
+@model SslMonitorFormDto
+@{
+    var servers = ViewData[ServerManager.Web.Controllers.SslCertificatesController.ServerOptionsKey] as IReadOnlyList<ServerOptionDto> ?? [];
+}
+
+<p class="alert-error mb-6" data-form-error hidden></p>
+
+<section class="panel ssl-form">
+    <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-3">
+        <div class="sm:col-span-2">
+            <label asp-for="Host" class="form-label">Alan adı *</label>
+            <input asp-for="Host" class="form-control font-mono" maxlength="253" placeholder="example.com" />
+            <p class="form-hint">https:// ile yapıştırabilirsiniz; yalnızca alan adı saklanır.</p>
+            <span asp-validation-for="Host" class="field-validation-error"></span>
+        </div>
+        <div>
+            <label asp-for="Port" class="form-label">Port *</label>
+            <input asp-for="Port" type="number" min="1" max="65535" class="form-control" />
+            <span asp-validation-for="Port" class="field-validation-error"></span>
+        </div>
+        <div class="sm:col-span-3">
+            <label asp-for="ServerId" class="form-label">İlgili sunucu</label>
+            <select asp-for="ServerId" class="form-control">
+                <option value="">Yok</option>
+                @foreach (var server in servers)
+                {
+                    <option value="@server.Id" selected="@(server.Id == Model.ServerId)">@server.Name (@server.IpAddress)</option>
+                }
+            </select>
+            <span asp-validation-for="ServerId" class="field-validation-error"></span>
+        </div>
+        <label class="check-card sm:col-span-3">
+            <input asp-for="IsEnabled" type="checkbox" class="form-check" />
+            <span>
+                <span class="check-card-title">Etkin</span>
+                <span class="check-card-text">Durdurulan kayıtlar kontrol edilmez ve alarm üretmez.</span>
+            </span>
+        </label>
+    </div>
+</section>

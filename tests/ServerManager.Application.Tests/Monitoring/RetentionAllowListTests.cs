@@ -6,15 +6,37 @@ namespace ServerManager.Application.Tests.Monitoring;
 public class RetentionAllowListTests
 {
     [Theory]
-    [InlineData(RetentionTarget.RawMetrics, "ServerMetrics", "CollectedAt")]
-    [InlineData(RetentionTarget.HourlyMetrics, "ServerMetricsHourly", "HourStart")]
-    [InlineData(RetentionTarget.HealthChecks, "ServerHealthChecks", "CheckedAt")]
-    public void Resolves_only_temporary_monitoring_tables(RetentionTarget target, string table, string column)
+    [InlineData(RetentionTarget.RawMetrics, "ServerMetrics", "CollectedAt", "ServerId")]
+    [InlineData(RetentionTarget.HourlyMetrics, "ServerMetricsHourly", "HourStart", "ServerId")]
+    [InlineData(RetentionTarget.HealthChecks, "ServerHealthChecks", "CheckedAt", "ServerId")]
+    [InlineData(RetentionTarget.UptimeResults, "UptimeCheckResults", "CheckedAt", "CheckId")]
+    [InlineData(RetentionTarget.NotificationDeliveries, "NotificationDeliveries", "SentAt", "ChannelId")]
+    public void Resolves_only_temporary_monitoring_tables(RetentionTarget target, string table, string column, string partition)
     {
         var mapping = RetentionAllowList.Resolve(target);
 
         Assert.Equal(table, mapping.Table);
         Assert.Equal(column, mapping.TimeColumn);
+        Assert.Equal(partition, mapping.PartitionColumn);
+    }
+
+    [Theory]
+    [InlineData("UptimeChecks")]
+    [InlineData("SslMonitors")]
+    [InlineData("AlertRules")]
+    [InlineData("AlertEvents")]
+    [InlineData("NotificationChannels")]
+    public void Alerting_configuration_tables_are_never_deletable(string table)
+    {
+        Assert.Throws<InvalidOperationException>(() => RetentionAllowList.EnsureAllowed(table, "CheckedAt"));
+    }
+
+    [Theory]
+    [InlineData("Id")]
+    [InlineData("ServerId, 1")]
+    public void Throws_for_partition_columns_outside_allow_list(string partition)
+    {
+        Assert.Throws<InvalidOperationException>(() => RetentionAllowList.EnsureAllowed("UptimeCheckResults", "CheckedAt", partition));
     }
 
     [Theory]

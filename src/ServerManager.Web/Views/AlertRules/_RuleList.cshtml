@@ -1,0 +1,100 @@
+@model IReadOnlyList<AlertRuleListItemDto>
+@{
+    var canManage = User.HasPermission(Permissions.AlertManage);
+}
+
+@if (Model.Count == 0)
+{
+    <div class="empty-state">
+        <span class="empty-state-icon">@Icons.Render("bell", "h-6 w-6")</span>
+        <p class="empty-state-title">Kural yok</p>
+        <p>Alarm üretmek için bir kural ekleyin.</p>
+    </div>
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Kural</th>
+                    <th>Koşul</th>
+                    <th>Kapsam</th>
+                    <th>Bildirim</th>
+                    <th>Durum</th>
+                    <th class="text-right">İşlem</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var rule in Model)
+                {
+                    <tr class="@(rule.IsEnabled ? null : "rule-row-disabled")">
+                        <td>
+                            <div class="rule-name">
+                                <span class="rule-icon">@Icons.Render(AlertingDisplay.KindIcon(rule.Kind), "h-4 w-4")</span>
+                                <span>
+                                    <span class="block font-medium">@rule.Name</span>
+                                    <span class="text-xs text-slate-500">@AlertRuleKinds.DisplayName(rule.Kind)</span>
+                                </span>
+                            </div>
+                        </td>
+                        <td class="text-sm">
+                            <span class="@AlertingDisplay.SeverityBadgeClass(rule.Severity) mr-1">@AlertingDisplay.SeverityText(rule.Severity)</span>
+                            @rule.Condition
+                        </td>
+                        <td class="whitespace-nowrap text-sm">@(rule.ServerName ?? "Tüm sunucular")</td>
+                        <td class="text-sm">
+                            @if (rule.ChannelNames.Count == 0)
+                            {
+                                <span class="text-xs text-slate-500" title="Kanal bağlı değil; alarm yalnızca panelde görünür">Yalnızca panel</span>
+                            }
+                            else
+                            {
+                                @foreach (var channel in rule.ChannelNames)
+                                {
+                                    <span class="tag mr-1">@channel</span>
+                                }
+                            }
+                            <span class="mt-1 block text-xs text-slate-500">
+                                @(rule.NotifyRecovery ? "Düzelince bildir" : "Düzelme bildirimi yok")@(rule.RepeatIntervalMinutes > 0 ? $" · {rule.RepeatIntervalMinutes} dk'da bir hatırlat" : string.Empty)
+                            </span>
+                        </td>
+                        <td class="whitespace-nowrap">
+                            @if (rule.FiringCount > 0)
+                            {
+                                <a asp-controller="Alerts" asp-action="Index" asp-route-status="@((int)AlertEventStatus.Firing)" class="badge-danger" title="Bu kuralın açık alarmlarını göster"><span class="badge-dot"></span>@rule.FiringCount aktif</a>
+                            }
+                            else if (rule.IsEnabled)
+                            {
+                                <span class="badge-success"><span class="badge-dot"></span>Etkin</span>
+                            }
+                            else
+                            {
+                                <span class="badge-neutral"><span class="badge-dot"></span>Kapalı</span>
+                            }
+                        </td>
+                        <td class="text-right whitespace-nowrap">
+                            @if (canManage)
+                            {
+                                <button type="button" class="btn-ghost btn-sm" data-ajax-action
+                                        title="@(rule.IsEnabled ? "Kuralı devre dışı bırak; açık alarmları kapatılır" : "Kuralı etkinleştir")"
+                                        data-url="@Url.Action("Toggle", new { id = rule.Id })"
+                                        data-field-enabled="@((!rule.IsEnabled).ToString().ToLowerInvariant())">
+                                    @Icons.Render(rule.IsEnabled ? "pause" : "play", "h-4 w-4")
+                                </button>
+                                <a asp-action="Edit" asp-route-id="@rule.Id" class="btn-ghost btn-sm" title="Kuralı düzenle">@Icons.Render("pencil", "h-4 w-4")</a>
+                                <button type="button" class="btn-ghost-danger btn-sm" title="Kuralı sil; geçmiş alarmlar korunur" data-ajax-action
+                                        data-url="@Url.Action("Delete", new { id = rule.Id })"
+                                        data-confirm-title="Kural silinsin mi?"
+                                        data-confirm-message="@rule.Name kuralı silinir ve açık alarmları bir sonraki değerlendirmede kapatılır. Geçmiş alarm kayıtları korunur."
+                                        data-confirm-label="Kuralı sil">
+                                    @Icons.Render("trash", "h-4 w-4")
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

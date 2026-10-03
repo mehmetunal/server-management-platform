@@ -1,0 +1,13 @@
+@use "uptime-shared";
+
+.uptime-filters {
+  @apply lg:grid-cols-6;
+}
+
+.uptime-filter-actions {
+  @apply flex items-center gap-2 whitespace-nowrap sm:col-span-2;
+}
+
+.uptime-row-disabled td {
+  @apply opacity-60;
+}

@@ -1928,6 +1928,8 @@ görülebilmelidir.
 - SSL monitoring
 - Uptime
 
+> Durum: tamamlandı. Ayrıntılar için bkz. [Alarmlar ve izleme](#alarmlar-ve-izleme).
+
 ## Phase 8 — Backup
 
 - Docker volume backup
@@ -2459,10 +2461,10 @@ Testler veritabanına veya gerçek sunuculara bağlanmaz. `global.json` içinde 
 | Rol | İzinler |
 | --- | --- |
 | SuperAdmin | Tümü (eklenti yönetimi `plugin.manage` yalnızca SuperAdmin'dedir) |
-| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker, terminal, dosya ve deployment izinleri, audit log |
-| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal, sunucu terminali, dosya görüntüleme/oluşturma/düzenleme/yükleme/indirme, deployment görüntüleme/çalıştırma |
-| Developer | Dashboard, sunucu görüntüleme, Docker görüntüleme/yeniden başlatma, dosya görüntüleme/indirme, deployment görüntüleme/çalıştırma |
-| Viewer | Dashboard, sunucu görüntüleme, Docker görüntüleme, deployment görüntüleme |
+| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker, terminal, dosya ve deployment izinleri, alarm görüntüleme/üstlenme/yönetim, audit log |
+| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal, sunucu terminali, dosya görüntüleme/oluşturma/düzenleme/yükleme/indirme, deployment görüntüleme/çalıştırma, alarm görüntüleme/üstlenme |
+| Developer | Dashboard, sunucu görüntüleme, Docker görüntüleme/yeniden başlatma, dosya görüntüleme/indirme, deployment görüntüleme/çalıştırma, alarm görüntüleme |
+| Viewer | Dashboard, sunucu görüntüleme, Docker görüntüleme, deployment görüntüleme, alarm görüntüleme |
 
 İzinler `AspNetRoleClaims` tablosunda `permission` claim'i olarak tutulur. Seeder yalnızca eksik izinleri ekler; elle eklenmiş izinleri kaldırmaz. Eklentiler kendi izinlerini ve varsayılan rol dağılımını getirir; bunlar eklenti kurulurken ve her açılışta eksikse eklenir (Dokploy için bkz. [Dokploy](#dokploy)).
 
@@ -2496,7 +2498,7 @@ Durum kuralları:
 Saklama politikası (`MetricsMaintenanceWorker`):
 
 - Tamamlanmış saatler önce `ServerMetricsHourly` tablosuna özetlenir, ardından süresi dolan ham kayıtlar silinir. 1 saat – 24 saat grafikleri ham veriden, 7 gün ve 30 gün grafikleri saatlik özetten çizilir.
-- Silme yalnızca geçici metrik tablolarında (`ServerMetrics`, `ServerMetricsHourly`, `ServerHealthChecks`) çalışır; bu liste dışında bir tablo veya sütun istenirse işlem hata verip durur.
+- Silme yalnızca geçici tablolarda (`ServerMetrics`, `ServerMetricsHourly`, `ServerHealthChecks`, `UptimeCheckResults`, `NotificationDeliveries`) çalışır; bu liste dışında bir tablo, zaman sütunu veya gruplama sütunu istenirse işlem hata verip durur. Uptime ve bildirim kayıtlarının saklaması için bkz. [Alarmlar ve izleme](#alarmlar-ve-izleme).
 - Her sunucunun en son ölçümü ve son 50 sağlık kontrolü süre dolsa bile korunur. Sunucu, kullanıcı ve audit kayıtlarına dokunulmaz.
 - Silme 5000 satırlık partilerle yapılır; her çalışmanın özeti (özetlenen saat ve silinen kayıt sayıları) loglanır.
 
@@ -2694,6 +2696,85 @@ Güvenlik notları:
 | `DeployTimeoutMinutes` | `10` | Deploy adımının zaman aşımı |
 | `MaxStoredLogKilobytes` | `1024` | Deployment kaydında saklanan log (son kısım; çalışırken 10 saniyede bir kaydedilir) |
 
+### Alarmlar ve izleme
+
+Menüde **Alarmlar** (açık ve geçmiş alarmlar, kurallar, bildirim kanalları), **Uptime** ve **SSL Sertifikaları** sayfaları bulunur. Üst çubuktaki zil açık alarm sayısını gösterir.
+
+| İzin | Kapsam | Varsayılan roller |
+| --- | --- | --- |
+| `alert.view` | Alarmlar, uptime kontrolleri ve SSL sertifikalarını görüntüleme; zil | SuperAdmin, Admin, Operator, Developer, Viewer |
+| `alert.acknowledge` | Alarmı üstlenme (görüldü olarak işaretleme) | SuperAdmin, Admin, Operator |
+| `alert.manage` | Kurallar, bildirim kanalları, uptime ve SSL kontrollerini ekleme, düzenleme, silme; kanal testi, "Şimdi kontrol et" | SuperAdmin, Admin |
+
+**Kurallar.** Her kuralın türü, önem derecesi (Uyarı / Kritik), eşiği, süresi, isteğe bağlı sunucu kapsamı, bağlı kanalları, "düzelince bildir" seçeneği ve tekrar aralığı vardır. Türler: CPU, RAM, disk (en dolu bölüm), sunucu erişilemiyor, uptime kontrolü başarısız, SSL sertifikası süresi ve deployment başarısız. Metrik kuralları süre boyunca her ölçümde eşiğin aşılmasını bekler; tek bir anlık sıçrama alarm açmaz. `AlertEvaluationWorker` kuralları `EvaluationIntervalSeconds` aralığıyla (en az 15 sn) değerlendirir.
+
+İlk kurulumda kanal atanmamış varsayılan kurallar eklenir; bunlar yalnızca panelde (zil ve Alarmlar sayfası) görünür, bildirim göndermek için kurala kanal bağlanmalıdır:
+
+| Kural | Önem |
+| --- | --- |
+| CPU %90 üzerinde (5 dk) | Kritik |
+| RAM %90 üzerinde (5 dk) | Uyarı |
+| Disk %85 üzerinde / %95 üzerinde | Uyarı / Kritik |
+| Sunucu erişilemiyor (2 dk) | Kritik |
+| Uptime kontrolü başarısız (2 dk) | Kritik |
+| SSL sertifikası 30 günden az / 7 günden az | Uyarı / Kritik |
+| Deployment başarısız | Uyarı |
+
+**Alarm akışı.**
+
+- Koşul oluşunca alarm açılır ve kurala bağlı kanallara **Uyarı** veya **Kritik** bildirimi gider. Aynı kural ve hedef için aynı anda tek açık alarm olur.
+- Tekrar aralığı tanımlıysa alarm açık kaldıkça bu aralıkla hatırlatma gönderilir; `0` ise tek bildirim gider.
+- Koşul ortadan kalkınca alarm kapanır ve "düzelince bildir" açıksa **[Düzeldi]** bildirimi gönderilir. Hedef silinirse (sunucu, uptime kontrolü, SSL izleme) veya kural kapatılırsa açık alarm da kapanır.
+- SSL kuralları kalan güne göre 30, 15, 7, 3, 1 ve 0. günlerde bir kez daha bildirir; aynı adımda tekrar göndermez.
+- Bakımdaki sunucular için sunucu kuralları alarm açmaz.
+- Üstlenme bildirimi durdurmaz; alarmı kimin gördüğünü kaydeder. Alarm ve teslimat kayıtları geçmişte kalır, silinmez.
+
+**Zil.** 60 saniyede bir özet okunur; yeni alarmlar bildirim olarak gösterilir (kritikler hata rengiyle, en fazla 3 tane). Bu istekler `X-Background-Poll` başlığıyla gider ve oturum süresini uzatmaz; oturum düşerse sorgu durur.
+
+#### Bildirim kanalları
+
+Kanallar eklenti olarak gelir (`Notifications.Email`, `Notifications.Telegram`, `Notifications.Discord`); eklenti devre dışıysa kanal kaydı korunur, gönderim "eklenti etkin değil" hatasıyla başarısız olarak kaydedilir. Her kanalın etkin/pasif durumu ve en düşük önem derecesi vardır (ör. yalnızca kritikler); düzeldi bildirimi alarmın önemine göre aynı kanallara gider. Kanal ayarlarındaki gizli değerler (SMTP parolası, bot anahtarı, webhook adresi) `Security:MasterKey` ile şifrelenir, arayüzde geri gösterilmez ve düzenlemede boş bırakılırsa korunur. **Test gönder** düğmesi kanala örnek bir bildirim yollar. Her gönderim sonucu (başarılı/başarısız, hata metni) kanal sayfasında listelenir.
+
+| Kanal | Ayarlar | Notlar |
+| --- | --- | --- |
+| E-posta | SMTP sunucusu, port, güvenlik (Yok / STARTTLS / SSL), kullanıcı adı, parola, gönderen, alıcılar | MailKit ile gönderilir; adresler alan adı içermelidir |
+| Telegram | Bot anahtarı, sohbet kimliği | HTML biçimiyle gider; mesaj metni kaçışlanır |
+| Discord | Webhook adresi | Renkli embed (uyarı turuncu, kritik kırmızı, düzeldi yeşil); `@everyone` gibi bahsetmeler kapalıdır. Adres yalnızca `Discord:AllowedHosts` listesindeki sunuculara ve https ile gidebilir |
+
+Bildirim metni Türkçedir: önem, kural adı, hedef, değer/eşik ve açılış zamanı. `Alerting:PublicBaseUrl` doluysa alarma giden bağlantı eklenir.
+
+#### Uptime ve SSL
+
+- **Uptime:** HTTP(S) kontrolü kabul edilen durum kodlarına (ör. `200-299,301`) göre, TCP kontrolü porta bağlanabilmeye göre karar verir. Aralık en az `UptimeMinimumIntervalSeconds`, aynı anda en fazla `UptimeMaxConcurrency` kontrol çalışır. Detay sayfası 24 saat / 7 gün / 30 gün erişilebilirlik yüzdesini, ortalama yanıt süresini ve son 50 sonucu gösterir, 30 saniyede bir yenilenir.
+- **SSL:** sertifika `SslCheckIntervalHours` aralığıyla okunur; konu, veren, geçerlilik tarihleri ve kalan gün saklanır. Durumlar: Geçerli, Yakında doluyor (`SslExpiringDays`), Süresi dolmuş, Geçersiz (zincir veya ad uyuşmazlığı; neden Türkçe açıklanır), Erişilemiyor.
+- **Ağ koruması:** hedef adres çözüldükten sonra link-local (bulut metadata adresi `169.254.169.254` dahil), multicast ve belirsiz adresler reddedilir; bağlantı çözülen adrese yapılır, böylece DNS yeniden bağlama ile atlatılamaz. Loopback ve özel ağ adresleri (iç servisler için) izinlidir.
+- Silme kayıtları gizler (soft delete); geçmiş sonuçlar ve alarmlar korunur.
+
+**Saklama.** Bakım işi uptime sonuçlarını `UptimeResultRetentionDays`, bildirim teslimat kayıtlarını `DeliveryRetentionDays` gün sonra siler. Her uptime kontrolünün son 100 sonucu ve her kanalın son 50 teslimatı süre dolsa bile korunur. Silme, İzleme bölümünde anlatılan izin listesindeki tablolarla sınırlıdır; kurallar, kanallar, alarmlar, kontroller ve sertifika kayıtları silinmez.
+
+**Audit:** `alert_rule.create/update/delete`, `alert.acknowledge`, `notification_channel.create/update/delete/test`, `uptime_check.create/update/delete`, `ssl_monitor.create/update/delete`.
+
+| Anahtar (`Alerting:`) | Varsayılan | Açıklama |
+| --- | --- | --- |
+| `Enabled` | `true` | Değerlendirme, uptime ve SSL servislerini açar/kapatır |
+| `EvaluationIntervalSeconds` | `60` | Kural değerlendirme aralığı (en az 15 sn) |
+| `PublicBaseUrl` | boş | Bildirimlerdeki panel bağlantısı için dışarıdan görünen adres; boşsa bağlantı eklenmez |
+| `NotificationTimeoutSeconds` | `15` | Tek bir bildirim gönderiminin zaman aşımı |
+| `UptimeMinimumIntervalSeconds` | `30` | Uptime kontrolleri için izin verilen en kısa aralık |
+| `UptimeMaxConcurrency` | `8` | Aynı anda çalışan en fazla uptime kontrolü |
+| `UptimeResultRetentionDays` | `30` | Uptime sonuçlarının saklama süresi |
+| `SslCheckIntervalHours` | `6` | SSL sertifikalarının okunma aralığı |
+| `SslExpiringDays` | `30` | "Yakında doluyor" durumunun eşiği |
+| `DeliveryRetentionDays` | `90` | Bildirim teslimat kayıtlarının saklama süresi |
+
+| Anahtar | Varsayılan | Açıklama |
+| --- | --- | --- |
+| `Telegram:ApiUrl` | `https://api.telegram.org` | Telegram Bot API adresi |
+| `Discord:AllowedHosts` | `discord.com`, `discordapp.com`, `ptb.discord.com`, `canary.discord.com` | Webhook adresinin gidebileceği sunucular (`host` veya `host:port`); yapılandırmadaki değerler bu listeye eklenir |
+| `Discord:AllowHttp` | `false` | Yalnızca yerel test sunucusu için; üretimde açmayın |
+
+Yerel testte gerçek Telegram/Discord/SMTP yerine yerel sahte sunucular kullanın (`Telegram__ApiUrl`, `Discord__AllowedHosts__0`, `Discord__AllowHttp=true` ortam değişkenleri ve yerel bir SMTP portu); canlı sohbetlere veya kanallara test bildirimi göndermeyin.
+
 ### Eklentiler
 
 Sistem nopCommerce'teki plugin mantığıyla genişler: Dokploy, Dokku ve diğer DevOps araçları host'tan bağımsız birer eklentidir. Her eklenti `Plugins/{SystemName}/` klasöründe `plugin.json` tanımı, derlenmiş assembly'si (controller, derlenmiş Razor view'ları, servisler, migration'lar) ve `Content/` klasörüyle (CSS/JS) durur.
@@ -2715,12 +2796,17 @@ Sistem nopCommerce'teki plugin mantığıyla genişler: Dokploy, Dokku ve diğer
 | Anahtar (`Plugins:`) | Varsayılan | Açıklama |
 | --- | --- | --- |
 | `Directory` | `Plugins` | Eklenti klasörlerinin bulunduğu dizin (uygulama kök dizinine göre) |
-| `InstallOnStartup` | `["DevOps.Dokploy", "Git.GitHub"]` | Daha önce hiç kurulmamışsa açılışta otomatik kurulan eklentiler; sonradan devre dışı bırakılan eklenti yeniden etkinleştirilmez |
+| `InstallOnStartup` | `["DevOps.Dokploy", "Git.GitHub", "Notifications.Email", "Notifications.Telegram", "Notifications.Discord"]` | Daha önce hiç kurulmamışsa açılışta otomatik kurulan eklentiler; sonradan devre dışı bırakılan eklenti yeniden etkinleştirilmez |
+
+Tablo gerektirmeyen eklentilerde (bildirim kanalları gibi) migration adımı atlanır.
 
 | Eklenti | Grup | Durum |
 | --- | --- | --- |
 | `DevOps.Dokploy` | DevOps | Hazır (bkz. [Dokploy](#dokploy)) |
 | `Git.GitHub` | Git | Hazır (bkz. [GitHub App](#github-app)) |
+| `Notifications.Email` | Bildirim | Hazır (bkz. [Bildirim kanalları](#bildirim-kanalları)) |
+| `Notifications.Telegram` | Bildirim | Hazır (bkz. [Bildirim kanalları](#bildirim-kanalları)) |
+| `Notifications.Discord` | Bildirim | Hazır (bkz. [Bildirim kanalları](#bildirim-kanalları)) |
 | `DevOps.Dokku` | DevOps | Planlandı |
 | `Git.GitLab` | Git | Planlandı |
 

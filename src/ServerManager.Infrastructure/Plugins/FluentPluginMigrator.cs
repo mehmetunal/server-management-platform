@@ -25,6 +25,10 @@ public sealed class FluentPluginMigrator : IPluginMigrator
 
     public void MigrateUp(Assembly assembly)
     {
+        // FluentMigrator migration bulamayınca hata fırlatır; tablo gerektirmeyen eklentiler (bildirim kanalları) atlanır.
+        if (!HasMigrations(assembly))
+            return;
+
         using var provider = new ServiceCollection()
             .AddSingleton(_loggerFactory)
             .AddLogging()
@@ -42,5 +46,21 @@ public sealed class FluentPluginMigrator : IPluginMigrator
 
         runner.MigrateUp();
         _logger.LogInformation("Eklenti migration'ları uygulandı: {Assembly}", assembly.GetName().Name);
+    }
+
+    public static bool HasMigrations(Assembly assembly)
+    {
+        Type?[] types;
+        try
+        {
+            types = assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+            types = ex.Types;
+        }
+
+        return types.Any(t => t is { IsAbstract: false } && typeof(FluentMigrator.IMigration).IsAssignableFrom(t)
+                              && t.GetCustomAttribute<FluentMigrator.MigrationAttribute>() is not null);
     }
 }

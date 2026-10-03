@@ -1,0 +1,22 @@
+@model AlertRuleFormDto
+@{
+    ViewData["Title"] = "Kural ekle";
+    ViewData["Page"] = "alert-rule-form";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Kural listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Alarm kuralları</a>
+        <h1 class="page-title">Kural ekle</h1>
+        <p class="page-lead">Hangi durumda alarm açılacağını ve kimlere bildirileceğini seçin.</p>
+    </div>
+</div>
+
+<form asp-action="Create" method="post" data-rule-form novalidate autocomplete="off">
+    <partial name="_RuleForm" model="Model" />
+
+    <div class="form-actions">
+        <a asp-action="Index" class="btn-secondary" title="Kaydetmeden listeye dön">İptal</a>
+        <button type="submit" class="btn-primary" title="Kuralı kaydet; bir sonraki değerlendirmede devreye girer"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+    </div>
+</form>

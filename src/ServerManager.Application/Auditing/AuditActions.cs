@@ -53,6 +53,21 @@ public static class AuditActions
     public const string DeploymentComplete = "deployment.complete";
     public const string DeploymentCancel = "deployment.cancel";
 
+    public const string AlertRuleCreate = "alert_rule.create";
+    public const string AlertRuleUpdate = "alert_rule.update";
+    public const string AlertRuleDelete = "alert_rule.delete";
+    public const string AlertAcknowledge = "alert.acknowledge";
+    public const string NotificationChannelCreate = "notification_channel.create";
+    public const string NotificationChannelUpdate = "notification_channel.update";
+    public const string NotificationChannelDelete = "notification_channel.delete";
+    public const string NotificationChannelTest = "notification_channel.test";
+    public const string UptimeCheckCreate = "uptime_check.create";
+    public const string UptimeCheckUpdate = "uptime_check.update";
+    public const string UptimeCheckDelete = "uptime_check.delete";
+    public const string SslMonitorCreate = "ssl_monitor.create";
+    public const string SslMonitorUpdate = "ssl_monitor.update";
+    public const string SslMonitorDelete = "ssl_monitor.delete";
+
     public const string PluginInstall = "plugin.install";
     public const string PluginEnable = "plugin.enable";
     public const string PluginDisable = "plugin.disable";
@@ -109,6 +124,20 @@ public static class AuditActions
         [DeploymentStart] = "Deployment başlatıldı",
         [DeploymentComplete] = "Deployment tamamlandı",
         [DeploymentCancel] = "Deployment iptal edildi",
+        [AlertRuleCreate] = "Alarm kuralı ekleme",
+        [AlertRuleUpdate] = "Alarm kuralı güncelleme",
+        [AlertRuleDelete] = "Alarm kuralı silme",
+        [AlertAcknowledge] = "Alarm üstlenildi",
+        [NotificationChannelCreate] = "Bildirim kanalı ekleme",
+        [NotificationChannelUpdate] = "Bildirim kanalı güncelleme",
+        [NotificationChannelDelete] = "Bildirim kanalı silme",
+        [NotificationChannelTest] = "Test bildirimi",
+        [UptimeCheckCreate] = "Uptime kontrolü ekleme",
+        [UptimeCheckUpdate] = "Uptime kontrolü güncelleme",
+        [UptimeCheckDelete] = "Uptime kontrolü silme",
+        [SslMonitorCreate] = "SSL izleme ekleme",
+        [SslMonitorUpdate] = "SSL izleme güncelleme",
+        [SslMonitorDelete] = "SSL izleme silme",
         [PluginInstall] = "Eklenti kurulumu",
         [PluginEnable] = "Eklenti etkinleştirildi",
         [PluginDisable] = "Eklenti devre dışı bırakıldı",

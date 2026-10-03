@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PluginSystemName>Notifications.Email</PluginSystemName>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MailKit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ServerManager.Infrastructure\ServerManager.Infrastructure.csproj" Private="false" />
+    <ProjectReference Include="..\..\ServerManager.Web.Framework\ServerManager.Web.Framework.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ServerManager.Plugin.Notifications.Tests" />
+  </ItemGroup>
+
+  <!-- Yalnızca uygulamada bulunmayan e-posta kütüphaneleri eklenti klasörüne kopyalanır. -->
+  <Target Name="KeepOnlyMailPackagesInPluginOutput" AfterTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)"
+                               Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' And '%(ReferenceCopyLocalPaths.NuGetPackageId)' != 'MailKit' And '%(ReferenceCopyLocalPaths.NuGetPackageId)' != 'MimeKit' And '%(ReferenceCopyLocalPaths.NuGetPackageId)' != 'BouncyCastle.Cryptography'" />
+    </ItemGroup>
+  </Target>
+
+</Project>

@@ -1,0 +1,98 @@
+@model UptimeIndexViewModel
+@{
+    var canManage = User.HasPermission(Permissions.AlertManage);
+    var hasFilter = !string.IsNullOrWhiteSpace(Model.Filter.Search) || Model.Filter.Status.HasValue || Model.Filter.ServerId.HasValue;
+}
+
+@if (Model.Checks.Items.Count == 0)
+{
+    <div class="empty-state">
+        <span class="empty-state-icon">@Icons.Render("signal", "h-6 w-6")</span>
+        @if (hasFilter)
+        {
+            <p class="empty-state-title">Filtreye uyan kontrol bulunamadı</p>
+            <p>Arama kriterlerini değiştirmeyi deneyin.</p>
+        }
+        else
+        {
+            <p class="empty-state-title">Henüz uptime kontrolü yok</p>
+            <p>Bir web adresi (HTTP/HTTPS) veya TCP portu ekleyin; erişim süresi, yanıt süresi ve kesintiler kaydedilir.</p>
+            @if (canManage)
+            {
+                <a asp-action="Create" class="btn-primary btn-sm mt-3" title="HTTP adresi veya TCP portu için yeni kontrol ekle">@Icons.Render("plus", "h-4 w-4") Kontrol ekle</a>
+            }
+        }
+    </div>
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Kontrol</th>
+                    <th>Durum</th>
+                    <th>Uptime (24 sa)</th>
+                    <th>Yanıt</th>
+                    <th>Son kontrol</th>
+                    <th class="text-right">İşlem</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var check in Model.Checks.Items)
+                {
+                    <tr class="@(check.IsEnabled ? null : "uptime-row-disabled")">
+                        <td>
+                            <a asp-action="Details" asp-route-id="@check.Id" class="font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400" title="Kontrol geçmişini ve istatistikleri aç">@check.Name</a>
+                            <p class="uptime-target" title="@check.Target">@AlertingDisplay.UptimeTypeText(check.Type) · @check.Target</p>
+                            @if (check.ServerName is not null)
+                            {
+                                <span class="text-xs text-slate-500">@check.ServerName</span>
+                            }
+                        </td>
+                        <td class="whitespace-nowrap">
+                            @if (!check.IsEnabled)
+                            {
+                                <span class="badge-neutral"><span class="badge-dot"></span>Durduruldu</span>
+                            }
+                            else
+                            {
+                                <span class="@AlertingDisplay.UptimeStatusBadgeClass(check.Status)" title="@check.LastError"><span class="badge-dot"></span>@AlertingDisplay.UptimeStatusText(check.Status)</span>
+                                @if (check.Status == UptimeStatus.Down && check.StatusChangedAt is not null)
+                                {
+                                    <span class="block text-xs text-slate-500" title="@DateDisplay.Format(check.StatusChangedAt)">@AlertingDisplay.Duration(check.StatusChangedAt.Value, null) · @check.ConsecutiveFailures hata</span>
+                                }
+                            }
+                        </td>
+                        <td class="whitespace-nowrap">
+                            <span class="uptime-percent @AlertingDisplay.UptimeBarClass(check.UptimePercent24h)">@AlertingDisplay.Percent(check.UptimePercent24h)</span>
+                        </td>
+                        <td class="whitespace-nowrap text-sm">
+                            @AlertingDisplay.Milliseconds(check.LastResponseMs)
+                            @if (check.LastStatusCode is not null)
+                            {
+                                <span class="tag ml-1">@check.LastStatusCode</span>
+                            }
+                        </td>
+                        <td class="whitespace-nowrap text-sm">
+                            <span title="@DateDisplay.Format(check.LastCheckedAt)">@DateDisplay.Relative(check.LastCheckedAt, "Bekleniyor")</span>
+                            <span class="block text-xs text-slate-500">her @AlertingDisplay.Interval(check.IntervalSeconds)</span>
+                        </td>
+                        <td class="text-right whitespace-nowrap">
+                            @if (canManage)
+                            {
+                                <button type="button" class="btn-ghost btn-sm" title="Kontrolü şimdi çalıştır" data-ajax-action
+                                        data-url="@Url.Action("CheckNow", new { id = check.Id })">
+                                    @Icons.Render("refresh", "h-4 w-4")
+                                </button>
+                                <a asp-action="Edit" asp-route-id="@check.Id" class="btn-ghost btn-sm" title="Kontrolü düzenle">@Icons.Render("pencil", "h-4 w-4")</a>
+                            }
+                            <a asp-action="Details" asp-route-id="@check.Id" class="btn-ghost btn-sm" title="Detay">@Icons.Render("eye", "h-4 w-4")</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <partial name="_Pager" model="Model.ToPager()" />
+}

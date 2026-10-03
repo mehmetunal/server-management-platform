@@ -1,0 +1,2 @@
+/*! tailwindcss v4.3.3 | MIT License | https://tailwindcss.com */
+.channel-form{max-width:var(--container-4xl,56rem);gap:calc(var(--spacing,.25rem) * 6);grid-template-columns:repeat(1,minmax(0,1fr));display:grid}

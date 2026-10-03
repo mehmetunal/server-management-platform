@@ -1,0 +1,37 @@
+@model UptimeCheckDetailsDto
+@{
+    var check = Model.Check;
+    ViewData["Title"] = check.Name;
+    ViewData["Page"] = "uptime-details";
+    var canManage = User.HasPermission(Permissions.AlertManage);
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Uptime listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Uptime</a>
+        <h1 class="page-title">@check.Name</h1>
+        <p class="page-lead">@AlertingDisplay.UptimeTypeText(check.Type) · <span class="font-mono">@check.Target</span> · her @AlertingDisplay.Interval(check.IntervalSeconds) kontrol edilir.</p>
+    </div>
+    @if (canManage)
+    {
+        <div class="flex flex-wrap gap-2">
+            <button type="button" class="btn-secondary" title="Kontrolü şimdi çalıştır" data-ajax-action
+                    data-url="@Url.Action("CheckNow", new { id = check.Id })">
+                @Icons.Render("refresh", "h-4 w-4") Şimdi kontrol et
+            </button>
+            <a asp-action="Edit" asp-route-id="@check.Id" class="btn-secondary" title="Kontrolü düzenle">@Icons.Render("pencil", "h-4 w-4") Düzenle</a>
+            <button type="button" class="btn-ghost-danger" title="Kontrolü sil" data-ajax-action
+                    data-url="@Url.Action("Delete", new { id = check.Id })"
+                    data-confirm-title="Uptime kontrolü silinsin mi?"
+                    data-confirm-message="@check.Name kontrolü durdurulur ve listeden kaldırılır. Açık alarmı varsa kapatılır."
+                    data-confirm-label="Kontrolü sil"
+                    data-redirect>
+                @Icons.Render("trash", "h-4 w-4") Sil
+            </button>
+        </div>
+    }
+</div>
+
+<div data-uptime-details data-url="@Url.Action("Details", new { id = check.Id })" data-auto-refresh="30">
+    <partial name="_UptimeDetails" model="Model" />
+</div>

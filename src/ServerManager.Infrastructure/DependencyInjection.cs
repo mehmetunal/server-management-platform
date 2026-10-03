@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using ServerManager.Application.Alerting;
 using ServerManager.Application.Authorization;
 using ServerManager.Application.Deployments;
 using ServerManager.Application.Docker;
@@ -79,6 +80,12 @@ public static class DependencyInjection
         services.Configure<FileManagerOptions>(configuration.GetSection(FileManagerOptions.SectionName));
         services.Configure<PluginOptions>(configuration.GetSection(PluginOptions.SectionName));
         services.Configure<DeploymentOptions>(configuration.GetSection(DeploymentOptions.SectionName));
+        services.Configure<AlertingOptions>(configuration.GetSection(AlertingOptions.SectionName));
+
+        services.AddHttpClient(UptimeProbe.HttpClientName, UptimeProbe.ConfigureClient)
+            .ConfigurePrimaryHttpMessageHandler(UptimeProbe.CreateHandler);
+        services.AddSingleton<IUptimeProbe, UptimeProbe>();
+        services.AddSingleton<ISslCertificateProbe, TlsCertificateProbe>();
 
         services.AddSingleton<ISecretProtector, AesGcmSecretProtector>();
         services.AddSingleton<ISshConnectionTester, SshNetConnectionTester>();
@@ -97,6 +104,9 @@ public static class DependencyInjection
         services.AddScoped<ITerminalLogRepository, TerminalLogRepository>();
         services.AddScoped<IPluginRepository, PluginRepository>();
         services.AddScoped<IDeploymentRepository, DeploymentRepository>();
+        services.AddScoped<IAlertRepository, AlertRepository>();
+        services.AddScoped<IUptimeRepository, UptimeRepository>();
+        services.AddScoped<ISslCertificateRepository, SslCertificateRepository>();
 
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<IUserManagementService, UserManagementService>();

@@ -1,0 +1,22 @@
+@model SslMonitorFormDto
+@{
+    ViewData["Title"] = "SSL izleme ekle";
+    ViewData["Page"] = "ssl-form";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="SSL listesine dön">@Icons.Render("chevron-left", "h-4 w-4") SSL sertifikaları</a>
+        <h1 class="page-title">SSL izleme ekle</h1>
+        <p class="page-lead">Kaydettiğinizde sertifika hemen okunur; sonra birkaç saatte bir yeniden kontrol edilir.</p>
+    </div>
+</div>
+
+<form asp-action="Create" method="post" data-ssl-form novalidate autocomplete="off">
+    <partial name="_SslForm" model="Model" />
+
+    <div class="form-actions">
+        <a asp-action="Index" class="btn-secondary" title="Kaydetmeden listeye dön">İptal</a>
+        <button type="submit" class="btn-primary" title="Kaydet ve sertifikayı oku"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+    </div>
+</form>

@@ -1,0 +1,22 @@
+@model UptimeCheckFormDto
+@{
+    ViewData["Title"] = "Uptime kontrolü ekle";
+    ViewData["Page"] = "uptime-form";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Uptime listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Uptime</a>
+        <h1 class="page-title">Uptime kontrolü ekle</h1>
+        <p class="page-lead">Panel bu adrese düzenli aralıkla bağlanır; sonuçlar kaydedilir ve erişilemezse alarm kuralı devreye girer.</p>
+    </div>
+</div>
+
+<form asp-action="Create" method="post" data-uptime-form novalidate autocomplete="off">
+    <partial name="_UptimeForm" model="Model" />
+
+    <div class="form-actions">
+        <a asp-action="Index" class="btn-secondary" title="Kaydetmeden listeye dön">İptal</a>
+        <button type="submit" class="btn-primary" title="Kontrolü kaydet; ilk kontrol birkaç saniye içinde çalışır"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+    </div>
+</form>

@@ -1,0 +1,15 @@
+.ssl-filters {
+  @apply lg:grid-cols-5;
+}
+
+.ssl-filter-actions {
+  @apply flex items-center gap-2 whitespace-nowrap sm:col-span-2;
+}
+
+.ssl-row-disabled td {
+  @apply opacity-60;
+}
+
+.ssl-error {
+  @apply mt-1 max-w-xs text-xs text-red-600 dark:text-red-400;
+}

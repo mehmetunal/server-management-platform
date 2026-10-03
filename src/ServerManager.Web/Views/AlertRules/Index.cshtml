@@ -1,0 +1,23 @@
+@model IReadOnlyList<AlertRuleListItemDto>
+@{
+    ViewData["Title"] = "Alarm kuralları";
+    ViewData["Page"] = "alert-rules-index";
+    var canManage = User.HasPermission(Permissions.AlertManage);
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Alarm kuralları</h1>
+        <p class="page-lead">Her kural dakikada bir değerlendirilir. Bildirim almak için kurala en az bir bildirim kanalı bağlayın; kanalsız kurallar yalnızca panelde alarm açar.</p>
+    </div>
+    @if (canManage)
+    {
+        <a asp-action="Create" class="btn-primary" title="CPU, RAM, disk, offline, uptime, SSL veya deployment için yeni kural tanımla">@Icons.Render("plus", "h-4 w-4") Kural ekle</a>
+    }
+</div>
+
+<partial name="_AlertingTabs" />
+
+<section class="panel" data-ajax-list>
+    <partial name="_RuleList" model="Model" />
+</section>

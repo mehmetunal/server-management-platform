@@ -1,0 +1,88 @@
+@model AlertIndexViewModel
+@{
+    var canAcknowledge = User.HasPermission(Permissions.AlertAcknowledge);
+    var hasFilter = !string.IsNullOrWhiteSpace(Model.Filter.Search) || Model.Filter.Status.HasValue
+        || Model.Filter.Severity.HasValue || Model.Filter.ServerId.HasValue;
+}
+
+@if (Model.Events.Items.Count == 0)
+{
+    <div class="empty-state">
+        <span class="empty-state-icon">@Icons.Render("bell", "h-6 w-6")</span>
+        @if (hasFilter)
+        {
+            <p class="empty-state-title">Filtreye uyan alarm bulunamadı</p>
+            <p>Arama kriterlerini değiştirmeyi deneyin.</p>
+        }
+        else
+        {
+            <p class="empty-state-title">Henüz alarm yok</p>
+            <p>Kurallar her dakika değerlendirilir; eşik aşıldığında alarm burada görünür ve bağlı kanallara bildirim gider.</p>
+        }
+    </div>
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Alarm</th>
+                    <th>Hedef</th>
+                    <th>Durum</th>
+                    <th>Başlangıç</th>
+                    <th>Süre</th>
+                    <th class="text-right">İşlem</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var alert in Model.Events.Items)
+                {
+                    var firing = alert.Status == AlertEventStatus.Firing;
+                    <tr class="@(firing ? "alert-row-firing" : null)">
+                        <td>
+                            <div class="alert-title">
+                                <span class="@AlertingDisplay.SeverityBadgeClass(alert.Severity)"><span class="badge-dot"></span>@AlertingDisplay.SeverityText(alert.Severity)</span>
+                                <span class="font-medium">@alert.RuleName</span>
+                            </div>
+                            <p class="alert-message">@(firing ? alert.Message : alert.ResolvedMessage ?? alert.Message)</p>
+                        </td>
+                        <td>
+                            <span class="block">@alert.TargetName</span>
+                            @if (alert.ServerName is not null && alert.ServerName != alert.TargetName)
+                            {
+                                <span class="text-xs text-slate-500">@alert.ServerName</span>
+                            }
+                        </td>
+                        <td class="whitespace-nowrap">
+                            @if (firing)
+                            {
+                                <span class="badge-danger"><span class="badge-dot"></span>Aktif</span>
+                                @if (alert.AcknowledgedAt is not null)
+                                {
+                                    <span class="badge-neutral ml-1" title="@DateDisplay.Format(alert.AcknowledgedAt) tarihinde üstlenildi; hatırlatma gönderilmez">@Icons.Render("check-circle", "h-3.5 w-3.5") @alert.AcknowledgedBy</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="badge-success" title="@DateDisplay.Format(alert.ResolvedAt)"><span class="badge-dot"></span>Kapandı</span>
+                            }
+                        </td>
+                        <td class="whitespace-nowrap text-sm" title="@DateDisplay.Format(alert.StartedAt)">@DateDisplay.Relative(alert.StartedAt)</td>
+                        <td class="whitespace-nowrap text-sm">@AlertingDisplay.Duration(alert.StartedAt, alert.ResolvedAt)</td>
+                        <td class="text-right whitespace-nowrap">
+                            @if (firing && canAcknowledge && alert.AcknowledgedAt is null)
+                            {
+                                <button type="button" class="btn-secondary btn-sm" title="Alarmı üstlen: kapanana kadar hatırlatma bildirimi gönderilmez" data-ajax-action
+                                        data-url="@Url.Action("Acknowledge", new { id = alert.Id })">
+                                    @Icons.Render("check-circle", "h-4 w-4") Üstlen
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <partial name="_Pager" model="Model.ToPager()" />
+}
