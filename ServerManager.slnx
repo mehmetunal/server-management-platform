@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ServerManager.Domain/ServerManager.Domain.csproj" />
+    <Project Path="src/ServerManager.Application/ServerManager.Application.csproj" />
+    <Project Path="src/ServerManager.Infrastructure/ServerManager.Infrastructure.csproj" />
+    <Project Path="src/ServerManager.Web/ServerManager.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ServerManager.Application.Tests/ServerManager.Application.Tests.csproj" />
+  </Folder>
+</Solution>

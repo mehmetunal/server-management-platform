@@ -1,0 +1,135 @@
+@model ServerFormDto
+@{
+    var edit = Model as UpdateServerDto;
+    var isEdit = edit is not null;
+    var passwordType = ((int)AuthenticationType.Password).ToString();
+    var keyTypes = $"{(int)AuthenticationType.PrivateKey},{(int)AuthenticationType.PrivateKeyWithPassphrase}";
+    var passphraseType = ((int)AuthenticationType.PrivateKeyWithPassphrase).ToString();
+    string KeepHint(bool exists) => isEdit && exists ? "Kayıtlı değer var. Değiştirmek istemiyorsanız boş bırakın." : string.Empty;
+}
+
+<div asp-validation-summary="All" class="validation-summary-errors"></div>
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <div class="space-y-6 xl:col-span-2">
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Genel bilgiler</h2></div>
+            <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                    <label asp-for="Name" class="form-label">Sunucu adı *</label>
+                    <input asp-for="Name" class="form-control" placeholder="Production-01" maxlength="128" />
+                    <span asp-validation-for="Name" class="field-validation-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Hostname" class="form-label">Hostname *</label>
+                    <input asp-for="Hostname" class="form-control" placeholder="web-01.example.com" maxlength="255" />
+                    <span asp-validation-for="Hostname" class="field-validation-error"></span>
+                </div>
+                <div>
+                    <label asp-for="IpAddress" class="form-label">IP adresi *</label>
+                    <input asp-for="IpAddress" class="form-control font-mono" placeholder="203.0.113.10" maxlength="45" />
+                    <span asp-validation-for="IpAddress" class="field-validation-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Environment" class="form-label">Ortam *</label>
+                    <select asp-for="Environment" class="form-control" asp-items="ServerDisplay.EnvironmentOptions(Model.Environment)"></select>
+                    <span asp-validation-for="Environment" class="field-validation-error"></span>
+                </div>
+                <div>
+                    <label asp-for="OperatingSystem" class="form-label">İşletim sistemi</label>
+                    <input asp-for="OperatingSystem" class="form-control" placeholder="Ubuntu 24.04 LTS" maxlength="128" />
+                    <p class="form-hint">Boş bırakılırsa ilk başarılı bağlantı testinde otomatik doldurulur.</p>
+                    <span asp-validation-for="OperatingSystem" class="field-validation-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Provider" class="form-label">Provider</label>
+                    <input asp-for="Provider" class="form-control" placeholder="Hetzner, AWS, DigitalOcean…" maxlength="128" />
+                    <span asp-validation-for="Provider" class="field-validation-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Location" class="form-label">Lokasyon</label>
+                    <input asp-for="Location" class="form-control" placeholder="Frankfurt, İstanbul…" maxlength="128" />
+                    <span asp-validation-for="Location" class="field-validation-error"></span>
+                </div>
+                <div class="sm:col-span-2">
+                    <label asp-for="Tags" class="form-label">Etiketler</label>
+                    <input asp-for="Tags" class="form-control font-mono" placeholder="production, web, eu" />
+                    <p class="form-hint">Virgülle ayırın. Küçük harf, rakam, nokta, alt çizgi ve tire kullanılabilir.</p>
+                    <span asp-validation-for="Tags" class="field-validation-error"></span>
+                </div>
+                <div class="sm:col-span-2">
+                    <label asp-for="Description" class="form-label">Açıklama</label>
+                    <textarea asp-for="Description" class="form-control" rows="3" maxlength="1000"></textarea>
+                    <span asp-validation-for="Description" class="field-validation-error"></span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="space-y-6">
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">SSH bağlantısı</h2></div>
+            <div class="panel-body space-y-5">
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="col-span-2">
+                        <label asp-for="Username" class="form-label">Kullanıcı adı *</label>
+                        <input asp-for="Username" class="form-control font-mono" placeholder="deploy" autocomplete="off" maxlength="64" />
+                        <span asp-validation-for="Username" class="field-validation-error"></span>
+                    </div>
+                    <div>
+                        <label asp-for="SshPort" class="form-label">Port *</label>
+                        <input asp-for="SshPort" type="number" min="1" max="65535" class="form-control font-mono" />
+                        <span asp-validation-for="SshPort" class="field-validation-error"></span>
+                    </div>
+                </div>
+
+                <div>
+                    <label asp-for="AuthenticationType" class="form-label">Kimlik doğrulama *</label>
+                    <select asp-for="AuthenticationType" class="form-control" data-auth-type asp-items="ServerDisplay.AuthenticationTypeOptions(Model.AuthenticationType)"></select>
+                    <span asp-validation-for="AuthenticationType" class="field-validation-error"></span>
+                </div>
+
+                <div data-auth-field="@passwordType">
+                    <label asp-for="Password" class="form-label">SSH parolası</label>
+                    <input asp-for="Password" type="password" class="form-control" autocomplete="new-password" />
+                    <p class="form-hint">@KeepHint(edit?.HasPassword == true)</p>
+                    <span asp-validation-for="Password" class="field-validation-error"></span>
+                </div>
+
+                <div data-auth-field="@keyTypes">
+                    <label asp-for="PrivateKey" class="form-label">Private key</label>
+                    <textarea asp-for="PrivateKey" class="form-control form-control-mono" rows="6" spellcheck="false" autocomplete="off" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea>
+                    <p class="form-hint">@(KeepHint(edit?.HasPrivateKey == true)) Anahtar şifreli saklanır ve hiçbir zaman geri gösterilmez.</p>
+                    <span asp-validation-for="PrivateKey" class="field-validation-error"></span>
+                </div>
+
+                <div data-auth-field="@passphraseType">
+                    <label asp-for="Passphrase" class="form-label">Passphrase</label>
+                    <input asp-for="Passphrase" type="password" class="form-control" autocomplete="new-password" />
+                    <p class="form-hint">@KeepHint(edit?.HasPassphrase == true)</p>
+                    <span asp-validation-for="Passphrase" class="field-validation-error"></span>
+                </div>
+
+                <label class="flex items-start gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                    <input asp-for="UseSudo" type="checkbox" class="form-check mt-0.5" data-use-sudo />
+                    <span>
+                        <span class="block text-sm font-medium text-slate-800 dark:text-slate-200">Sudo kullanıcı</span>
+                        <span class="block text-xs text-slate-500">Root yerine sudo yetkili normal kullanıcı önerilir.</span>
+                    </span>
+                </label>
+
+                <div data-sudo-field>
+                    <label asp-for="SudoPassword" class="form-label">Sudo parolası</label>
+                    <input asp-for="SudoPassword" type="password" class="form-control" autocomplete="new-password" />
+                    <p class="form-hint">@(KeepHint(edit?.HasSudoPassword == true)) NOPASSWD tanımlıysa boş bırakın.</p>
+                    <span asp-validation-for="SudoPassword" class="field-validation-error"></span>
+                </div>
+            </div>
+        </section>
+
+        <div class="alert-info flex gap-3">
+            @Icons.Render("lock", "h-5 w-5 shrink-0")
+            <p>Parola ve anahtarlar AES-256-GCM ile şifrelenerek saklanır; loglanmaz ve dışa aktarılamaz.</p>
+        </div>
+    </div>
+</div>

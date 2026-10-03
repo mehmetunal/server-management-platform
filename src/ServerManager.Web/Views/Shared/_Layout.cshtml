@@ -1,0 +1,76 @@
+@{
+    var title = ViewData["Title"] as string;
+    var userName = User.Identity?.Name;
+    var roleName = Roles.All.FirstOrDefault(r => User.IsInRole(r));
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>@(string.IsNullOrEmpty(title) ? "Server Manager" : $"{title} · Server Manager")</title>
+    <partial name="_ThemeScript" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    @Html.AntiForgeryToken()
+    <div class="app-shell">
+        <partial name="_Sidebar" />
+        <div class="app-overlay" data-sidebar-overlay></div>
+
+        <div class="app-main">
+            <header class="app-topbar">
+                <button type="button" class="btn-ghost lg:hidden" data-sidebar-toggle aria-label="Menüyü aç">
+                    @Icons.Render("menu")
+                </button>
+
+                <div class="min-w-0 flex-1">
+                    @if (!string.IsNullOrEmpty(title))
+                    {
+                        <p class="truncate text-sm font-medium text-slate-500 dark:text-slate-400">@title</p>
+                    }
+                </div>
+
+                <div class="relative" data-dropdown>
+                    <button type="button" class="btn-ghost" data-dropdown-toggle aria-label="Tema seç">
+                        <span data-theme-icon="light" hidden>@Icons.Render("sun")</span>
+                        <span data-theme-icon="dark" hidden>@Icons.Render("moon")</span>
+                        <span data-theme-icon="system">@Icons.Render("desktop")</span>
+                    </button>
+                    <div class="dropdown-menu w-40" data-dropdown-menu hidden>
+                        <button type="button" class="dropdown-item" data-theme-value="light">@Icons.Render("sun", "h-4 w-4") Açık</button>
+                        <button type="button" class="dropdown-item" data-theme-value="dark">@Icons.Render("moon", "h-4 w-4") Koyu</button>
+                        <button type="button" class="dropdown-item" data-theme-value="system">@Icons.Render("desktop", "h-4 w-4") Sistem</button>
+                    </div>
+                </div>
+
+                <div class="relative" data-dropdown>
+                    <button type="button" class="flex items-center gap-2 rounded-xl px-2 py-1.5 text-left transition hover:bg-slate-100 dark:hover:bg-slate-800" data-dropdown-toggle>
+                        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold uppercase text-white">@(userName?.FirstOrDefault() ?? '?')</span>
+                        <span class="hidden min-w-0 sm:block">
+                            <span class="block max-w-[12rem] truncate text-sm font-medium text-slate-800 dark:text-slate-100">@userName</span>
+                            <span class="block text-xs text-slate-500 dark:text-slate-400">@roleName</span>
+                        </span>
+                        @Icons.Render("chevron-down", "hidden h-4 w-4 text-slate-400 sm:block")
+                    </button>
+                    <div class="dropdown-menu" data-dropdown-menu hidden>
+                        <div class="border-b border-slate-100 px-4 py-2 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:hidden">@userName</div>
+                        <form asp-controller="Account" asp-action="Logout" method="post">
+                            <button type="submit" class="dropdown-item text-red-600 dark:text-red-400">@Icons.Render("logout", "h-4 w-4") Çıkış yap</button>
+                        </form>
+                    </div>
+                </div>
+            </header>
+
+            <main class="app-content">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <partial name="_Toasts" />
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

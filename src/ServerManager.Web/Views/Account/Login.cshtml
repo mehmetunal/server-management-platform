@@ -1,0 +1,37 @@
+@model LoginDto
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Giriş";
+}
+<div class="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl backdrop-blur sm:p-8">
+    <h2 class="text-lg font-semibold text-white">Oturum aç</h2>
+    <p class="mt-1 text-sm text-slate-400">Devam etmek için hesabınızla giriş yapın.</p>
+
+    <form asp-action="Login" method="post" class="mt-6 space-y-5" data-loading novalidate>
+        <div asp-validation-summary="ModelOnly" class="validation-summary-errors"></div>
+        <input type="hidden" asp-for="ReturnUrl" />
+
+        <div>
+            <label asp-for="Email" class="form-label text-slate-300">E-posta</label>
+            <input asp-for="Email" type="email" class="form-control" autocomplete="username" autofocus placeholder="ornek@firma.com" />
+            <span asp-validation-for="Email" class="field-validation-error"></span>
+        </div>
+
+        <div>
+            <label asp-for="Password" class="form-label text-slate-300">Parola</label>
+            <input asp-for="Password" type="password" class="form-control" autocomplete="current-password" />
+            <span asp-validation-for="Password" class="field-validation-error"></span>
+        </div>
+
+        <label class="flex items-center gap-2 text-sm text-slate-300">
+            <input asp-for="RememberMe" type="checkbox" class="form-check" />
+            Beni hatırla
+        </label>
+
+        <button type="submit" class="btn-primary w-full">
+            <span class="spinner" data-spinner hidden></span>
+            Giriş yap
+        </button>
+    </form>
+</div>
+<p class="mt-6 text-center text-xs text-slate-500">Tüm giriş denemeleri audit log'a kaydedilir.</p>

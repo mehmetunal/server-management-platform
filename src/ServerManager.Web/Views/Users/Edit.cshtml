@@ -1,0 +1,57 @@
+@model UpdateUserDto
+@{
+    ViewData["Title"] = $"{Model.Email} · Düzenle";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">@Icons.Render("chevron-left", "h-4 w-4") Kullanıcılar</a>
+        <h1 class="page-title">Kullanıcıyı düzenle</h1>
+        <p class="page-lead">@Model.Email</p>
+    </div>
+</div>
+
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="panel max-w-2xl" data-loading novalidate autocomplete="off">
+    <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div asp-validation-summary="ModelOnly" class="validation-summary-errors sm:col-span-2"></div>
+        <div>
+            <label asp-for="Email" class="form-label">E-posta *</label>
+            <input asp-for="Email" type="email" class="form-control" autocomplete="off" />
+            <span asp-validation-for="Email" class="field-validation-error"></span>
+        </div>
+        <div>
+            <label asp-for="FullName" class="form-label">Ad soyad</label>
+            <input asp-for="FullName" class="form-control" />
+            <span asp-validation-for="FullName" class="field-validation-error"></span>
+        </div>
+        <div class="sm:col-span-2">
+            <label for="Role" class="form-label">Rol *</label>
+            <partial name="_RoleSelect" model="Model.Role" />
+            <span asp-validation-for="Role" class="field-validation-error"></span>
+        </div>
+        <label class="flex items-start gap-3 rounded-xl border border-slate-200 p-3 sm:col-span-2 dark:border-slate-700">
+            <input asp-for="IsActive" type="checkbox" class="form-check mt-0.5" />
+            <span>
+                <span class="block text-sm font-medium text-slate-800 dark:text-slate-200">Aktif</span>
+                <span class="block text-xs text-slate-500">Pasif kullanıcılar giriş yapamaz; açık oturumları en geç 1 dakika içinde sonlanır.</span>
+            </span>
+        </label>
+
+        <p class="form-section-title sm:col-span-2">Parola sıfırlama (isteğe bağlı)</p>
+        <div>
+            <label asp-for="NewPassword" class="form-label">Yeni parola</label>
+            <input asp-for="NewPassword" type="password" class="form-control" autocomplete="new-password" />
+            <p class="form-hint">Değiştirmek istemiyorsanız boş bırakın.</p>
+            <span asp-validation-for="NewPassword" class="field-validation-error"></span>
+        </div>
+        <div>
+            <label asp-for="ConfirmNewPassword" class="form-label">Yeni parola (tekrar)</label>
+            <input asp-for="ConfirmNewPassword" type="password" class="form-control" autocomplete="new-password" />
+            <span asp-validation-for="ConfirmNewPassword" class="field-validation-error"></span>
+        </div>
+    </div>
+    <div class="flex justify-end gap-3 border-t border-slate-200 px-6 py-4 dark:border-slate-800">
+        <a asp-action="Index" class="btn-secondary">İptal</a>
+        <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+    </div>
+</form>

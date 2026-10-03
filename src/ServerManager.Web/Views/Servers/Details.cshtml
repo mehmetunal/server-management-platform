@@ -1,0 +1,182 @@
+@model ServerDetailsDto
+@{
+    ViewData["Title"] = Model.Name;
+    var canEdit = User.HasPermission(Permissions.ServerEdit);
+    var canDelete = User.HasPermission(Permissions.ServerDelete);
+    var canConnect = User.HasPermission(Permissions.ServerConnect);
+    var tabs = new[] { "Metrics", "Docker", "Terminal", "Files", "Services", "Processes", "Logs", "Network", "Storage", "Security", "Deployments", "Backups", "Alerts", "Activity" };
+}
+
+<div class="page-header">
+    <div class="min-w-0">
+        <a asp-action="Index" class="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">@Icons.Render("chevron-left", "h-4 w-4") Sunucular</a>
+        <div class="flex flex-wrap items-center gap-3">
+            <h1 class="page-title truncate">@Model.Name</h1>
+            <span class="@ServerDisplay.StatusBadgeClass(Model.Status)"><span class="badge-dot"></span>@ServerDisplay.StatusText(Model.Status)</span>
+            <span class="@ServerDisplay.EnvironmentBadgeClass(Model.Environment)">@ServerDisplay.EnvironmentText(Model.Environment)</span>
+        </div>
+        <p class="page-lead font-mono">@Model.Username@@@Model.IpAddress:@Model.SshPort · @(Model.OperatingSystem ?? "İşletim sistemi bilinmiyor")</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        @if (canConnect)
+        {
+            <button type="button" class="btn-primary" data-connection-test data-url="@Url.Action("TestConnection", new { id = Model.Id })" data-result-target="#connection-test-result">
+                <span class="spinner" data-spinner hidden></span>
+                @Icons.Render("bolt", "h-4 w-4")
+                <span data-label>Bağlantıyı Test Et</span>
+            </button>
+        }
+        @if (canEdit)
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn-secondary">@Icons.Render("pencil", "h-4 w-4") Düzenle</a>
+        }
+        @if (canDelete)
+        {
+            <button type="button" class="btn-ghost text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950" data-modal-open="delete-server-modal">@Icons.Render("trash", "h-4 w-4") Sil</button>
+        }
+    </div>
+</div>
+
+<div id="connection-test-result" class="mb-6" hidden></div>
+
+<div class="tab-list mb-6">
+    <span class="tab is-active">Overview</span>
+    @foreach (var tab in tabs)
+    {
+        <span class="tab is-disabled" title="Sonraki fazda etkinleşecek">@tab</span>
+    }
+</div>
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <div class="space-y-6 xl:col-span-2">
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Sunucu bilgileri</h2></div>
+            <dl class="panel-body detail-list">
+                <div><dt class="detail-term">Hostname</dt><dd class="detail-value font-mono">@Model.Hostname</dd></div>
+                <div><dt class="detail-term">IP adresi</dt><dd class="detail-value font-mono">@Model.IpAddress</dd></div>
+                <div><dt class="detail-term">SSH port</dt><dd class="detail-value font-mono">@Model.SshPort</dd></div>
+                <div><dt class="detail-term">Kullanıcı</dt><dd class="detail-value font-mono">@Model.Username @(Model.UseSudo ? "(sudo)" : "")</dd></div>
+                <div><dt class="detail-term">Provider</dt><dd class="detail-value">@(Model.Provider ?? "—")</dd></div>
+                <div><dt class="detail-term">Lokasyon</dt><dd class="detail-value">@(Model.Location ?? "—")</dd></div>
+                <div><dt class="detail-term">İşletim sistemi</dt><dd class="detail-value">@(Model.OperatingSystem ?? "—")</dd></div>
+                <div><dt class="detail-term">Ortam</dt><dd class="detail-value">@ServerDisplay.EnvironmentText(Model.Environment)</dd></div>
+                <div class="sm:col-span-2">
+                    <dt class="detail-term">Etiketler</dt>
+                    <dd class="detail-value flex flex-wrap gap-1">
+                        @if (Model.Tags.Count == 0)
+                        {
+                            <span class="text-slate-400">—</span>
+                        }
+                        @foreach (var tag in Model.Tags)
+                        {
+                            <a asp-action="Index" asp-route-tag="@tag" class="tag">@tag</a>
+                        }
+                    </dd>
+                </div>
+                @if (!string.IsNullOrEmpty(Model.Description))
+                {
+                    <div class="sm:col-span-2"><dt class="detail-term">Açıklama</dt><dd class="detail-value whitespace-pre-line">@Model.Description</dd></div>
+                }
+            </dl>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Kaynak kullanımı</h2></div>
+            <div class="empty-state">
+                <span class="empty-state-icon">@Icons.Render("chart", "h-6 w-6")</span>
+                <p class="font-medium text-slate-700 dark:text-slate-200">CPU, RAM, disk ve network metrikleri henüz toplanmıyor</p>
+                <p>Metrik toplama Phase 2 (Monitoring) ile etkinleşecek.</p>
+            </div>
+        </section>
+    </div>
+
+    <div class="space-y-6">
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Bağlantı durumu</h2></div>
+            <dl class="panel-body space-y-4">
+                <div>
+                    <dt class="detail-term">Son test</dt>
+                    <dd class="detail-value">
+                        @if (Model.LastConnectionTestAt.HasValue)
+                        {
+                            <span class="@(Model.LastConnectionSucceeded == true ? "badge-success" : "badge-danger")">@(Model.LastConnectionSucceeded == true ? "Başarılı" : "Başarısız")</span>
+                            <span class="ml-2 text-xs text-slate-500">@DateDisplay.Format(Model.LastConnectionTestAt)</span>
+                        }
+                        else
+                        {
+                            <span class="text-slate-400">Henüz test edilmedi</span>
+                        }
+                    </dd>
+                </div>
+                @if (!string.IsNullOrEmpty(Model.LastConnectionMessage))
+                {
+                    <div><dt class="detail-term">Sonuç</dt><dd class="detail-value text-slate-600 dark:text-slate-300">@Model.LastConnectionMessage</dd></div>
+                }
+                <div>
+                    <dt class="detail-term">Host key fingerprint</dt>
+                    <dd class="detail-value break-all font-mono text-xs">@(Model.HostKeyFingerprint ?? "İlk başarılı bağlantıda kaydedilecek")</dd>
+                </div>
+            </dl>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Kimlik bilgileri</h2></div>
+            <dl class="panel-body space-y-4">
+                <div><dt class="detail-term">Yöntem</dt><dd class="detail-value">@ServerDisplay.AuthenticationTypeText(Model.AuthenticationType)</dd></div>
+                @if (Model.AuthenticationType == AuthenticationType.Password)
+                {
+                    <div><dt class="detail-term">SSH parolası</dt><dd class="detail-value font-mono">@(Model.HasPassword ? "••••••••••" : "Tanımlı değil")</dd></div>
+                }
+                else
+                {
+                    <div><dt class="detail-term">Private key</dt><dd class="detail-value font-mono">@(Model.HasPrivateKey ? "•••••••••• (şifreli)" : "Tanımlı değil")</dd></div>
+                    @if (Model.AuthenticationType == AuthenticationType.PrivateKeyWithPassphrase)
+                    {
+                        <div><dt class="detail-term">Passphrase</dt><dd class="detail-value font-mono">@(Model.HasPassphrase ? "••••••••••" : "Tanımlı değil")</dd></div>
+                    }
+                }
+                @if (Model.UseSudo)
+                {
+                    <div><dt class="detail-term">Sudo parolası</dt><dd class="detail-value font-mono">@(Model.HasSudoPassword ? "••••••••••" : "NOPASSWD / tanımlı değil")</dd></div>
+                }
+            </dl>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Kayıt bilgisi</h2></div>
+            <dl class="panel-body space-y-4">
+                <div><dt class="detail-term">Oluşturulma</dt><dd class="detail-value">@DateDisplay.Format(Model.CreatedAt) · @(Model.CreatedBy ?? "—")</dd></div>
+                <div><dt class="detail-term">Son güncelleme</dt><dd class="detail-value">@DateDisplay.Format(Model.UpdatedAt) @(Model.UpdatedBy is null ? "" : $"· {Model.UpdatedBy}")</dd></div>
+            </dl>
+        </section>
+    </div>
+</div>
+
+@if (canDelete)
+{
+    <div id="delete-server-modal" class="modal-backdrop" data-modal hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-server-title">
+            <form asp-action="Delete" asp-route-id="@Model.Id" method="post">
+                <div class="p-6">
+                    <div class="flex items-start gap-4">
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400">@Icons.Render("warning", "h-5 w-5")</span>
+                        <div>
+                            <h2 id="delete-server-title" class="text-base font-semibold">Sunucuyu sil</h2>
+                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                                <strong class="text-slate-800 dark:text-slate-200">@Model.Name</strong> sunucusunu silmek üzeresiniz. Sunucu listeden kaldırılır ve panelden yönetilemez. Audit kayıtları korunur.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="mt-5">
+                        <label for="confirmationName" class="form-label">Onaylamak için sunucu adını yazın: <span class="font-mono text-red-600 dark:text-red-400">@Model.Name</span></label>
+                        <input id="confirmationName" name="confirmationName" class="form-control" autocomplete="off" data-confirm-input data-confirm-value="@Model.Name" />
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 border-t border-slate-200 px-6 py-4 dark:border-slate-800">
+                    <button type="button" class="btn-secondary" data-modal-close>Vazgeç</button>
+                    <button type="submit" class="btn-danger" data-confirm-submit disabled>@Icons.Render("trash", "h-4 w-4") Sunucuyu sil</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}

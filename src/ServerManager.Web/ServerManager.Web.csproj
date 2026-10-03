@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <UserSecretsId>server-manager-web-7c1f2e4a</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ServerManager.Application\ServerManager.Application.csproj" />
+    <ProjectReference Include="..\ServerManager.Infrastructure\ServerManager.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Serilog.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="package.json;package-lock.json" />
+    <None Include="package.json;package-lock.json" />
+  </ItemGroup>
+
+</Project>

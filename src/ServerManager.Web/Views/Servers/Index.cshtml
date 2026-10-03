@@ -1,0 +1,114 @@
+@model ServerIndexViewModel
+@{
+    ViewData["Title"] = "Sunucular";
+    var canCreate = User.HasPermission(Permissions.ServerCreate);
+    var hasFilter = !string.IsNullOrWhiteSpace(Model.Filter.Search) || Model.Filter.Status.HasValue || Model.Filter.Environment.HasValue || !string.IsNullOrWhiteSpace(Model.Filter.Tag);
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Sunucular</h1>
+        <p class="page-lead">Panelden yönetilen tüm Linux sunucuları</p>
+    </div>
+    @if (canCreate)
+    {
+        <a asp-action="Create" class="btn-primary">@Icons.Render("plus", "h-4 w-4") Sunucu ekle</a>
+    }
+</div>
+
+<section class="panel">
+    <form method="get" asp-action="Index" class="grid grid-cols-1 gap-3 border-b border-slate-200 p-4 sm:grid-cols-2 lg:grid-cols-5 dark:border-slate-800">
+        <div class="relative lg:col-span-2">
+            <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">@Icons.Render("search", "h-4 w-4")</span>
+            <input type="search" name="search" value="@Model.Filter.Search" class="form-control pl-9" placeholder="Ad, hostname, IP, provider ara…" />
+        </div>
+        <select name="status" class="form-control" data-auto-submit asp-items="ServerDisplay.StatusOptions(Model.Filter.Status)">
+            <option value="">Tüm durumlar</option>
+        </select>
+        <select name="environment" class="form-control" data-auto-submit asp-items="ServerDisplay.EnvironmentOptions(Model.Filter.Environment)">
+            <option value="">Tüm ortamlar</option>
+        </select>
+        <select name="tag" class="form-control" data-auto-submit>
+            <option value="">Tüm etiketler</option>
+            @foreach (var tag in Model.Tags)
+            {
+                <option value="@tag" selected="@(tag == Model.Filter.Tag)">@tag</option>
+            }
+        </select>
+        <div class="flex gap-2 sm:col-span-2 lg:col-span-5">
+            <button type="submit" class="btn-secondary btn-sm">@Icons.Render("search", "h-4 w-4") Filtrele</button>
+            @if (hasFilter)
+            {
+                <a asp-action="Index" class="btn-ghost btn-sm">Filtreleri temizle</a>
+            }
+        </div>
+    </form>
+
+    @if (Model.Servers.Items.Count == 0)
+    {
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("server", "h-6 w-6")</span>
+            @if (hasFilter)
+            {
+                <p class="font-medium text-slate-700 dark:text-slate-200">Filtreye uyan sunucu bulunamadı</p>
+                <p>Arama kriterlerini değiştirmeyi deneyin.</p>
+            }
+            else
+            {
+                <p class="font-medium text-slate-700 dark:text-slate-200">Henüz sunucu eklenmedi</p>
+                <p>SSH bilgileriyle ilk sunucunuzu ekleyin; bağlantıyı panelden test edebilirsiniz.</p>
+                @if (canCreate)
+                {
+                    <a asp-action="Create" class="btn-primary btn-sm mt-3">@Icons.Render("plus", "h-4 w-4") Sunucu ekle</a>
+                }
+            }
+        </div>
+    }
+    else
+    {
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Sunucu</th>
+                        <th>Adres</th>
+                        <th>Ortam</th>
+                        <th>Durum</th>
+                        <th>Etiketler</th>
+                        <th>Son test</th>
+                        <th class="text-right">İşlem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var server in Model.Servers.Items)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@server.Id" class="font-medium text-slate-900 hover:text-brand-600 dark:text-slate-100 dark:hover:text-brand-400">@server.Name</a>
+                                <p class="text-xs text-slate-500">@(server.OperatingSystem ?? server.Hostname)</p>
+                            </td>
+                            <td class="font-mono text-xs">@server.IpAddress:@server.SshPort</td>
+                            <td><span class="@ServerDisplay.EnvironmentBadgeClass(server.Environment)">@ServerDisplay.EnvironmentText(server.Environment)</span></td>
+                            <td><span class="@ServerDisplay.StatusBadgeClass(server.Status)"><span class="badge-dot"></span>@ServerDisplay.StatusText(server.Status)</span></td>
+                            <td>
+                                <div class="flex max-w-[16rem] flex-wrap gap-1">
+                                    @foreach (var tag in server.Tags)
+                                    {
+                                        <a asp-action="Index" asp-route-tag="@tag" class="tag hover:bg-slate-200 dark:hover:bg-slate-700">@tag</a>
+                                    }
+                                </div>
+                            </td>
+                            <td class="whitespace-nowrap text-xs text-slate-500" title="@DateDisplay.Format(server.LastConnectionTestAt)">
+                                @DateDisplay.Relative(server.LastConnectionTestAt)
+                            </td>
+                            <td class="text-right">
+                                <a asp-action="Details" asp-route-id="@server.Id" class="btn-ghost btn-sm" title="Detay">@Icons.Render("eye", "h-4 w-4")</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <partial name="_Pager" model="Model.ToPager()" />
+    }
+</section>

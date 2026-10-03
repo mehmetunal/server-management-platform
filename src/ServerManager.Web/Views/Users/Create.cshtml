@@ -1,0 +1,47 @@
+@model CreateUserDto
+@{
+    ViewData["Title"] = "Kullanıcı ekle";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">@Icons.Render("chevron-left", "h-4 w-4") Kullanıcılar</a>
+        <h1 class="page-title">Kullanıcı ekle</h1>
+    </div>
+</div>
+
+<form asp-action="Create" method="post" class="panel max-w-2xl" data-loading novalidate autocomplete="off">
+    <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div asp-validation-summary="ModelOnly" class="validation-summary-errors sm:col-span-2"></div>
+        <div>
+            <label asp-for="Email" class="form-label">E-posta *</label>
+            <input asp-for="Email" type="email" class="form-control" autocomplete="off" />
+            <span asp-validation-for="Email" class="field-validation-error"></span>
+        </div>
+        <div>
+            <label asp-for="FullName" class="form-label">Ad soyad</label>
+            <input asp-for="FullName" class="form-control" />
+            <span asp-validation-for="FullName" class="field-validation-error"></span>
+        </div>
+        <div class="sm:col-span-2">
+            <label for="Role" class="form-label">Rol *</label>
+            <partial name="_RoleSelect" model="Model.Role" />
+            <span asp-validation-for="Role" class="field-validation-error"></span>
+        </div>
+        <div>
+            <label asp-for="Password" class="form-label">Parola *</label>
+            <input asp-for="Password" type="password" class="form-control" autocomplete="new-password" />
+            <p class="form-hint">En az 10 karakter; büyük harf, küçük harf ve rakam içermeli.</p>
+            <span asp-validation-for="Password" class="field-validation-error"></span>
+        </div>
+        <div>
+            <label asp-for="ConfirmPassword" class="form-label">Parola (tekrar) *</label>
+            <input asp-for="ConfirmPassword" type="password" class="form-control" autocomplete="new-password" />
+            <span asp-validation-for="ConfirmPassword" class="field-validation-error"></span>
+        </div>
+    </div>
+    <div class="flex justify-end gap-3 border-t border-slate-200 px-6 py-4 dark:border-slate-800">
+        <a asp-action="Index" class="btn-secondary">İptal</a>
+        <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span> Oluştur</button>
+    </div>
+</form>

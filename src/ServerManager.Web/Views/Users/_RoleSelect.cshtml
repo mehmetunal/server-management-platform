@@ -1,0 +1,7 @@
+@model string
+<select id="Role" name="Role" class="form-control">
+    @foreach (var role in Roles.All)
+    {
+        <option value="@role" selected="@(role == Model)">@role — @Roles.Descriptions[role]</option>
+    }
+</select>

@@ -1,0 +1,21 @@
+@model CreateServerDto
+@{
+    ViewData["Title"] = "Sunucu ekle";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">@Icons.Render("chevron-left", "h-4 w-4") Sunucular</a>
+        <h1 class="page-title">Sunucu ekle</h1>
+        <p class="page-lead">SSH bilgileriyle yeni bir sunucu tanımlayın.</p>
+    </div>
+</div>
+
+<form asp-action="Create" method="post" data-loading novalidate autocomplete="off">
+    <partial name="_ServerForm" model="Model" />
+
+    <div class="mt-6 flex justify-end gap-3">
+        <a asp-action="Index" class="btn-secondary">İptal</a>
+        <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+    </div>
+</form>
