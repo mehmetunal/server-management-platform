@@ -37,6 +37,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     public DbSet<InstalledPlugin> InstalledPlugins => Set<InstalledPlugin>();
 
+    public DbSet<DeploymentProject> DeploymentProjects => Set<DeploymentProject>();
+
+    public DbSet<Deployment> Deployments => Set<Deployment>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

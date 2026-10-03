@@ -11,6 +11,7 @@
     var canViewDocker = User.HasPermission(Permissions.DockerView);
     var canViewTerminal = User.HasPermission(Permissions.TerminalView);
     var canViewFiles = User.HasPermission(Permissions.FileView);
+    var canViewDeployments = User.HasPermission(Permissions.DeploymentView);
     var pluginTabs = TabRegistry.GetTabs().Where(t => User.HasPermission(t.Permission)).ToList();
     var activePluginTab = pluginTabs.FirstOrDefault(t => t.Key == Model.ActiveTab);
     var tabLead = ViewData["PageLead"] as string ?? Model.ActiveTab switch
@@ -19,10 +20,11 @@
         ServerPageViewModel.DockerTab => "Sunucudaki Docker container, imaj, volume ve ağlarını görüntüleyip yönetin.",
         ServerPageViewModel.TerminalTab => "Tarayıcıdan sunucuya SSH terminali açın; çalıştırılan komutlar kayıt altına alınır.",
         ServerPageViewModel.FilesTab => "Sunucudaki dosyalara SFTP ile göz atın, yükleyin, indirin ve düzenleyin.",
+        ServerPageViewModel.DeploymentsTab => "Bu sunucuya Git deposundan dağıtılan projeler ve deployment geçmişi.",
         _ when activePluginTab is not null => activePluginTab.Lead,
         _ => "Sunucunun bağlantı bilgileri, donanımı ve son izleme verileri."
     };
-    var disabledTabs = new[] { "Services", "Processes", "Logs", "Network", "Storage", "Security", "Deployments", "Backups", "Alerts", "Activity" };
+    var disabledTabs = new[] { "Services", "Processes", "Logs", "Network", "Storage", "Security", "Backups", "Alerts", "Activity" };
 }
 
 <div data-region="server-header" data-live-server="@server.Id" data-hub-url="@Url.Content("~" + MonitoringHub.Path)">
@@ -117,6 +119,10 @@
         @if (canViewFiles)
         {
             <a asp-controller="Files" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.FilesTab ? "is-active" : "")" title="SFTP dosya yöneticisi">Files</a>
+        }
+        @if (canViewDeployments)
+        {
+            <a asp-controller="ServerDeployments" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.DeploymentsTab ? "is-active" : "")" title="Bu sunucuya dağıtılan projeler ve deployment geçmişi">Deployments</a>
         }
         @foreach (var tab in pluginTabs)
         {

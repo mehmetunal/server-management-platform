@@ -31,15 +31,7 @@ internal sealed class SshCommandExecutor : IRemoteCommandExecutor
         timeoutCts.CancelAfter(command.Timeout);
 
         var executeTask = sshCommand.ExecuteAsync(timeoutCts.Token);
-
-        // stdin her durumda kapatılır; aksi halde stdin okuyan komutlar sonsuza kadar bekler.
-        await using (var input = sshCommand.CreateInputStream())
-        {
-            if (SudoCommandBuilder.RequiresPasswordInput(_context, command.Elevate))
-            {
-                await input.WriteAsync(Encoding.UTF8.GetBytes(_context.SudoPassword + "\n"), timeoutCts.Token);
-            }
-        }
+        await WriteInputAsync(sshCommand, command, timeoutCts.Token);
 
         try
         {
@@ -75,14 +67,7 @@ internal sealed class SshCommandExecutor : IRemoteCommandExecutor
         timeoutCts.CancelAfter(command.Timeout);
 
         var executeTask = sshCommand.ExecuteAsync(timeoutCts.Token);
-
-        await using (var input = sshCommand.CreateInputStream())
-        {
-            if (SudoCommandBuilder.RequiresPasswordInput(_context, command.Elevate))
-            {
-                await input.WriteAsync(Encoding.UTF8.GetBytes(_context.SudoPassword + "\n"), timeoutCts.Token);
-            }
-        }
+        await WriteInputAsync(sshCommand, command, timeoutCts.Token);
 
         using var gate = new SemaphoreSlim(1, 1);
         var stdout = new OutputTail();
@@ -115,6 +100,21 @@ internal sealed class SshCommandExecutor : IRemoteCommandExecutor
             Stdout = stdout.ToString(),
             Stderr = stderr.ToString()
         };
+    }
+
+    private async Task WriteInputAsync(SshCommand sshCommand, RemoteCommand command, CancellationToken cancellationToken)
+    {
+        // stdin her durumda kapatılır; aksi halde stdin okuyan komutlar sonsuza kadar bekler.
+        await using var input = sshCommand.CreateInputStream();
+        if (SudoCommandBuilder.RequiresPasswordInput(_context, command.Elevate))
+        {
+            await input.WriteAsync(Encoding.UTF8.GetBytes(_context.SudoPassword + "\n"), cancellationToken);
+        }
+
+        if (!string.IsNullOrEmpty(command.StandardInput))
+        {
+            await input.WriteAsync(Encoding.UTF8.GetBytes(command.StandardInput), cancellationToken);
+        }
     }
 
     private static async Task PumpAsync(

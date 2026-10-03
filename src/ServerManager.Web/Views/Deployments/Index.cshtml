@@ -1,0 +1,47 @@
+@model DeploymentIndexViewModel
+@{
+    ViewData["Title"] = "Deployment'lar";
+    ViewData["Page"] = "deployments-index";
+    var filter = Model.List.Filter;
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Deployment'lar</h1>
+        <p class="page-lead">Tüm projelerin deployment geçmişi; çalışanlar listede canlı güncellenir.</p>
+    </div>
+</div>
+
+<section class="panel">
+    <form method="get" asp-action="Index" class="panel-toolbar deployment-filters" data-list-filter>
+        <div class="search-field">
+            <span class="search-field-icon">@Icons.Render("search", "h-4 w-4")</span>
+            <input type="search" name="search" value="@filter.Search" class="form-control" placeholder="Commit, mesaj, dal veya kullanıcı ara…" data-live-search aria-label="Deployment ara" />
+        </div>
+        <select name="projectId" class="form-control" data-auto-submit aria-label="Proje">
+            <option value="">Tüm projeler</option>
+            @foreach (var project in Model.Projects)
+            {
+                <option value="@project.Id" selected="@(project.Id == filter.ProjectId)">@project.Name</option>
+            }
+        </select>
+        <select name="serverId" class="form-control" data-auto-submit aria-label="Sunucu">
+            <option value="">Tüm sunucular</option>
+            @foreach (var server in Model.Servers)
+            {
+                <option value="@server.Id" selected="@(server.Id == filter.ServerId)">@server.Name</option>
+            }
+        </select>
+        <select name="status" class="form-control" data-auto-submit aria-label="Durum" asp-items="DeploymentDisplay.StatusOptions(filter.Status)">
+            <option value="">Tüm durumlar</option>
+        </select>
+        <div class="deployment-filter-actions">
+            <button type="submit" class="btn-secondary btn-sm" title="Listeyi arama ve filtrelere göre süz">@Icons.Render("search", "h-4 w-4") Filtrele</button>
+            <a asp-action="Index" class="btn-ghost btn-sm" data-list-link title="Tüm filtreleri kaldır">Filtreleri temizle</a>
+        </div>
+    </form>
+
+    <div data-ajax-list>
+        <partial name="_DeploymentList" model="Model.List" />
+    </div>
+</section>

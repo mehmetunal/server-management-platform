@@ -1,0 +1,22 @@
+@model CreateProjectDto
+@{
+    ViewData["Title"] = "Proje ekle";
+    ViewData["Page"] = "project-form";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Proje listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Projeler</a>
+        <h1 class="page-title">Proje ekle</h1>
+        <p class="page-lead">Git deposunu hedef sunucuya bağlayın ve nasıl build edilip çalıştırılacağını seçin.</p>
+    </div>
+</div>
+
+<form asp-action="Create" method="post" data-project-form novalidate autocomplete="off">
+    <partial name="_ProjectForm" model="Model" />
+
+    <div class="project-form-actions">
+        <a asp-action="Index" class="btn-secondary" title="Kaydetmeden listeye dön">İptal</a>
+        <button type="submit" class="btn-primary" title="Projeyi kaydet; deployment proje sayfasından başlatılır"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+    </div>
+</form>

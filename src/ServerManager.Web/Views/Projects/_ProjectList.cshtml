@@ -1,0 +1,73 @@
+@model ProjectIndexViewModel
+@{
+    var canManage = User.HasPermission(Permissions.DeploymentManage);
+    var hasFilter = !string.IsNullOrWhiteSpace(Model.Filter.Search) || Model.Filter.ServerId.HasValue;
+}
+
+@if (Model.Projects.Items.Count == 0)
+{
+    <div class="empty-state">
+        <span class="empty-state-icon">@Icons.Render("folder", "h-6 w-6")</span>
+        @if (hasFilter)
+        {
+            <p class="empty-state-title">Filtreye uyan proje bulunamadı</p>
+            <p>Arama kriterlerini değiştirmeyi deneyin.</p>
+        }
+        else
+        {
+            <p class="empty-state-title">Henüz proje eklenmedi</p>
+            <p>Bir Git deposunu hedef sunucuya bağlayın; panel kodu çekip Docker Compose, Dockerfile veya komutlarla dağıtır.</p>
+            @if (canManage)
+            {
+                <a asp-action="Create" class="btn-primary btn-sm mt-3" title="Git deposunu bir sunucuya bağlayan yeni proje tanımla">@Icons.Render("plus", "h-4 w-4") Proje ekle</a>
+            }
+        }
+    </div>
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Proje</th>
+                    <th>Sunucu</th>
+                    <th>Dal</th>
+                    <th>Tür</th>
+                    <th>Son deployment</th>
+                    <th class="text-right">İşlem</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var project in Model.Projects.Items)
+                {
+                    var last = project.LastDeployment;
+                    <tr>
+                        <td>
+                            <a asp-action="Details" asp-route-id="@project.Id" class="project-name" title="Proje ayrıntılarını ve deployment geçmişini aç">@project.Name</a>
+                            <p class="project-repo" title="@project.RepositoryUrl">@DeploymentDisplay.GitProviderText(project.GitProvider) · @project.RepositoryUrl</p>
+                        </td>
+                        <td class="whitespace-nowrap">@project.ServerName</td>
+                        <td><span class="tag">@project.Branch</span></td>
+                        <td class="whitespace-nowrap text-sm">@DeploymentDisplay.BuildTypeText(project.BuildType)</td>
+                        <td class="whitespace-nowrap">
+                            @if (last is null)
+                            {
+                                <span class="text-xs text-slate-500">Henüz yok</span>
+                            }
+                            else
+                            {
+                                <a asp-controller="Deployments" asp-action="Details" asp-route-id="@last.Id" class="@DeploymentDisplay.StatusBadgeClass(last.Status)" title="Deployment ayrıntılarını ve logunu aç"><span class="badge-dot"></span>@DeploymentDisplay.StatusText(last.Status)</a>
+                                <span class="ml-1 text-xs text-slate-500" title="@DateDisplay.Format(last.StartedAt)">@DateDisplay.Relative(last.StartedAt)</span>
+                            }
+                        </td>
+                        <td class="text-right">
+                            <a asp-action="Details" asp-route-id="@project.Id" class="btn-ghost btn-sm" title="Detay">@Icons.Render("eye", "h-4 w-4")</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <partial name="_Pager" model="Model.ToPager()" />
+}

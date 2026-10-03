@@ -1,0 +1,67 @@
+@model DeploymentListViewModel
+
+@if (Model.Deployments.Items.Count == 0)
+{
+    <div class="empty-state">
+        <span class="empty-state-icon">@Icons.Render("rocket", "h-6 w-6")</span>
+        <p>@(Model.HasFilter ? "Filtreye uyan deployment bulunamadı." : "Henüz deployment yapılmadı.")</p>
+    </div>
+}
+else
+{
+    <div class="table-scroll" data-deployment-rows data-running="@Model.Deployments.Items.Any(d => d.IsRunning).ToString().ToLowerInvariant()">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Başlangıç</th>
+                    @if (Model.ShowProject)
+                    {
+                        <th>Proje</th>
+                    }
+                    @if (Model.ShowServer)
+                    {
+                        <th>Sunucu</th>
+                    }
+                    <th>Commit</th>
+                    <th>Durum</th>
+                    <th>Süre</th>
+                    <th>Kullanıcı</th>
+                    <th><span class="sr-only">Detay</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var deployment in Model.Deployments.Items)
+                {
+                    <tr>
+                        <td class="deployment-time" title="@DateDisplay.Format(deployment.StartedAt, "dd.MM.yyyy HH:mm:ss")">@DateDisplay.Relative(deployment.StartedAt)</td>
+                        @if (Model.ShowProject)
+                        {
+                            <td class="whitespace-nowrap"><a asp-controller="Projects" asp-action="Details" asp-route-id="@deployment.ProjectId" class="deployment-link" title="Proje sayfasını aç">@deployment.ProjectName</a></td>
+                        }
+                        @if (Model.ShowServer)
+                        {
+                            <td class="whitespace-nowrap text-sm">@deployment.ServerName</td>
+                        }
+                        <td class="deployment-commit">
+                            <span class="tag">@deployment.Branch</span>
+                            <span class="font-mono text-xs">@DeploymentDisplay.ShortSha(deployment.CommitSha)</span>
+                            @if (!string.IsNullOrEmpty(deployment.CommitMessage))
+                            {
+                                <p class="deployment-commit-message" title="@deployment.CommitMessage">@deployment.CommitMessage</p>
+                            }
+                        </td>
+                        <td>
+                            <span class="@DeploymentDisplay.StatusBadgeClass(deployment.Status)" title="@deployment.FailureReason"><span class="badge-dot"></span>@DeploymentDisplay.StatusText(deployment.Status)</span>
+                        </td>
+                        <td class="whitespace-nowrap text-sm tabular-nums">@(deployment.IsRunning ? "Sürüyor" : DeploymentDisplay.Duration(deployment.StartedAt, deployment.CompletedAt))</td>
+                        <td class="text-sm">@(deployment.UserName ?? "—")</td>
+                        <td class="text-right">
+                            <a asp-controller="Deployments" asp-action="Details" asp-route-id="@deployment.Id" class="btn-ghost btn-sm" title="Deployment ayrıntılarını ve logunu aç">@Icons.Render("eye", "h-4 w-4") Log</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <partial name="_Pager" model="Model.ToPager()" />
+}

@@ -31,6 +31,10 @@ public static class Permissions
     public const string FileDownload = "file.download";
     public const string FilePermissions = "file.permissions";
 
+    public const string DeploymentView = "deployment.view";
+    public const string DeploymentManage = "deployment.manage";
+    public const string DeploymentExecute = "deployment.execute";
+
     public const string PluginManage = "plugin.manage";
 
     public const string UserManage = "user.manage";
@@ -61,6 +65,9 @@ public static class Permissions
         FileUpload,
         FileDownload,
         FilePermissions,
+        DeploymentView,
+        DeploymentManage,
+        DeploymentExecute,
         PluginManage,
         UserManage,
         AuditView
@@ -90,6 +97,9 @@ public static class Permissions
         [FileUpload] = "Dosya yükleme",
         [FileDownload] = "Dosya indirme",
         [FilePermissions] = "Dosya izinleri ve sahiplik değiştirme (chmod / chown)",
+        [DeploymentView] = "Deployment projeleri, geçmişi ve logları görüntüleme",
+        [DeploymentManage] = "Deployment projesi ekleme, düzenleme, silme (Git erişim anahtarı ve ortam değişkenleri dahil)",
+        [DeploymentExecute] = "Deployment başlatma, iptal etme ve yeniden dağıtma",
         [PluginManage] = "Eklenti kurma, etkinleştirme ve devre dışı bırakma",
         [UserManage] = "Kullanıcı yönetimi",
         [AuditView] = "Audit log görüntüleme"

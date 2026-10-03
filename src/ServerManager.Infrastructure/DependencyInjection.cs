@@ -6,10 +6,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ServerManager.Application.Authorization;
+using ServerManager.Application.Deployments;
 using ServerManager.Application.Docker;
 using ServerManager.Application.Files;
 using ServerManager.Application.Plugins;
 using ServerManager.Application.Terminal;
+using ServerManager.Application.Interfaces.Deployments;
 using ServerManager.Application.Interfaces.Docker;
 using ServerManager.Application.Interfaces.Files;
 using ServerManager.Application.Interfaces.Monitoring;
@@ -19,6 +21,7 @@ using ServerManager.Application.Interfaces.Security;
 using ServerManager.Application.Interfaces.Services;
 using ServerManager.Application.Interfaces.Ssh;
 using ServerManager.Application.Validators.Users;
+using ServerManager.Infrastructure.Deployments;
 using ServerManager.Infrastructure.Docker;
 using ServerManager.Infrastructure.Files;
 using ServerManager.Infrastructure.Identity;
@@ -75,6 +78,7 @@ public static class DependencyInjection
         services.Configure<TerminalOptions>(configuration.GetSection(TerminalOptions.SectionName));
         services.Configure<FileManagerOptions>(configuration.GetSection(FileManagerOptions.SectionName));
         services.Configure<PluginOptions>(configuration.GetSection(PluginOptions.SectionName));
+        services.Configure<DeploymentOptions>(configuration.GetSection(DeploymentOptions.SectionName));
 
         services.AddSingleton<ISecretProtector, AesGcmSecretProtector>();
         services.AddSingleton<ISshConnectionTester, SshNetConnectionTester>();
@@ -83,6 +87,7 @@ public static class DependencyInjection
         services.AddSingleton<ITerminalSessionFactory, SshTerminalSessionFactory>();
         services.AddSingleton<IDockerClient, SshDockerClient>();
         services.AddSingleton<IRemoteFileSystem, SftpRemoteFileSystem>();
+        services.AddSingleton<IDeploymentProvider, SshDeploymentProvider>();
         services.AddSingleton<IPluginMigrator>(provider =>
             new FluentPluginMigrator(connectionString, provider.GetRequiredService<ILoggerFactory>()));
 
@@ -91,6 +96,7 @@ public static class DependencyInjection
         services.AddScoped<IServerMetricRepository, ServerMetricRepository>();
         services.AddScoped<ITerminalLogRepository, TerminalLogRepository>();
         services.AddScoped<IPluginRepository, PluginRepository>();
+        services.AddScoped<IDeploymentRepository, DeploymentRepository>();
 
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<IUserManagementService, UserManagementService>();

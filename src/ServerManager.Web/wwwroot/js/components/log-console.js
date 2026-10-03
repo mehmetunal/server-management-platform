@@ -5,8 +5,8 @@ const THEME = {
     selectionBackground: '#4f46e580'
 };
 
-/** Kurulum çıktısı için salt okunur xterm ekranı; kullanıcı girdisi sunucuya gitmez. */
-export function createInstallConsole(screen) {
+/** Uzun süren işlemlerin çıktısı için salt okunur xterm ekranı (.log-console); kullanıcı girdisi sunucuya gitmez. */
+export function createLogConsole(screen) {
     if (!screen || !window.Terminal) return null;
 
     const term = new window.Terminal({

@@ -1,0 +1,9 @@
+@use "deployments-shared";
+
+.project-filters {
+  @apply lg:grid-cols-4;
+}
+
+.project-filter-actions {
+  @apply flex gap-2 sm:col-span-2 lg:col-span-1;
+}

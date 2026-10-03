@@ -2,9 +2,9 @@ import { confirmAction } from '@app/core/dialog.js';
 import { element, on, qs, qsa, setBusy } from '@app/core/dom.js';
 import { getHtml, postForm } from '@app/core/http.js';
 import { notify } from '@app/core/notify.js';
-import { createInstallConsole } from '../features/install-console.js';
+import { createLogConsole } from '@app/components/log-console.js';
+import { createStepper } from '@app/components/stepper.js';
 import { createInstallHub } from '../features/install-hub.js';
-import { createStepper } from '../features/install-stepper.js';
 import { initServerPage } from '@app/features/servers/server-page.js';
 
 const CHECK_STEPS = ['compatibility', 'docker', 'ports'];
@@ -77,7 +77,7 @@ async function watch(installationId) {
     showPanel('check', false);
     showPanel('confirm', false);
     showPanel('install');
-    consoleView ??= createInstallConsole(qs('[data-install-console]', root));
+    consoleView ??= createLogConsole(qs('[data-install-console]', root));
     renderStatus('running');
 
     hub = createInstallHub(root.dataset.hubUrl, {

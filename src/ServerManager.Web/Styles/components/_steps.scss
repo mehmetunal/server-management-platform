@@ -1,0 +1,54 @@
+@layer components {
+  // Adım sayısından bağımsız: geniş ekranda tüm adımlar tek satıra eşit genişlikte dizilir.
+  .wizard-steps {
+    @apply grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-flow-col xl:auto-cols-fr xl:grid-cols-none;
+  }
+
+  .wizard-step {
+    @apply flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400;
+
+    &.is-active {
+      @apply border-brand-500 text-brand-700 ring-2 ring-brand-500/20 dark:text-brand-300;
+
+      .wizard-step-marker {
+        @apply bg-brand-600 text-white;
+      }
+    }
+
+    &.is-done {
+      @apply text-emerald-700 dark:text-emerald-400;
+
+      .wizard-step-marker {
+        @apply bg-emerald-600 text-white;
+      }
+    }
+
+    &.is-warning {
+      @apply text-amber-700 dark:text-amber-400;
+
+      .wizard-step-marker {
+        @apply bg-amber-500 text-white;
+      }
+    }
+
+    &.is-failed {
+      @apply border-red-300 text-red-700 dark:border-red-900 dark:text-red-400;
+
+      .wizard-step-marker {
+        @apply bg-red-600 text-white;
+      }
+    }
+  }
+
+  .wizard-step-marker {
+    @apply flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold tabular-nums text-slate-600 dark:bg-slate-800 dark:text-slate-300;
+  }
+
+  .wizard-step-label {
+    @apply truncate font-medium;
+  }
+
+  .log-console {
+    @apply h-[28rem] bg-[#0b1020] p-3;
+  }
+}

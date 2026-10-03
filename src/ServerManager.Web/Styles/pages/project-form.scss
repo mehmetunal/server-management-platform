@@ -1,0 +1,15 @@
+.project-form-grid {
+  @apply grid grid-cols-1 gap-6 xl:grid-cols-3;
+}
+
+.project-form-main {
+  @apply space-y-6 xl:col-span-2;
+}
+
+.project-form-side {
+  @apply space-y-6;
+}
+
+.project-form-actions {
+  @apply mt-6 flex justify-end gap-3;
+}

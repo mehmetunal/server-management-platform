@@ -1,0 +1,22 @@
+@model UpdateProjectDto
+@{
+    ViewData["Title"] = $"{Model.Name} · Düzenle";
+    ViewData["Page"] = "project-form";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Details" asp-route-id="@Model.Id" class="back-link" title="Proje sayfasına dön">@Icons.Render("chevron-left", "h-4 w-4") @Model.Name</a>
+        <h1 class="page-title">Projeyi düzenle</h1>
+        <p class="page-lead">Değişiklikler bir sonraki deployment'ta uygulanır; çalışan uygulamaya dokunulmaz.</p>
+    </div>
+</div>
+
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" data-project-form novalidate autocomplete="off">
+    <partial name="_ProjectForm" model="Model" />
+
+    <div class="project-form-actions">
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn-secondary" title="Kaydetmeden proje sayfasına dön">İptal</a>
+        <button type="submit" class="btn-primary" title="Değişiklikleri kaydet"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+    </div>
+</form>

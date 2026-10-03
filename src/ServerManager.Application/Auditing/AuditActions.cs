@@ -46,6 +46,13 @@ public static class AuditActions
     public const string FileCopy = "file.copy";
     public const string FilePermissions = "file.permissions";
 
+    public const string ProjectCreate = "project.create";
+    public const string ProjectUpdate = "project.update";
+    public const string ProjectDelete = "project.delete";
+    public const string DeploymentStart = "deployment.start";
+    public const string DeploymentComplete = "deployment.complete";
+    public const string DeploymentCancel = "deployment.cancel";
+
     public const string PluginInstall = "plugin.install";
     public const string PluginEnable = "plugin.enable";
     public const string PluginDisable = "plugin.disable";
@@ -96,6 +103,12 @@ public static class AuditActions
         [FileMove] = "Dosya taşıma / yeniden adlandırma",
         [FileCopy] = "Dosya kopyalama",
         [FilePermissions] = "Dosya izinleri değiştirme",
+        [ProjectCreate] = "Proje ekleme",
+        [ProjectUpdate] = "Proje güncelleme",
+        [ProjectDelete] = "Proje silme",
+        [DeploymentStart] = "Deployment başlatıldı",
+        [DeploymentComplete] = "Deployment tamamlandı",
+        [DeploymentCancel] = "Deployment iptal edildi",
         [PluginInstall] = "Eklenti kurulumu",
         [PluginEnable] = "Eklenti etkinleştirildi",
         [PluginDisable] = "Eklenti devre dışı bırakıldı",

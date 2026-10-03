@@ -4,6 +4,7 @@
     var canUsers = User.HasPermission(Permissions.UserManage);
     var canAudit = User.HasPermission(Permissions.AuditView);
     var canPlugins = User.HasPermission(Permissions.PluginManage);
+    var canDeployments = User.HasPermission(Permissions.DeploymentView);
 }
 <aside class="app-sidebar" data-sidebar>
     <div class="flex h-16 shrink-0 items-center gap-3 border-b border-slate-800 px-5">
@@ -35,9 +36,11 @@
         <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("globe") Ağlar <span class="nav-soon">Yakında</span></span>
 
         <p class="nav-group">Deployment</p>
-        <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("folder") Projeler <span class="nav-soon">Yakında</span></span>
-        <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("rocket") Deployment'lar <span class="nav-soon">Yakında</span></span>
-        <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("clock") Geçmiş <span class="nav-soon">Yakında</span></span>
+        @if (canDeployments)
+        {
+            <a asp-controller="Projects" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "Projects")" title="Git deposundan sunuculara dağıtılan projeler">@Icons.Render("folder") Projeler</a>
+            <a asp-controller="Deployments" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "Deployments")" title="Tüm projelerin deployment geçmişi ve canlı logları">@Icons.Render("rocket") Deployment'lar</a>
+        }
 
         <p class="nav-group">Operasyon</p>
         <span class="nav-link is-disabled" title="Sunucu sayfasındaki Terminal sekmesinden kullanılabilir">@Icons.Render("terminal") Terminal <span class="nav-soon">Yakında</span></span>

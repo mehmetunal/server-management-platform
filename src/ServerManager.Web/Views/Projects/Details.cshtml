@@ -1,0 +1,155 @@
+@model ProjectDetailsViewModel
+@{
+    var project = Model.Project;
+    ViewData["Title"] = project.Name;
+    ViewData["Page"] = "project-details";
+    var canManage = User.HasPermission(Permissions.DeploymentManage);
+    var canExecute = User.HasPermission(Permissions.DeploymentExecute);
+    var listUrl = Url.Action("Index", "Deployments", new { projectId = project.Id, pageSize = 10, embedded = "project" });
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Proje listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Projeler</a>
+        <h1 class="page-title">@project.Name</h1>
+        <p class="page-lead">@(project.Description ?? $"{project.ServerName} sunucusuna {DeploymentDisplay.BuildTypeText(project.BuildType)} ile dağıtılan proje.")</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        @if (canManage)
+        {
+            <a asp-action="Edit" asp-route-id="@project.Id" class="btn-secondary" title="Depo, build ve ortam ayarlarını düzenle">@Icons.Render("pencil", "h-4 w-4") Düzenle</a>
+            <button type="button" class="btn-danger" title="Projeyi panelden kaldır; sunucudaki dosya ve container'lara dokunulmaz"
+                    data-ajax-action data-url="@Url.Action("Delete", new { id = project.Id })"
+                    data-confirm-title="Proje silinsin mi?"
+                    data-confirm-message="Proje ve ayarları panelden kaldırılır. Sunucudaki klasör, container ve image'lar silinmez; deployment geçmişi denetim için saklanır."
+                    data-confirm-name="@project.Name"
+                    data-confirm-label="Projeyi sil"
+                    data-redirect>
+                @Icons.Render("trash", "h-4 w-4") Sil
+            </button>
+        }
+    </div>
+</div>
+
+@if (project.RunningDeploymentId is Guid runningId)
+{
+    <div class="alert-info mb-6 flex flex-wrap items-center justify-between gap-3">
+        <span class="flex items-center gap-2"><span class="spinner h-4 w-4"></span> Bu projede bir deployment çalışıyor.</span>
+        <a asp-controller="Deployments" asp-action="Details" asp-route-id="@runningId" class="btn-secondary btn-sm" title="Çalışan deployment'ın canlı logunu aç">@Icons.Render("eye", "h-4 w-4") Canlı log</a>
+    </div>
+}
+
+@if (project.EnvironmentUnreadable)
+{
+    <div class="alert-warning mb-6">Kayıtlı ortam değişkenleri veya erişim anahtarı çözülemedi (şifreleme anahtarı değişmiş olabilir). Projeyi düzenleyip yeniden girin.</div>
+}
+
+<div class="project-details-grid">
+    <div class="project-details-main">
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Kaynak</h2></div>
+            <dl class="panel-body detail-list">
+                <div><dt class="detail-term">Sağlayıcı</dt><dd class="detail-value">@DeploymentDisplay.GitProviderText(project.GitProvider)</dd></div>
+                <div><dt class="detail-term">Depo</dt><dd class="detail-value font-mono break-all">@project.RepositoryUrl</dd></div>
+                <div><dt class="detail-term">Dal</dt><dd class="detail-value"><span class="tag">@project.Branch</span></dd></div>
+                <div><dt class="detail-term">Kimlik</dt><dd class="detail-value">@(project.HasAccessToken ? $"Erişim anahtarı kayıtlı{(project.GitUsername is null ? "" : $" ({project.GitUsername})")}" : "Anahtar yok (herkese açık veya SSH)")</dd></div>
+            </dl>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Build ve deploy</h2></div>
+            <dl class="panel-body detail-list">
+                <div><dt class="detail-term">Sunucu</dt><dd class="detail-value"><a asp-controller="ServerDeployments" asp-action="Index" asp-route-id="@project.ServerId" class="panel-link" title="Sunucunun deployment sekmesini aç">@project.ServerName</a></dd></div>
+                <div><dt class="detail-term">Klasör</dt><dd class="detail-value font-mono break-all">@project.DeployPath</dd></div>
+                <div><dt class="detail-term">Tür</dt><dd class="detail-value">@DeploymentDisplay.BuildTypeText(project.BuildType)</dd></div>
+                @switch (project.BuildType)
+                {
+                    case DeploymentBuildType.DockerCompose:
+                        <div><dt class="detail-term">Compose dosyası</dt><dd class="detail-value font-mono">@project.ComposeFile</dd></div>
+                        <div><dt class="detail-term">Compose projesi</dt><dd class="detail-value font-mono">@project.ComposeProjectName</dd></div>
+                        break;
+                    case DeploymentBuildType.Dockerfile:
+                        <div><dt class="detail-term">Dockerfile</dt><dd class="detail-value font-mono">@project.DockerfilePath</dd></div>
+                        <div><dt class="detail-term">Container</dt><dd class="detail-value font-mono">@project.ContainerName</dd></div>
+                        <div><dt class="detail-term">Portlar</dt><dd class="detail-value font-mono">@(project.PortMappings ?? "—")</dd></div>
+                        break;
+                    default:
+                        <div><dt class="detail-term">Sudo</dt><dd class="detail-value">@(project.UseSudoForCommands ? "Evet" : "Hayır")</dd></div>
+                        break;
+                }
+            </dl>
+            @if (project.BuildType == DeploymentBuildType.Commands)
+            {
+                <div class="project-commands">
+                    @if (!string.IsNullOrWhiteSpace(project.BuildCommand))
+                    {
+                        <p class="form-label">Build komutu</p>
+                        <pre class="project-command">@project.BuildCommand</pre>
+                    }
+                    <p class="form-label">Deploy komutu</p>
+                    <pre class="project-command">@project.DeployCommand</pre>
+                </div>
+            }
+        </section>
+    </div>
+
+    <div class="project-details-side">
+        @if (canExecute)
+        {
+            <section class="panel">
+                <div class="panel-header"><h2 class="panel-title">Deployment başlat</h2></div>
+                <form class="panel-body space-y-4" method="post" action="@Url.Action("Deploy", new { id = project.Id })" data-deploy-form data-project-name="@project.Name" data-branch="@project.Branch" novalidate>
+                    <div>
+                        <label for="deploy-commit" class="form-label">Commit (isteğe bağlı)</label>
+                        <input id="deploy-commit" name="CommitSha" class="form-control font-mono" placeholder="Boşsa @project.Branch dalının son hali" maxlength="40" spellcheck="false" autocomplete="off" />
+                        <p class="form-hint">Belirli bir commit için tam SHA girin; commit seçili dalda bulunmalı.</p>
+                        <span class="field-validation-error" data-valmsg-for="CommitSha"></span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="submit" class="btn-primary" title="Kodu çek, build et ve sunucuda çalıştır"><span class="spinner" data-spinner hidden></span> @Icons.Render("rocket", "h-4 w-4") Deploy et</button>
+                        <button type="button" class="btn-secondary" data-branches-check data-url="@Url.Action("Branches", new { id = project.Id })" title="Depoya bağlanıp dalları listele; erişim bilgilerini doğrular">@Icons.Render("link", "h-4 w-4") Depoyu kontrol et</button>
+                    </div>
+                    <div class="project-branches" data-branches-result hidden></div>
+                </form>
+            </section>
+        }
+
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Ortam değişkenleri</h2></div>
+            <div class="panel-body">
+                @if (project.EnvironmentKeys.Count > 0)
+                {
+                    <div class="flex flex-wrap gap-1">
+                        @foreach (var key in project.EnvironmentKeys)
+                        {
+                            <span class="tag">@key</span>
+                        }
+                    </div>
+                    <p class="form-hint mt-3">Değerler şifreli saklanır ve gösterilmez.</p>
+                }
+                else
+                {
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Tanımlı değişken yok.</p>
+                }
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Kayıt</h2></div>
+            <dl class="panel-body detail-list">
+                <div><dt class="detail-term">Oluşturma</dt><dd class="detail-value">@DateDisplay.Format(project.CreatedAt) · @(project.CreatedBy ?? "—")</dd></div>
+                <div><dt class="detail-term">Güncelleme</dt><dd class="detail-value">@DateDisplay.Format(project.UpdatedAt) @(project.UpdatedBy is null ? "" : $"· {project.UpdatedBy}")</dd></div>
+            </dl>
+        </section>
+    </div>
+</div>
+
+<section class="panel mt-6">
+    <div class="panel-header">
+        <h2 class="panel-title">Deployment geçmişi</h2>
+        <button type="button" class="btn-ghost btn-sm" data-deployments-refresh title="Deployment listesini yeniden yükle">@Icons.Render("refresh", "h-4 w-4") Yenile</button>
+    </div>
+    <div data-ajax-list data-url="@listUrl">
+        <partial name="~/Views/Deployments/_DeploymentList.cshtml" model="Model.Deployments" />
+    </div>
+</section>

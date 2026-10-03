@@ -10,6 +10,9 @@ public sealed class PagerModel
 
     public string Action { get; init; } = "Index";
 
+    /// <summary>Boşsa geçerli controller kullanılır; liste başka bir controller'ın sayfasına gömülüyse verilir.</summary>
+    public string? Controller { get; init; }
+
     public IDictionary<string, string?> RouteValues { get; init; } = new Dictionary<string, string?>();
 
     public IDictionary<string, string> RouteValuesFor(int page)

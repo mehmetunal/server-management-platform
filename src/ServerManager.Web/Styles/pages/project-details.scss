@@ -1,0 +1,25 @@
+@use "deployments-shared";
+
+.project-details-grid {
+  @apply grid grid-cols-1 gap-6 xl:grid-cols-3;
+}
+
+.project-details-main {
+  @apply space-y-6 xl:col-span-2;
+}
+
+.project-details-side {
+  @apply space-y-6;
+}
+
+.project-commands {
+  @apply space-y-2 border-t border-slate-200 px-5 py-4 dark:border-slate-800;
+}
+
+.project-command {
+  @apply overflow-x-auto whitespace-pre-wrap break-all rounded-lg bg-slate-50 p-3 font-mono text-xs text-slate-700 dark:bg-slate-950/60 dark:text-slate-200;
+}
+
+.project-branches {
+  @apply text-sm;
+}

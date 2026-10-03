@@ -1,0 +1,212 @@
+@model ProjectFormDto
+@{
+    var edit = Model as UpdateProjectDto;
+    var isEdit = edit is not null;
+    var servers = ViewData[ServerManager.Web.Controllers.ProjectsController.ServerOptionsKey] as IReadOnlyList<ServerOptionDto> ?? [];
+    var compose = ((int)DeploymentBuildType.DockerCompose).ToString();
+    var dockerfile = ((int)DeploymentBuildType.Dockerfile).ToString();
+    var commands = ((int)DeploymentBuildType.Commands).ToString();
+}
+
+<p class="alert-error mb-6" data-form-error hidden></p>
+
+<div class="project-form-grid">
+    <div class="project-form-main">
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Genel bilgiler</h2></div>
+            <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div>
+                    <label asp-for="Name" class="form-label">Proje adı *</label>
+                    <input asp-for="Name" class="form-control" placeholder="Müşteri API" maxlength="128" />
+                    @if (isEdit)
+                    {
+                        <p class="form-hint">Docker adları: <span class="font-mono">sm-@edit!.Slug</span> (değişmez).</p>
+                    }
+                    else
+                    {
+                        <p class="form-hint">Docker kaynak adları bu addan üretilir ve sonradan değişmez.</p>
+                    }
+                    <span asp-validation-for="Name" class="field-validation-error"></span>
+                </div>
+                <div>
+                    <label asp-for="ServerId" class="form-label">Hedef sunucu *</label>
+                    <select asp-for="ServerId" class="form-control">
+                        <option value="">Sunucu seçin</option>
+                        @foreach (var server in servers)
+                        {
+                            <option value="@server.Id" selected="@(server.Id == Model.ServerId)">@server.Name (@server.IpAddress)</option>
+                        }
+                    </select>
+                    <span asp-validation-for="ServerId" class="field-validation-error"></span>
+                </div>
+                <div class="sm:col-span-2">
+                    <label asp-for="Description" class="form-label">Açıklama</label>
+                    <textarea asp-for="Description" class="form-control" rows="2" maxlength="1000"></textarea>
+                    <span asp-validation-for="Description" class="field-validation-error"></span>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Git deposu</h2></div>
+            <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-3">
+                <div>
+                    <label asp-for="GitProvider" class="form-label">Sağlayıcı *</label>
+                    <select asp-for="GitProvider" class="form-control" asp-items="DeploymentDisplay.GitProviderOptions(Model.GitProvider)"></select>
+                    <span asp-validation-for="GitProvider" class="field-validation-error"></span>
+                </div>
+                <div class="sm:col-span-2">
+                    <label asp-for="RepositoryUrl" class="form-label">Depo adresi *</label>
+                    <input asp-for="RepositoryUrl" class="form-control font-mono" placeholder="https://github.com/firma/uygulama.git" maxlength="500" spellcheck="false" />
+                    <p class="form-hint">https:// veya SSH (git@github.com:firma/uygulama.git). SSH adreslerinde hedef sunucudaki kullanıcının anahtarı depoda yetkili olmalıdır.</p>
+                    <span asp-validation-for="RepositoryUrl" class="field-validation-error"></span>
+                </div>
+                <div>
+                    <label asp-for="Branch" class="form-label">Dal *</label>
+                    <input asp-for="Branch" class="form-control font-mono" placeholder="main" maxlength="200" spellcheck="false" />
+                    <span asp-validation-for="Branch" class="field-validation-error"></span>
+                </div>
+                <div>
+                    <label asp-for="GitUsername" class="form-label">Kullanıcı adı</label>
+                    <input asp-for="GitUsername" class="form-control font-mono" placeholder="Sağlayıcı varsayılanı" maxlength="128" autocomplete="off" spellcheck="false" />
+                    <p class="form-hint">Yalnızca kendi sunucunuzdaki Git için gerekebilir.</p>
+                    <span asp-validation-for="GitUsername" class="field-validation-error"></span>
+                </div>
+                <div>
+                    <label asp-for="AccessToken" class="form-label">Erişim anahtarı (token)</label>
+                    <input asp-for="AccessToken" type="password" class="form-control" autocomplete="new-password" />
+                    <p class="form-hint">
+                        @if (edit?.HasAccessToken == true)
+                        {
+                            <text>Kayıtlı anahtar var; değiştirmek istemiyorsanız boş bırakın.</text>
+                        }
+                        else
+                        {
+                            <text>Özel https depoları için; yalnızca okuma yetkisi yeterli.</text>
+                        }
+                    </p>
+                    <span asp-validation-for="AccessToken" class="field-validation-error"></span>
+                </div>
+                @if (edit?.HasAccessToken == true)
+                {
+                    <label class="check-card sm:col-span-3">
+                        <input name="RemoveAccessToken" value="true" type="checkbox" class="form-check" checked="@edit.RemoveAccessToken" />
+                        <span>
+                            <span class="check-card-title">Kayıtlı erişim anahtarını kaldır</span>
+                            <span class="check-card-text">Depo herkese açıksa veya SSH adresine geçiyorsanız işaretleyin.</span>
+                        </span>
+                    </label>
+                }
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Build ve deploy</h2></div>
+            <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div>
+                    <label asp-for="DeployPath" class="form-label">Sunucudaki klasör *</label>
+                    <input asp-for="DeployPath" class="form-control font-mono" placeholder="/srv/apps/musteri-api" maxlength="500" spellcheck="false" />
+                    <p class="form-hint">Yoksa oluşturulur. Dolu bir klasör yalnızca git deposuysa kullanılır; içindeki dosyalar silinmez.</p>
+                    <span asp-validation-for="DeployPath" class="field-validation-error"></span>
+                </div>
+                <div>
+                    <label asp-for="BuildType" class="form-label">Build türü *</label>
+                    <select asp-for="BuildType" class="form-control" data-build-type asp-items="DeploymentDisplay.BuildTypeOptions(Model.BuildType)"></select>
+                    <p class="form-hint" data-build-hint="@compose">@DeploymentDisplay.BuildTypeHint(DeploymentBuildType.DockerCompose)</p>
+                    <p class="form-hint" data-build-hint="@dockerfile">@DeploymentDisplay.BuildTypeHint(DeploymentBuildType.Dockerfile)</p>
+                    <p class="form-hint" data-build-hint="@commands">@DeploymentDisplay.BuildTypeHint(DeploymentBuildType.Commands)</p>
+                    <span asp-validation-for="BuildType" class="field-validation-error"></span>
+                </div>
+
+                <div class="sm:col-span-2" data-build-field="@compose">
+                    <label asp-for="ComposeFile" class="form-label">Compose dosyası *</label>
+                    <input asp-for="ComposeFile" class="form-control font-mono" placeholder="docker-compose.yml" maxlength="255" spellcheck="false" />
+                    <p class="form-hint">Depo köküne göre yol. Compose proje adı: <span class="font-mono">sm-&lt;proje&gt;</span>.</p>
+                    <span asp-validation-for="ComposeFile" class="field-validation-error"></span>
+                </div>
+
+                <div data-build-field="@dockerfile">
+                    <label asp-for="DockerfilePath" class="form-label">Dockerfile *</label>
+                    <input asp-for="DockerfilePath" class="form-control font-mono" placeholder="Dockerfile" maxlength="255" spellcheck="false" />
+                    <p class="form-hint">Depo köküne göre yol; build bağlamı depo köküdür.</p>
+                    <span asp-validation-for="DockerfilePath" class="field-validation-error"></span>
+                </div>
+                <div data-build-field="@dockerfile">
+                    <label asp-for="PortMappings" class="form-label">Port eşlemeleri</label>
+                    <input asp-for="PortMappings" class="form-control font-mono" placeholder="8080:80, 127.0.0.1:9000:9000" maxlength="500" spellcheck="false" />
+                    <p class="form-hint">Virgülle ayırın: [ip:]sunucu:container[/tcp|udp].</p>
+                    <span asp-validation-for="PortMappings" class="field-validation-error"></span>
+                </div>
+
+                <div class="sm:col-span-2" data-build-field="@commands">
+                    <label asp-for="BuildCommand" class="form-label">Build komutu</label>
+                    <textarea asp-for="BuildCommand" class="form-control form-control-mono" rows="3" maxlength="4000" spellcheck="false" placeholder="npm ci&#10;npm run build"></textarea>
+                    <p class="form-hint">İsteğe bağlı. Proje klasöründe <span class="font-mono">sh</span> ile çalışır; hata veren satırda durur.</p>
+                    <span asp-validation-for="BuildCommand" class="field-validation-error"></span>
+                </div>
+                <div class="sm:col-span-2" data-build-field="@commands">
+                    <label asp-for="DeployCommand" class="form-label">Deploy komutu *</label>
+                    <textarea asp-for="DeployCommand" class="form-control form-control-mono" rows="3" maxlength="4000" spellcheck="false" placeholder="systemctl restart musteri-api"></textarea>
+                    <span asp-validation-for="DeployCommand" class="field-validation-error"></span>
+                </div>
+                <label class="check-card sm:col-span-2" data-build-field="@commands">
+                    <input asp-for="UseSudoForCommands" type="checkbox" class="form-check" />
+                    <span>
+                        <span class="check-card-title">Komutları sudo ile çalıştır</span>
+                        <span class="check-card-text">Sunucu ayarındaki sudo bilgileri kullanılır. Komutlar root yetkisiyle çalışır; dikkatli kullanın.</span>
+                    </span>
+                </label>
+            </div>
+        </section>
+    </div>
+
+    <div class="project-form-side">
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Ortam değişkenleri</h2></div>
+            <div class="panel-body space-y-4">
+                @if (edit?.HasEnvironment == true)
+                {
+                    <div>
+                        <p class="form-label">Kayıtlı anahtarlar</p>
+                        @if (edit.EnvironmentKeys.Count > 0)
+                        {
+                            <div class="flex flex-wrap gap-1">
+                                @foreach (var key in edit.EnvironmentKeys)
+                                {
+                                    <span class="tag">@key</span>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="form-hint">Değerler çözülemedi; yeniden girin.</p>
+                        }
+                    </div>
+                }
+                <div>
+                    <label asp-for="Environment" class="form-label">.env içeriği</label>
+                    <textarea asp-for="Environment" class="form-control form-control-mono" rows="8" spellcheck="false" autocomplete="off" placeholder="DATABASE_URL=postgres://...&#10;API_KEY=..."></textarea>
+                    <p class="form-hint">
+                        @(edit?.HasEnvironment == true ? "Boş bırakırsanız kayıtlı değerler korunur; yazarsanız tamamı değişir. " : "")Her deployment'ta proje klasörüne <span class="font-mono">.env</span> olarak yazılır (yalnızca SSH kullanıcısı okuyabilir). Değerler şifreli saklanır ve geri gösterilmez.
+                    </p>
+                    <span asp-validation-for="Environment" class="field-validation-error"></span>
+                </div>
+                @if (edit?.HasEnvironment == true)
+                {
+                    <label class="check-card">
+                        <input name="RemoveEnvironment" value="true" type="checkbox" class="form-check" checked="@edit.RemoveEnvironment" />
+                        <span>
+                            <span class="check-card-title">Kayıtlı değişkenleri kaldır</span>
+                            <span class="check-card-text">Sunucudaki mevcut .env dosyasına dokunulmaz.</span>
+                        </span>
+                    </label>
+                }
+            </div>
+        </section>
+
+        <div class="alert-info flex gap-3">
+            @Icons.Render("lock", "h-5 w-5 shrink-0")
+            <p>Git komutları sunucuya kayıtlı SSH kullanıcısıyla, Docker komutları sunucunun sudo ayarıyla çalışır. Erişim anahtarı komut satırına yazılmaz ve sunucuda diske kaydedilmez.</p>
+        </div>
+    </div>
+</div>

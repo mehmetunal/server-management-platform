@@ -121,7 +121,7 @@ public class PluginServiceTests
         Assert.False(result.IsSuccess);
         Assert.DoesNotContain("tablo var", result.Message);
         Assert.False(catalog.IsInstalled(PluginTestData.SystemName));
-        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!, Ct);
         await _auditLog.Received(1).LogAsync(
             Arg.Is<AuditEntry>(e => e.Action == AuditActions.PluginInstall && !e.IsSuccess),
             Arg.Any<CancellationToken>());
@@ -153,7 +153,7 @@ public class PluginServiceTests
         var result = await CreateService(new PluginCatalog([PluginTestData.Loaded()])).SetEnabledAsync(PluginTestData.SystemName, true, Ct);
 
         Assert.False(result.IsSuccess);
-        await _repository.DidNotReceiveWithAnyArgs().SaveChangesAsync(default);
+        await _repository.DidNotReceiveWithAnyArgs().SaveChangesAsync(Ct);
     }
 
     [Fact]
@@ -165,8 +165,8 @@ public class PluginServiceTests
         var result = await CreateService(new PluginCatalog([PluginTestData.Loaded()])).SetEnabledAsync(PluginTestData.SystemName, true, Ct);
 
         Assert.True(result.IsSuccess);
-        await _repository.DidNotReceiveWithAnyArgs().SaveChangesAsync(default);
-        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(default!, default);
+        await _repository.DidNotReceiveWithAnyArgs().SaveChangesAsync(Ct);
+        await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(default!, Ct);
     }
 
     [Fact]
@@ -214,7 +214,7 @@ public class PluginServiceTests
         await CreateService(catalog).InitializeAsync(Ct);
 
         _migrator.DidNotReceiveWithAnyArgs().MigrateUp(default!);
-        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!, Ct);
         Assert.False(catalog.IsEnabled("DevOps.Broken"));
     }
 

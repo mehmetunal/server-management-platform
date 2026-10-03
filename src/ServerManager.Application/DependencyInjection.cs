@@ -24,6 +24,8 @@ public static class DependencyInjection
         services.AddScoped<ITerminalService, TerminalService>();
         services.AddScoped<IFileService, FileService>();
         services.AddScoped<IPluginService, PluginService>();
+        services.AddScoped<IProjectService, ProjectService>();
+        services.AddScoped<IDeploymentService, DeploymentService>();
         services.AddSingleton<AuditActionCatalog>();
         services.AddSingleton<DangerousCommandDetector>();
         services.AddSingleton<TerminalCommandQueue>();

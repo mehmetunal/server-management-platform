@@ -1,0 +1,144 @@
+@model DeploymentDetailsDto
+@{
+    var deployment = Model;
+    ViewData["Title"] = $"{deployment.ProjectName} · Deployment";
+    ViewData["Page"] = "deployment-details";
+    var canExecute = User.HasPermission(Permissions.DeploymentExecute);
+    var canRedeploy = canExecute && deployment.ProjectExists && !string.IsNullOrEmpty(deployment.CommitSha);
+    var steps = new[]
+    {
+        ("Preparing", "Hazırlık"),
+        ("Source", "Kaynak kod"),
+        ("Building", "Build"),
+        ("Deploying", "Deploy"),
+        ("Completed", "Tamamlandı")
+    };
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/lib/xterm/xterm.css" />
+}
+
+<div class="page-header">
+    <div data-region="deployment-heading">
+        @if (deployment.ProjectExists)
+        {
+            <a asp-controller="Projects" asp-action="Details" asp-route-id="@deployment.ProjectId" class="back-link" title="Proje sayfasına dön">@Icons.Render("chevron-left", "h-4 w-4") @deployment.ProjectName</a>
+        }
+        else
+        {
+            <a asp-action="Index" class="back-link" title="Deployment listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Deployment'lar</a>
+        }
+        <h1 class="page-title">
+            Deployment
+            @if (!string.IsNullOrEmpty(deployment.CommitSha ?? deployment.RequestedCommit))
+            {
+                <span class="font-mono text-lg text-slate-500">@DeploymentDisplay.ShortSha(deployment.CommitSha ?? deployment.RequestedCommit)</span>
+            }
+        </h1>
+        <p class="page-lead">@deployment.ProjectName projesinin @deployment.ServerName sunucusuna dağıtımı; çıktı sunucudan geldiği anda gösterilir.</p>
+    </div>
+    <div class="flex flex-wrap gap-2" data-region="deployment-actions">
+        @if (canExecute)
+        {
+            <button type="button" class="btn-danger" data-deployment-cancel data-url="@Url.Action("Cancel", new { id = deployment.Id })" hidden="@(!deployment.IsRunning)"
+                    title="Çalışan komutu durdur; sunucuda yarım kalan adımlar geri alınmaz">
+                @Icons.Render("stop", "h-4 w-4") İptal et
+            </button>
+        }
+        @if (canRedeploy)
+        {
+            <button type="button" class="btn-secondary" data-deployment-redeploy data-url="@Url.Action("Redeploy", new { id = deployment.Id })" hidden="@deployment.IsRunning"
+                    data-commit="@deployment.CommitSha" title="Aynı commit'i mevcut proje ayarlarıyla yeniden dağıt">
+                @Icons.Render("refresh", "h-4 w-4") Yeniden deploy
+            </button>
+        }
+        <a asp-action="Log" asp-route-id="@deployment.Id" class="btn-ghost" data-deployment-log hidden="@deployment.IsRunning" title="Deployment logunu metin dosyası olarak indir">@Icons.Render("download", "h-4 w-4") Log indir</a>
+    </div>
+</div>
+
+<div class="deployment-view" data-deployment-view
+     data-deployment-id="@deployment.Id"
+     data-project-name="@deployment.ProjectName"
+     data-hub-url="@Url.Content("~" + DeploymentHub.Path)"
+     data-running="@(deployment.IsRunning ? "true" : "false")">
+
+    <ol class="wizard-steps" aria-label="Deployment adımları">
+        @for (var i = 0; i < steps.Length; i++)
+        {
+            var (key, label) = steps[i];
+            <li class="wizard-step" data-step="@key">
+                <span class="wizard-step-marker">@(i + 1)</span>
+                <span class="wizard-step-label">@label</span>
+            </li>
+        }
+    </ol>
+
+    <div class="deployment-grid">
+        <section class="panel deployment-log-panel">
+            <div class="panel-header">
+                <h2 class="panel-title">Çıktı</h2>
+                <span class="@DeploymentDisplay.StatusBadgeClass(deployment.Status)" data-deployment-status><span class="badge-dot"></span><span data-deployment-status-text>@DeploymentDisplay.StatusText(deployment.Status)</span></span>
+            </div>
+            <div class="log-console" data-deployment-console></div>
+            <p class="deployment-result" data-deployment-result hidden></p>
+        </section>
+
+        <section class="panel" data-region="deployment-summary">
+            <div class="panel-header"><h2 class="panel-title">Özet</h2></div>
+            <dl class="panel-body detail-list">
+                <div><dt class="detail-term">Proje</dt><dd class="detail-value">@deployment.ProjectName</dd></div>
+                <div><dt class="detail-term">Sunucu</dt><dd class="detail-value">@deployment.ServerName</dd></div>
+                <div><dt class="detail-term">Tür</dt><dd class="detail-value">@DeploymentDisplay.BuildTypeText(deployment.BuildType)</dd></div>
+                <div><dt class="detail-term">Dal</dt><dd class="detail-value"><span class="tag">@deployment.Branch</span></dd></div>
+                <div>
+                    <dt class="detail-term">Commit</dt>
+                    <dd class="detail-value">
+                        @if (string.IsNullOrEmpty(deployment.CommitSha))
+                        {
+                            <span class="font-mono">@(deployment.RequestedCommit is null ? "Dalın son hali" : DeploymentDisplay.ShortSha(deployment.RequestedCommit))</span>
+                        }
+                        else if (deployment.CommitUrl is not null)
+                        {
+                            <a href="@deployment.CommitUrl" class="panel-link font-mono" target="_blank" rel="noopener noreferrer" title="Commit'i Git sağlayıcısında aç">@DeploymentDisplay.ShortSha(deployment.CommitSha)</a>
+                        }
+                        else
+                        {
+                            <span class="font-mono" title="@deployment.CommitSha">@DeploymentDisplay.ShortSha(deployment.CommitSha)</span>
+                        }
+                        @if (!string.IsNullOrEmpty(deployment.CommitMessage))
+                        {
+                            <p class="deployment-commit-message" title="@deployment.CommitMessage">@deployment.CommitMessage</p>
+                        }
+                        @if (!string.IsNullOrEmpty(deployment.CommitAuthor))
+                        {
+                            <p class="text-xs text-slate-500">@deployment.CommitAuthor</p>
+                        }
+                    </dd>
+                </div>
+                <div><dt class="detail-term">Başlatan</dt><dd class="detail-value">@(deployment.UserName ?? "—") <span class="font-mono text-xs text-slate-500">@deployment.IpAddress</span></dd></div>
+                <div><dt class="detail-term">Başlangıç</dt><dd class="detail-value">@DateDisplay.Format(deployment.StartedAt, "dd.MM.yyyy HH:mm:ss")</dd></div>
+                <div><dt class="detail-term">Bitiş</dt><dd class="detail-value">@DateDisplay.Format(deployment.CompletedAt, "dd.MM.yyyy HH:mm:ss")</dd></div>
+                <div><dt class="detail-term">Süre</dt><dd class="detail-value">@(deployment.IsRunning ? "Sürüyor" : DeploymentDisplay.Duration(deployment.StartedAt, deployment.CompletedAt))</dd></div>
+                @if (deployment.SourceDeploymentId is Guid sourceId)
+                {
+                    <div><dt class="detail-term">Kaynak</dt><dd class="detail-value"><a asp-action="Details" asp-route-id="@sourceId" class="panel-link" title="Yeniden dağıtılan önceki deployment'ı aç">Önceki deployment</a></dd></div>
+                }
+                @if (!string.IsNullOrEmpty(deployment.CancelledBy))
+                {
+                    <div><dt class="detail-term">İptal eden</dt><dd class="detail-value">@deployment.CancelledBy</dd></div>
+                }
+                @if (!string.IsNullOrEmpty(deployment.FailureReason))
+                {
+                    <div><dt class="detail-term">Neden</dt><dd class="detail-value text-red-600 dark:text-red-400">@deployment.FailureReason</dd></div>
+                }
+            </dl>
+        </section>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/lib/signalr/signalr.min.js"></script>
+    <script src="~/lib/xterm/xterm.js"></script>
+    <script src="~/lib/xterm/addon-fit.js"></script>
+}

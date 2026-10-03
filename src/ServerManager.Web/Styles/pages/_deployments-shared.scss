@@ -1,0 +1,27 @@
+.project-name {
+  @apply whitespace-nowrap font-medium text-slate-900 hover:text-brand-600 dark:text-slate-100 dark:hover:text-brand-400;
+}
+
+.project-repo {
+  @apply mt-0.5 max-w-[22rem] truncate font-mono text-xs text-slate-500 dark:text-slate-400;
+}
+
+.deployment-time {
+  @apply whitespace-nowrap text-sm tabular-nums text-slate-600 dark:text-slate-300;
+}
+
+.deployment-link {
+  @apply font-medium text-slate-900 hover:text-brand-600 dark:text-slate-100 dark:hover:text-brand-400;
+}
+
+.deployment-commit {
+  @apply min-w-[12rem] space-x-1;
+}
+
+.deployment-commit-message {
+  @apply mt-0.5 max-w-[20rem] truncate text-xs text-slate-500 dark:text-slate-400;
+}
+
+[data-ajax-list][aria-busy="true"] {
+  @apply opacity-60 transition-opacity;
+}

@@ -11,6 +11,7 @@ public sealed class ServerPageViewModel
     public const string DockerTab = "docker";
     public const string TerminalTab = "terminal";
     public const string FilesTab = "files";
+    public const string DeploymentsTab = "deployments";
 
     /// <summary>Çekirdek sekme sabitlerinden biri ya da bir eklentinin <see cref="ServerTab.Key"/> değeri.</summary>
     public string ActiveTab { get; init; } = OverviewTab;

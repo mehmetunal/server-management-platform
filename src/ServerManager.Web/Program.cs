@@ -12,6 +12,7 @@ using ServerManager.Application.Interfaces.Monitoring;
 using ServerManager.Application.Monitoring;
 using ServerManager.Infrastructure;
 using ServerManager.Web.BackgroundJobs;
+using ServerManager.Web.Deployments;
 using ServerManager.Web.Extensions;
 using ServerManager.Web.Framework.Authorization;
 using ServerManager.Web.Framework.Mvc;
@@ -49,6 +50,8 @@ try
     builder.Services.AddSingleton<TerminalManager>();
     builder.Services.AddHostedService<TerminalCommandWriter>();
     builder.Services.AddHostedService<TerminalIdleSweeper>();
+    builder.Services.AddSingleton<DeploymentManager>();
+    builder.Services.AddHostedService<DeploymentLifecycleWorker>();
     if (builder.Configuration.GetValue($"{MonitoringOptions.SectionName}:Enabled", true))
     {
         builder.Services.AddHostedService<MetricsCollectorWorker>();
@@ -158,6 +161,7 @@ try
     app.MapControllerRoute(name: "default", pattern: "{controller=Dashboard}/{action=Index}/{id?}");
     app.MapHub<MonitoringHub>(MonitoringHub.Path);
     app.MapHub<TerminalHub>(TerminalHub.Path);
+    app.MapHub<DeploymentHub>(DeploymentHub.Path);
     app.MapPluginEndpoints();
 
     await app.RunAsync();

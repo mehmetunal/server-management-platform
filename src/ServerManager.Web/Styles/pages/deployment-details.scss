@@ -1,0 +1,17 @@
+@use "deployments-shared";
+
+.deployment-view {
+  @apply space-y-6;
+}
+
+.deployment-grid {
+  @apply grid grid-cols-1 gap-6 xl:grid-cols-3;
+}
+
+.deployment-log-panel {
+  @apply overflow-hidden xl:col-span-2;
+}
+
+.deployment-result {
+  @apply m-4 text-sm;
+}

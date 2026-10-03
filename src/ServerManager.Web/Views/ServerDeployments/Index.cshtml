@@ -1,0 +1,81 @@
+@model ServerDeploymentsViewModel
+@{
+    var server = Model.Page.Server;
+    ViewData["Title"] = $"{server.Name} · Deployments";
+    ViewData["Page"] = "server-deployments";
+    var canManage = User.HasPermission(Permissions.DeploymentManage);
+    var listUrl = Url.Action("Index", "Deployments", new { serverId = server.Id, pageSize = 10, embedded = "server" });
+}
+
+<partial name="_ServerHeader" model="Model.Page" />
+
+<section class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">Projeler</h2>
+        @if (canManage)
+        {
+            <a asp-controller="Projects" asp-action="Create" asp-route-serverId="@server.Id" class="btn-primary btn-sm" title="Bu sunucuya dağıtılacak yeni proje tanımla">@Icons.Render("plus", "h-4 w-4") Proje ekle</a>
+        }
+    </div>
+    @if (Model.Projects.Count == 0)
+    {
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("folder", "h-6 w-6")</span>
+            <p>Bu sunucuya henüz proje bağlanmadı.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Proje</th>
+                        <th>Dal</th>
+                        <th>Tür</th>
+                        <th>Son deployment</th>
+                        <th><span class="sr-only">Detay</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var project in Model.Projects)
+                    {
+                        var last = project.LastDeployment;
+                        <tr>
+                            <td>
+                                <a asp-controller="Projects" asp-action="Details" asp-route-id="@project.Id" class="project-name" title="Proje ayrıntılarını ve deployment geçmişini aç">@project.Name</a>
+                                <p class="project-repo" title="@project.RepositoryUrl">@project.RepositoryUrl</p>
+                            </td>
+                            <td><span class="tag">@project.Branch</span></td>
+                            <td class="whitespace-nowrap text-sm">@DeploymentDisplay.BuildTypeText(project.BuildType)</td>
+                            <td class="whitespace-nowrap">
+                                @if (last is null)
+                                {
+                                    <span class="text-xs text-slate-500">Henüz yok</span>
+                                }
+                                else
+                                {
+                                    <a asp-controller="Deployments" asp-action="Details" asp-route-id="@last.Id" class="@DeploymentDisplay.StatusBadgeClass(last.Status)" title="Deployment ayrıntılarını ve logunu aç"><span class="badge-dot"></span>@DeploymentDisplay.StatusText(last.Status)</a>
+                                    <span class="ml-1 text-xs text-slate-500" title="@DateDisplay.Format(last.StartedAt)">@DateDisplay.Relative(last.StartedAt)</span>
+                                }
+                            </td>
+                            <td class="text-right">
+                                <a asp-controller="Projects" asp-action="Details" asp-route-id="@project.Id" class="btn-ghost btn-sm" title="Detay">@Icons.Render("eye", "h-4 w-4")</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+<section class="panel mt-6">
+    <div class="panel-header">
+        <h2 class="panel-title">Son deployment'lar</h2>
+        <button type="button" class="btn-ghost btn-sm" data-deployments-refresh title="Deployment listesini yeniden yükle">@Icons.Render("refresh", "h-4 w-4") Yenile</button>
+    </div>
+    <div data-ajax-list data-url="@listUrl">
+        <partial name="~/Views/Deployments/_DeploymentList.cshtml" model="Model.Deployments" />
+    </div>
+</section>

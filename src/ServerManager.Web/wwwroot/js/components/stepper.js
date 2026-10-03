@@ -1,8 +1,8 @@
-import { qsa } from '@app/core/dom.js';
+import { qsa } from '../core/dom.js';
 
 const STATE_CLASSES = ['is-active', 'is-done', 'is-warning', 'is-failed'];
 
-/** Sihirbaz adım göstergesi: <li data-step="..."> öğelerine durum sınıfı verir. */
+/** Adım göstergesi: <li data-step="..."> öğelerine durum sınıfı verir (.wizard-steps). */
 export function createStepper(root) {
     const steps = new Map(qsa('[data-step]', root).map(item => [item.dataset.step, item]));
 
@@ -21,9 +21,9 @@ export function createStepper(root) {
             list.forEach(step => set(step, state));
         },
         /** Aktif adımı başarısız olarak işaretler; aktif adım yoksa verilen adımı. */
-        failActive(fallback) {
+        failActive(fallback, state = 'failed') {
             const active = [...steps.entries()].find(([, item]) => item.classList.contains('is-active'));
-            set(active ? active[0] : fallback, 'failed');
+            set(active ? active[0] : fallback, state);
         }
     };
 }
