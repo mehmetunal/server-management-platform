@@ -40,10 +40,11 @@ internal sealed class SshTerminalSession : ITerminalSession
 
     public bool IsClosed => Volatile.Read(ref _closed) == 1;
 
-    public void Start(string startupLine)
+    public void Start(string? startupLine)
     {
         _ = Task.Factory.StartNew(ReadLoopAsync, _cts.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default).Unwrap();
-        WriteRaw(startupLine + "\n");
+        if (startupLine is not null)
+            WriteRaw(startupLine + "\n");
     }
 
     public async Task WriteAsync(string data, CancellationToken cancellationToken = default)

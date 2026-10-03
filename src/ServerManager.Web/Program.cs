@@ -20,6 +20,7 @@ using ServerManager.Web.Models;
 using ServerManager.Web.Options;
 using ServerManager.Web.RateLimiting;
 using ServerManager.Web.Services;
+using ServerManager.Web.Terminal;
 
 Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
 
@@ -42,7 +43,8 @@ try
 
     builder.Services.AddSignalR();
     builder.Services.AddSingleton<IMonitoringNotifier, SignalRMonitoringNotifier>();
-    builder.Services.AddSingleton<ContainerTerminalManager>();
+    builder.Services.AddSingleton<TerminalManager>();
+    builder.Services.AddHostedService<TerminalCommandWriter>();
     builder.Services.AddHostedService<TerminalIdleSweeper>();
     if (builder.Configuration.GetValue($"{MonitoringOptions.SectionName}:Enabled", true))
     {
@@ -151,7 +153,7 @@ try
 
     app.MapControllerRoute(name: "default", pattern: "{controller=Dashboard}/{action=Index}/{id?}");
     app.MapHub<MonitoringHub>(MonitoringHub.Path);
-    app.MapHub<ContainerTerminalHub>(ContainerTerminalHub.Path);
+    app.MapHub<TerminalHub>(TerminalHub.Path);
 
     await app.RunAsync();
 }

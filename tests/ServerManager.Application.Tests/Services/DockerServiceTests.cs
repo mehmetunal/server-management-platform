@@ -12,6 +12,7 @@ using ServerManager.Application.Interfaces.Services;
 using ServerManager.Application.Interfaces.Ssh;
 using ServerManager.Application.Services;
 using ServerManager.Application.Validators.Docker;
+using ServerManager.Domain.Enums;
 
 namespace ServerManager.Application.Tests.Services;
 
@@ -282,22 +283,7 @@ public class DockerServiceTests
         Assert.True(result.IsSuccess);
         Assert.Same(session, result.Data!.Session);
         Assert.Equal(ServerName, result.Data.ServerName);
+        Assert.Equal(TerminalSessionKind.Container, result.Data.Kind);
         await AssertAuditedAsync(AuditActions.DockerTerminalOpen, true, "Container: web");
-    }
-
-    [Fact]
-    public async Task Terminal_close_is_audited_with_duration_and_user()
-    {
-        var session = Substitute.For<ITerminalSession>();
-        session.StartedAt.Returns(DateTime.UtcNow.AddMinutes(-12).AddSeconds(-5));
-        var handle = new ContainerTerminalHandle { ServerId = _serverId, ServerName = ServerName, Container = "web", Session = session };
-
-        await _service.LogTerminalClosedAsync(handle, "operator@local.test", Ct);
-
-        await _auditLog.Received(1).LogAsync(
-            Arg.Is<AuditEntry>(e => e.Action == AuditActions.DockerTerminalClose
-                                    && e.UserNameOverride == "operator@local.test"
-                                    && e.Details == "Container: web, süre: 12 dk"),
-            Arg.Any<CancellationToken>());
     }
 }

@@ -23,8 +23,9 @@ public class SecurityHeadersMiddleware
             var webSocketOrigin = context.Request.Host.HasValue
                 ? $" {(context.Request.IsHttps ? "wss" : "ws")}://{context.Request.Host.Value}"
                 : string.Empty;
+            var sameOriginFraming = context.IsSameOriginFramingAllowed();
             headers.XContentTypeOptions = "nosniff";
-            headers.XFrameOptions = "DENY";
+            headers.XFrameOptions = sameOriginFraming ? "SAMEORIGIN" : "DENY";
             headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
             headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()";
             headers["Cross-Origin-Opener-Policy"] = "same-origin";
@@ -36,7 +37,7 @@ public class SecurityHeadersMiddleware
                 "font-src 'self'; " +
                 $"connect-src 'self'{webSocketOrigin}; " +
                 "object-src 'none'; " +
-                "frame-ancestors 'none'; " +
+                (sameOriginFraming ? "frame-ancestors 'self'; " : "frame-ancestors 'none'; ") +
                 "form-action 'self'; " +
                 "base-uri 'self'";
             return Task.CompletedTask;

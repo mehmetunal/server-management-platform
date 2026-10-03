@@ -8,7 +8,9 @@
     var canDelete = User.HasPermission(Permissions.ServerDelete);
     var canConnect = User.HasPermission(Permissions.ServerConnect);
     var canViewDocker = User.HasPermission(Permissions.DockerView);
-    var disabledTabs = new[] { "Terminal", "Files", "Services", "Processes", "Logs", "Network", "Storage", "Security", "Deployments", "Backups", "Alerts", "Activity" };
+    var canViewTerminal = User.HasPermission(Permissions.TerminalView);
+    var canViewFiles = User.HasPermission(Permissions.FileView);
+    var disabledTabs = new[] { "Services", "Processes", "Logs", "Network", "Storage", "Security", "Deployments", "Backups", "Alerts", "Activity" };
 }
 
 <div data-region="server-header" data-live-server="@server.Id" data-hub-url="@Url.Content("~" + MonitoringHub.Path)">
@@ -95,6 +97,14 @@
         @if (canViewDocker)
         {
             <a asp-controller="Docker" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.DockerTab ? "is-active" : "")">Docker</a>
+        }
+        @if (canViewTerminal)
+        {
+            <a asp-controller="Terminal" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.TerminalTab ? "is-active" : "")">Terminal</a>
+        }
+        @if (canViewFiles)
+        {
+            <a asp-controller="Files" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.FilesTab ? "is-active" : "")">Files</a>
         }
         @foreach (var tab in disabledTabs)
         {

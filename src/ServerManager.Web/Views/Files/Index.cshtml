@@ -1,0 +1,221 @@
+@model FileManagerViewModel
+@{
+    var serverId = Model.ServerId;
+    var canCreate = User.HasPermission(Permissions.FileCreate);
+    var canUpload = User.HasPermission(Permissions.FileUpload);
+    var canEdit = User.HasPermission(Permissions.FileEdit);
+    var canChangePermissions = User.HasPermission(Permissions.FilePermissions);
+    ViewData["Title"] = $"{Model.Page.Server.Name} · Dosyalar";
+    ViewData["Page"] = "file-manager";
+}
+
+<partial name="_ServerHeader" model="Model.Page" />
+
+<section class="panel file-manager" data-file-manager
+         data-list-url="@Url.Action("Index", new { id = serverId })"
+         data-download-url="@Url.Action("Download", new { id = serverId })"
+         data-delete-url="@Url.Action("Delete", new { id = serverId })"
+         data-upload-url="@Url.Action("Upload", new { id = serverId })"
+         data-max-upload-mb="@Model.MaxUploadMegabytes">
+    <div class="file-toolbar">
+        <div class="file-nav">
+            <button type="button" class="file-action" data-file-up title="Üst klasör" aria-label="Üst klasör">@Icons.Render("arrow-up", "h-4 w-4")</button>
+            <button type="button" class="file-action" data-file-home title="Ev klasörü" aria-label="Ev klasörü">@Icons.Render("home", "h-4 w-4")</button>
+            <button type="button" class="file-action" data-file-refresh title="Yenile" aria-label="Yenile">@Icons.Render("refresh", "h-4 w-4")</button>
+        </div>
+        <form class="file-path-form" action="@Url.Action("Index", new { id = serverId })" data-file-path-form novalidate>
+            <input type="text" name="path" class="form-control form-control-mono" value="@Model.List.CurrentPath" aria-label="Klasör yolu" autocomplete="off" spellcheck="false" data-file-path-input />
+            <button type="submit" class="btn-secondary btn-sm">Git</button>
+        </form>
+        <div class="file-toolbar-end">
+            <label class="check-inline"><input type="checkbox" class="form-check" data-file-show-hidden /> Gizli dosyalar</label>
+            @if (canCreate)
+            {
+                <button type="button" class="btn-secondary btn-sm" data-file-create="directory">@Icons.Render("folder-plus", "h-4 w-4") Yeni klasör</button>
+                <button type="button" class="btn-secondary btn-sm" data-file-create="file">@Icons.Render("document-plus", "h-4 w-4") Yeni dosya</button>
+            }
+            @if (canUpload)
+            {
+                <button type="button" class="btn-primary btn-sm" data-file-upload>@Icons.Render("upload", "h-4 w-4") Yükle</button>
+                <input type="file" multiple hidden data-file-upload-input />
+            }
+        </div>
+    </div>
+
+    <div class="file-drop-zone" data-file-drop-zone>
+        <div data-file-list>
+            <partial name="_FileList" model="Model.List" />
+        </div>
+        @if (canUpload)
+        {
+            <div class="file-drop-overlay" data-file-drop-overlay hidden>
+                @Icons.Render("upload", "h-8 w-8")
+                <p>Yüklemek için dosyaları bırakın</p>
+            </div>
+        }
+    </div>
+
+    @if (canUpload)
+    {
+        <ul class="upload-queue" data-upload-queue hidden></ul>
+        <p class="panel-note">Dosya başına en fazla @Model.MaxUploadMegabytes MB yüklenebilir. Dosyaları listeye sürükleyip bırakabilirsiniz.</p>
+    }
+</section>
+
+@if (canCreate)
+{
+    <div id="file-create-modal" class="modal-backdrop" data-modal hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="file-create-title">
+            <form data-file-create-form action="@Url.Action("Create", new { id = serverId })" novalidate>
+                <input type="hidden" name="Directory" />
+                <input type="hidden" name="IsDirectory" />
+                <div class="modal-body">
+                    <h2 id="file-create-title" class="modal-title" data-file-create-title>Yeni klasör</h2>
+                    <p class="form-hint font-mono" data-file-create-location></p>
+                    <div>
+                        <label for="file-create-name" class="form-label">Ad</label>
+                        <input id="file-create-name" name="Name" class="form-control form-control-mono" autocomplete="off" spellcheck="false" required maxlength="255" />
+                        <span class="field-validation-valid" data-valmsg-for="Name"></span>
+                    </div>
+                    <p class="alert-error" data-form-error hidden></p>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" data-modal-close>Vazgeç</button>
+                    <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span>@Icons.Render("plus", "h-4 w-4") Oluştur</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="file-copy-modal" class="modal-backdrop" data-modal hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="file-copy-title">
+            <form data-file-copy-form action="@Url.Action("Copy", new { id = serverId })" novalidate>
+                <input type="hidden" name="Source" />
+                <div class="modal-body">
+                    <h2 id="file-copy-title" class="modal-title">Kopyala</h2>
+                    <p class="form-hint font-mono" data-file-source></p>
+                    <div>
+                        <label for="file-copy-destination" class="form-label">Hedef yol</label>
+                        <input id="file-copy-destination" name="Destination" class="form-control form-control-mono" autocomplete="off" spellcheck="false" required />
+                        <span class="field-validation-valid" data-valmsg-for="Destination"></span>
+                        <p class="form-hint">Tam yol yazın. Klasörler içerikleriyle birlikte, izin ve sahiplik korunarak kopyalanır.</p>
+                    </div>
+                    <p class="alert-error" data-form-error hidden></p>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" data-modal-close>Vazgeç</button>
+                    <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span>@Icons.Render("copy", "h-4 w-4") Kopyala</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@if (canEdit)
+{
+    <div id="file-move-modal" class="modal-backdrop" data-modal hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="file-move-title">
+            <form data-file-move-form action="@Url.Action("Move", new { id = serverId })" novalidate>
+                <input type="hidden" name="Source" />
+                <div class="modal-body">
+                    <h2 id="file-move-title" class="modal-title">Yeniden adlandır / taşı</h2>
+                    <p class="form-hint font-mono" data-file-source></p>
+                    <div>
+                        <label for="file-move-destination" class="form-label">Yeni yol</label>
+                        <input id="file-move-destination" name="Destination" class="form-control form-control-mono" autocomplete="off" spellcheck="false" required />
+                        <span class="field-validation-valid" data-valmsg-for="Destination"></span>
+                        <p class="form-hint">Yalnızca adı değiştirerek yeniden adlandırın; farklı bir klasör yolu yazarak taşıyın. Hedefte aynı adda kayıt varsa işlem yapılmaz.</p>
+                    </div>
+                    <p class="alert-error" data-form-error hidden></p>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" data-modal-close>Vazgeç</button>
+                    <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span>@Icons.Render("arrows", "h-4 w-4") Uygula</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@if (canChangePermissions)
+{
+    <div id="file-permissions-modal" class="modal-backdrop" data-modal hidden>
+        <div class="modal permissions-modal" role="dialog" aria-modal="true" aria-labelledby="file-permissions-title">
+            <form data-file-permissions-form action="@Url.Action("ChangePermissions", new { id = serverId })" novalidate>
+                <input type="hidden" name="Path" />
+                <div class="modal-body">
+                    <h2 id="file-permissions-title" class="modal-title">İzinler ve sahiplik</h2>
+                    <p class="form-hint font-mono" data-file-source></p>
+
+                    <table class="permission-grid">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Okuma</th>
+                                <th>Yazma</th>
+                                <th>Çalıştırma</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var (label, shift) in new[] { ("Sahip", 6), ("Grup", 3), ("Diğer", 0) })
+                            {
+                                <tr>
+                                    <th>@label</th>
+                                    <td><input type="checkbox" class="form-check" data-mode-bit="@(4 << shift)" aria-label="@label okuma" /></td>
+                                    <td><input type="checkbox" class="form-check" data-mode-bit="@(2 << shift)" aria-label="@label yazma" /></td>
+                                    <td><input type="checkbox" class="form-check" data-mode-bit="@(1 << shift)" aria-label="@label çalıştırma" /></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <div class="permission-special">
+                        <label class="check-inline"><input type="checkbox" class="form-check" data-mode-bit="2048" /> setuid</label>
+                        <label class="check-inline"><input type="checkbox" class="form-check" data-mode-bit="1024" /> setgid</label>
+                        <label class="check-inline"><input type="checkbox" class="form-check" data-mode-bit="512" /> sticky</label>
+                        <span class="permission-octal">Mod: <code data-mode-preview>0000</code></span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="file-permissions-owner" class="form-label">Sahip</label>
+                            <input id="file-permissions-owner" name="Owner" class="form-control form-control-mono" autocomplete="off" spellcheck="false" maxlength="64" />
+                            <span class="field-validation-valid" data-valmsg-for="Owner"></span>
+                        </div>
+                        <div>
+                            <label for="file-permissions-group" class="form-label">Grup</label>
+                            <input id="file-permissions-group" name="Group" class="form-control form-control-mono" autocomplete="off" spellcheck="false" maxlength="64" />
+                            <span class="field-validation-valid" data-valmsg-for="Group"></span>
+                        </div>
+                    </div>
+
+                    <details class="permission-advanced" data-permission-advanced>
+                        <summary>Gelişmiş: ham chmod modu</summary>
+                        <div class="mt-3">
+                            <label for="file-permissions-raw" class="form-label">chmod modu</label>
+                            <input id="file-permissions-raw" name="Mode" class="form-control form-control-mono" placeholder="0755 veya u+x,g-w" autocomplete="off" spellcheck="false" maxlength="64" />
+                            <span class="field-validation-valid" data-valmsg-for="Mode"></span>
+                            <p class="form-hint">Doluysa yukarıdaki tablo yerine bu değer chmod'a olduğu gibi verilir (sekizli veya sembolik).</p>
+                        </div>
+                    </details>
+
+                    <label class="check-inline" data-permission-recursive-row>
+                        <input type="checkbox" class="form-check" name="Recursive" value="true" />
+                        Alt klasör ve dosyalara da uygula (özyinelemeli)
+                    </label>
+                    <p class="form-hint">Sahiplik değişikliği ve başka kullanıcıya ait dosyalar, sunucuda sudo ayarı açıksa sudo ile yapılır.</p>
+                    <p class="alert-error" data-form-error hidden></p>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" data-modal-close>Vazgeç</button>
+                    <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span>@Icons.Render("key", "h-4 w-4") Uygula</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+<iframe name="file-download-frame" class="hidden" title="İndirme" data-file-download-frame></iframe>
+
+@section Scripts {
+    <script src="~/lib/signalr/signalr.min.js"></script>
+}

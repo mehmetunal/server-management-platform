@@ -17,11 +17,11 @@ export function setBusy(button, busy, busyLabel) {
     const spinner = button.querySelector('[data-spinner]');
     if (spinner) spinner.hidden = !busy;
     const label = button.querySelector('[data-label]');
-    if (!label || !busyLabel) return;
-    if (busy) {
+    if (!label) return;
+    if (busy && busyLabel) {
         label.dataset.idleText ??= label.textContent;
         label.textContent = busyLabel;
-    } else if (label.dataset.idleText) {
+    } else if (!busy && label.dataset.idleText) {
         label.textContent = label.dataset.idleText;
     }
 }

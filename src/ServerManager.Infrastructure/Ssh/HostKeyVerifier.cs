@@ -19,7 +19,7 @@ internal sealed class HostKeyVerifier
 
     public bool Mismatch { get; private set; }
 
-    public void Attach(SshClient client)
+    public void Attach(BaseClient client)
     {
         client.HostKeyReceived += (_, e) =>
         {

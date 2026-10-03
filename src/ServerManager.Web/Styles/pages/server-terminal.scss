@@ -1,0 +1,189 @@
+$terminal-background: #0b1020;
+
+.terminal-workspace {
+  @apply flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900;
+
+  &.is-fullscreen {
+    @apply h-screen rounded-none border-0;
+
+    .terminal-body {
+      @apply h-auto flex-1;
+    }
+
+    .terminal-footnote {
+      @apply hidden;
+    }
+  }
+}
+
+.terminal-tabbar {
+  @apply flex items-end gap-1 border-b border-slate-200 bg-slate-50 px-2 pt-2 dark:border-slate-800 dark:bg-slate-950/40;
+}
+
+.terminal-tab-list {
+  @apply flex min-w-0 gap-1 overflow-x-auto overflow-y-hidden;
+  scrollbar-width: none;
+}
+
+.terminal-tab {
+  @apply -mb-px flex shrink-0 items-center gap-2 rounded-t-lg border border-transparent px-3 py-2 text-sm text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200;
+
+  &.is-active {
+    @apply border-slate-200 border-b-white bg-white font-medium text-slate-900 dark:border-slate-800 dark:border-b-slate-900 dark:bg-slate-900 dark:text-slate-100;
+  }
+}
+
+.terminal-tab-dot {
+  @apply h-2 w-2 shrink-0 rounded-full bg-slate-300 dark:bg-slate-600;
+
+  [data-state="connected"] > & {
+    @apply bg-emerald-500;
+  }
+
+  [data-state="connecting"] > &,
+  [data-state="reconnecting"] > & {
+    @apply animate-pulse bg-sky-500;
+  }
+
+  [data-state="detached"] > & {
+    @apply bg-amber-500;
+  }
+
+  [data-state="disconnected"] > &,
+  [data-state="error"] > & {
+    @apply bg-red-500;
+  }
+}
+
+.terminal-tab-close {
+  @apply -mr-1 flex h-5 w-5 items-center justify-center rounded text-base leading-none text-slate-400 hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200;
+}
+
+.terminal-tab-add {
+  @apply mb-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200;
+}
+
+.terminal-toolbar {
+  @apply flex flex-wrap items-center gap-3 border-b border-slate-200 px-4 py-2.5 dark:border-slate-800;
+}
+
+.terminal-search {
+  @apply relative flex items-center gap-1;
+
+  .search-field-icon {
+    @apply pointer-events-none absolute left-3 text-slate-400;
+  }
+}
+
+.terminal-search-input {
+  @apply w-56 py-1.5 pl-9;
+
+  &.is-not-found {
+    @apply border-red-400 dark:border-red-500;
+  }
+}
+
+.terminal-toolbar-end {
+  @apply ml-auto flex flex-wrap items-center gap-1;
+}
+
+.terminal-icon-btn {
+  @apply inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200;
+
+  &.is-active {
+    @apply bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300;
+  }
+}
+
+.terminal-body {
+  @apply flex h-[36rem] min-h-0;
+}
+
+.terminal-screens {
+  @apply relative min-w-0 flex-1;
+  background-color: $terminal-background;
+}
+
+.terminal-screen {
+  @apply absolute inset-0 p-2;
+}
+
+.terminal-placeholder {
+  @apply absolute inset-0 flex flex-col items-center justify-center gap-3 text-sm text-slate-400;
+}
+
+.terminal-history {
+  @apply flex w-72 shrink-0 flex-col gap-2 border-l border-slate-200 p-3 dark:border-slate-800;
+}
+
+.terminal-history-header {
+  @apply flex items-center justify-between;
+}
+
+.terminal-history-title {
+  @apply text-sm font-semibold text-slate-900 dark:text-slate-100;
+}
+
+.terminal-history-filter {
+  @apply py-1.5 text-sm;
+}
+
+.terminal-history-list {
+  @apply -mx-1 min-h-0 flex-1 overflow-y-auto;
+}
+
+.terminal-history-item {
+  @apply block w-full truncate rounded-md px-2 py-1 text-left font-mono text-xs text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800;
+}
+
+.terminal-history-empty {
+  @apply px-2 py-1 text-xs text-slate-400;
+}
+
+.terminal-history-hint {
+  @apply text-xs text-slate-400;
+}
+
+.terminal-footnote {
+  @apply border-t border-slate-200 px-4 py-2.5 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400;
+}
+
+.session-time {
+  @apply whitespace-nowrap font-mono text-xs text-slate-500 dark:text-slate-400;
+}
+
+.session-container {
+  @apply block font-mono text-xs text-slate-400;
+}
+
+.session-reason {
+  @apply max-w-56 truncate text-xs text-slate-500 dark:text-slate-400;
+}
+
+.session-modal {
+  @apply max-w-3xl;
+}
+
+.session-summary {
+  @apply flex flex-wrap gap-x-2 gap-y-1 text-sm text-slate-500 dark:text-slate-400;
+}
+
+.session-commands {
+  @apply max-h-[60vh] divide-y divide-slate-100 overflow-y-auto rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800;
+}
+
+.session-command {
+  @apply flex items-start gap-3 px-3 py-2;
+}
+
+.session-command-time {
+  @apply shrink-0 pt-0.5 font-mono text-xs text-slate-400;
+}
+
+.session-command-text {
+  @apply min-w-0 flex-1 font-mono text-xs break-all whitespace-pre-wrap text-slate-800 dark:text-slate-200;
+}
+
+.session-command-meta {
+  @apply flex shrink-0 gap-1;
+}

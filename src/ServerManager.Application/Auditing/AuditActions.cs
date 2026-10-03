@@ -31,6 +31,21 @@ public static class AuditActions
     public const string DockerTerminalOpen = "docker.terminal_open";
     public const string DockerTerminalClose = "docker.terminal_close";
 
+    public const string TerminalOpen = "terminal.open";
+    public const string TerminalClose = "terminal.close";
+    public const string TerminalDangerousCommand = "terminal.dangerous_command";
+
+    public const string FileRead = "file.read";
+    public const string FileDownload = "file.download";
+    public const string FileCreate = "file.create";
+    public const string FileDirectoryCreate = "file.directory_create";
+    public const string FileEdit = "file.edit";
+    public const string FileUpload = "file.upload";
+    public const string FileDelete = "file.delete";
+    public const string FileMove = "file.move";
+    public const string FileCopy = "file.copy";
+    public const string FilePermissions = "file.permissions";
+
     public const string UserCreate = "user.create";
     public const string UserUpdate = "user.update";
     public const string UserLock = "user.lock";
@@ -64,6 +79,19 @@ public static class AuditActions
         [DockerNetworkRemove] = "Network silme",
         [DockerTerminalOpen] = "Container terminali açıldı",
         [DockerTerminalClose] = "Container terminali kapandı",
+        [TerminalOpen] = "Terminal açıldı",
+        [TerminalClose] = "Terminal kapandı",
+        [TerminalDangerousCommand] = "Tehlikeli komut",
+        [FileRead] = "Dosya görüntüleme",
+        [FileDownload] = "Dosya indirme",
+        [FileCreate] = "Dosya oluşturma",
+        [FileDirectoryCreate] = "Klasör oluşturma",
+        [FileEdit] = "Dosya düzenleme",
+        [FileUpload] = "Dosya yükleme",
+        [FileDelete] = "Dosya / klasör silme",
+        [FileMove] = "Dosya taşıma / yeniden adlandırma",
+        [FileCopy] = "Dosya kopyalama",
+        [FilePermissions] = "Dosya izinleri değiştirme",
         [UserCreate] = "Kullanıcı ekleme",
         [UserUpdate] = "Kullanıcı güncelleme",
         [UserLock] = "Kullanıcı kilitleme",

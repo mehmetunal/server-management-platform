@@ -1,0 +1,142 @@
+@model FileListViewModel
+@{
+    var listing = Model.Listing;
+    var canEdit = User.HasPermission(Permissions.FileEdit);
+    var canCreate = User.HasPermission(Permissions.FileCreate);
+    var canDelete = User.HasPermission(Permissions.FileDelete);
+    var canDownload = User.HasPermission(Permissions.FileDownload);
+    var canChangePermissions = User.HasPermission(Permissions.FilePermissions);
+}
+
+<div data-file-listing data-current-path="@Model.CurrentPath" data-parent-path="@listing?.ParentPath" data-home-path="@listing?.HomeDirectory">
+    @if (listing is not null)
+    {
+        <nav class="file-breadcrumbs" aria-label="Klasör yolu">
+            @for (var i = 0; i < listing.Breadcrumbs.Count; i++)
+            {
+                var crumb = listing.Breadcrumbs[i];
+                var isLast = crumb.Path == listing.Path;
+                @if (i > 1)
+                {
+                    <span class="file-breadcrumb-separator">/</span>
+                }
+                @if (isLast)
+                {
+                    <span class="file-breadcrumb is-current">@(crumb.Path == "/" ? "/" : crumb.Name)</span>
+                }
+                else
+                {
+                    <a class="file-breadcrumb" asp-action="Index" asp-route-id="@Model.ServerId" asp-route-path="@crumb.Path" data-list-link>@(crumb.Path == "/" ? "/" : crumb.Name)</a>
+                }
+            }
+        </nav>
+    }
+
+    @if (Model.Error is not null)
+    {
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("warning", "h-6 w-6")</span>
+            <p class="empty-state-title">Klasör açılamadı</p>
+            <p>@Model.Error</p>
+            @if (!string.IsNullOrEmpty(Model.RequestedPath))
+            {
+                <a class="panel-link" asp-action="Index" asp-route-id="@Model.ServerId" data-list-link>Ev klasörüne dön</a>
+            }
+        </div>
+    }
+    else if (listing!.Entries.Count == 0)
+    {
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("folder", "h-6 w-6")</span>
+            <p>Bu klasör boş.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="data-table file-table">
+                <thead>
+                    <tr>
+                        <th>Ad</th>
+                        <th class="text-right">Boyut</th>
+                        <th>İzinler</th>
+                        <th>Sahip</th>
+                        <th>Değiştirilme</th>
+                        <th><span class="sr-only">İşlemler</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in listing.Entries)
+                    {
+                        <tr class="file-row" data-entry
+                            data-path="@entry.Path"
+                            data-name="@entry.Name"
+                            data-kind="@FileDisplay.KindCode(entry.Kind)"
+                            data-mode="@entry.OctalMode"
+                            data-owner="@entry.Owner"
+                            data-group="@entry.Group"
+                            data-hidden-entry="@(entry.IsHidden ? "true" : "false")">
+                            <td>
+                                <div class="file-name-cell">
+                                <span class="@FileDisplay.IconClass(entry)" title="@FileDisplay.KindText(entry.Kind)">@Icons.Render(FileDisplay.Icon(entry), "h-4 w-4")</span>
+                                @if (entry.Kind is RemoteFileKind.Directory or RemoteFileKind.SymbolicLink)
+                                {
+                                    <a class="file-name" asp-action="Index" asp-route-id="@Model.ServerId" asp-route-path="@entry.Path" data-list-link>@entry.Name</a>
+                                }
+                                else if (entry.Kind == RemoteFileKind.File)
+                                {
+                                    <a class="file-name" asp-action="Edit" asp-route-id="@Model.ServerId" asp-route-path="@entry.Path">@entry.Name</a>
+                                }
+                                else
+                                {
+                                    <span class="file-name">@entry.Name</span>
+                                }
+                                </div>
+                            </td>
+                            <td class="file-size">@FileDisplay.Size(entry)</td>
+                            <td><span class="file-mode" title="@entry.OctalMode">@entry.Permissions</span></td>
+                            <td class="file-owner">@entry.Owner<span class="text-slate-400">:</span>@entry.Group</td>
+                            <td class="file-time">@DateDisplay.Format(entry.LastWriteTime, "dd.MM.yyyy HH:mm")</td>
+                            <td>
+                                <div class="file-actions">
+                                    @if (entry.Kind == RemoteFileKind.SymbolicLink)
+                                    {
+                                        <a class="file-action" asp-action="Edit" asp-route-id="@Model.ServerId" asp-route-path="@entry.Path" title="Dosya olarak aç" aria-label="Dosya olarak aç">@Icons.Render("eye", "h-4 w-4")</a>
+                                    }
+                                    @if (entry.Kind == RemoteFileKind.File && canEdit)
+                                    {
+                                        <a class="file-action" asp-action="Edit" asp-route-id="@Model.ServerId" asp-route-path="@entry.Path" title="Düzenle" aria-label="Düzenle">@Icons.Render("pencil", "h-4 w-4")</a>
+                                    }
+                                    @if (!entry.IsDirectory && canDownload)
+                                    {
+                                        <button type="button" class="file-action" data-file-download title="İndir" aria-label="İndir">@Icons.Render("download", "h-4 w-4")</button>
+                                    }
+                                    @if (canEdit)
+                                    {
+                                        <button type="button" class="file-action" data-file-rename title="Yeniden adlandır / taşı" aria-label="Yeniden adlandır veya taşı">@Icons.Render("arrows", "h-4 w-4")</button>
+                                    }
+                                    @if (canCreate)
+                                    {
+                                        <button type="button" class="file-action" data-file-copy title="Kopyala" aria-label="Kopyala">@Icons.Render("copy", "h-4 w-4")</button>
+                                    }
+                                    @if (canChangePermissions)
+                                    {
+                                        <button type="button" class="file-action" data-file-permissions title="İzinler ve sahiplik" aria-label="İzinler ve sahiplik">@Icons.Render("key", "h-4 w-4")</button>
+                                    }
+                                    @if (canDelete)
+                                    {
+                                        <button type="button" class="file-action is-danger" data-file-delete title="Sil" aria-label="Sil">@Icons.Render("trash", "h-4 w-4")</button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="file-summary" data-file-summary>
+            @listing.Entries.Count(e => e.IsDirectory) klasör, @listing.Entries.Count(e => !e.IsDirectory) dosya
+            <span data-hidden-summary>· @listing.Entries.Count(e => e.IsHidden) gizli</span>
+        </p>
+    }
+</div>

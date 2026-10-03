@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using ServerManager.Application.Interfaces.Services;
 using ServerManager.Application.Interfaces.Ssh;
 using ServerManager.Application.Services;
+using ServerManager.Application.Terminal;
 
 namespace ServerManager.Application;
 
@@ -19,6 +20,10 @@ public static class DependencyInjection
         services.AddScoped<IMonitoringService, MonitoringService>();
         services.AddScoped<IServerConnectionProvider, ServerConnectionProvider>();
         services.AddScoped<IDockerService, DockerService>();
+        services.AddScoped<ITerminalService, TerminalService>();
+        services.AddScoped<IFileService, FileService>();
+        services.AddSingleton<DangerousCommandDetector>();
+        services.AddSingleton<TerminalCommandQueue>();
         services.TryAddSingleton(TimeProvider.System);
 
         return services;

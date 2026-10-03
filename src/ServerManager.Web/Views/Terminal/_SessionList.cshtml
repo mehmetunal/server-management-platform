@@ -1,0 +1,64 @@
+@model TerminalSessionListViewModel
+
+@if (Model.Sessions.Items.Count == 0)
+{
+    <div class="empty-state">
+        <span class="empty-state-icon">@Icons.Render("terminal", "h-6 w-6")</span>
+        <p>@(Model.ShowsAllUsers ? "Bu sunucuda henüz terminal oturumu açılmadı." : "Bu sunucuda henüz terminal oturumunuz yok.")</p>
+    </div>
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Başlangıç</th>
+                    <th>Kullanıcı</th>
+                    <th>Tür</th>
+                    <th>Süre</th>
+                    <th>Komut</th>
+                    <th>IP</th>
+                    <th>Kapanış</th>
+                    <th><span class="sr-only">Detay</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var session in Model.Sessions.Items)
+                {
+                    <tr>
+                        <td class="session-time">@DateDisplay.Format(session.StartedAt, "dd.MM.yyyy HH:mm:ss")</td>
+                        <td class="text-sm">@(session.UserName ?? "—")</td>
+                        <td class="text-sm">
+                            @TerminalDisplay.KindText(session.Kind)
+                            @if (!string.IsNullOrEmpty(session.Container))
+                            {
+                                <span class="session-container">@session.Container</span>
+                            }
+                        </td>
+                        <td class="text-sm">
+                            @if (session.EndedAt is null)
+                            {
+                                <span class="badge-success"><span class="badge-dot"></span>Açık</span>
+                            }
+                            else
+                            {
+                                @TerminalDisplay.Duration(session.StartedAt, session.EndedAt)
+                            }
+                        </td>
+                        <td class="text-sm tabular-nums">@session.CommandCount</td>
+                        <td class="font-mono text-xs">@(session.IpAddress ?? "—")</td>
+                        <td class="session-reason" title="@session.CloseReason">@(session.CloseReason ?? "—")</td>
+                        <td class="text-right">
+                            <button type="button" class="btn-ghost btn-sm" data-session-open
+                                    data-url="@Url.Action("Session", new { id = Model.ServerId, sessionId = session.Id })">
+                                @Icons.Render("eye", "h-4 w-4") Komutlar
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <partial name="_Pager" model="Model.ToPager()" />
+}

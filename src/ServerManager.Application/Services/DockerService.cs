@@ -7,9 +7,11 @@ using ServerManager.Application.Docker;
 using ServerManager.Application.DTOs.AuditLogs;
 using ServerManager.Application.DTOs.Docker;
 using ServerManager.Application.DTOs.Ssh;
+using ServerManager.Application.DTOs.Terminal;
 using ServerManager.Application.Interfaces.Docker;
 using ServerManager.Application.Interfaces.Services;
 using ServerManager.Application.Interfaces.Ssh;
+using ServerManager.Domain.Enums;
 
 namespace ServerManager.Application.Services;
 
@@ -258,7 +260,7 @@ public class DockerService : IDockerService
             cancellationToken);
     }
 
-    public async Task<ServiceResult<ContainerTerminalHandle>> OpenTerminalAsync(
+    public async Task<ServiceResult<TerminalHandle>> OpenTerminalAsync(
         Guid serverId,
         string container,
         int columns,
@@ -267,11 +269,11 @@ public class DockerService : IDockerService
         CancellationToken cancellationToken = default)
     {
         if (!DockerNames.IsValidContainerReference(container))
-            return ServiceResult<ContainerTerminalHandle>.Failure(InvalidContainerMessage, ServiceErrorType.Validation);
+            return ServiceResult<TerminalHandle>.Failure(InvalidContainerMessage, ServiceErrorType.Validation);
 
         var connection = await _connectionProvider.GetAsync(serverId, cancellationToken);
         if (!connection.IsSuccess)
-            return ServiceResult<ContainerTerminalHandle>.Failure(connection.Message ?? "Sunucuya bağlanılamadı.", connection.ErrorType);
+            return ServiceResult<TerminalHandle>.Failure(connection.Message ?? "Sunucuya bağlanılamadı.", connection.ErrorType);
 
         var result = await _dockerClient.OpenContainerTerminalAsync(
             connection.Data!.Context,
@@ -284,30 +286,16 @@ public class DockerService : IDockerService
         await AuditAsync(AuditActions.DockerTerminalOpen, connection.Data, $"Container: {container}", result, cancellationToken);
 
         if (!result.IsSuccess)
-            return ServiceResult<ContainerTerminalHandle>.Failure(result.Message ?? "Terminal açılamadı.");
+            return ServiceResult<TerminalHandle>.Failure(result.Message ?? "Terminal açılamadı.");
 
-        return ServiceResult<ContainerTerminalHandle>.Success(new ContainerTerminalHandle
+        return ServiceResult<TerminalHandle>.Success(new TerminalHandle
         {
             ServerId = connection.Data.ServerId,
             ServerName = connection.Data.ServerName,
+            Kind = TerminalSessionKind.Container,
             Container = container,
             Session = result.Data!
         });
-    }
-
-    public Task LogTerminalClosedAsync(ContainerTerminalHandle handle, string? userName, CancellationToken cancellationToken = default)
-    {
-        var minutes = (int)Math.Max(0, (DateTime.UtcNow - handle.Session.StartedAt).TotalMinutes);
-        var details = $"Container: {handle.Container}, süre: {minutes} dk";
-
-        return _auditLogService.LogAsync(new AuditEntry(
-            AuditActions.DockerTerminalClose,
-            AuditEntityTypes.Server,
-            handle.ServerId.ToString(),
-            handle.ServerName,
-            details,
-            true,
-            userName), cancellationToken);
     }
 
     private async Task<ServiceResult<T>> QueryAsync<T>(

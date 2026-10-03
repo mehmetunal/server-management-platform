@@ -1,0 +1,112 @@
+@model ServerPageViewModel
+@{
+    var server = Model.Server;
+    var canExecute = User.HasPermission(Permissions.TerminalExecute);
+    ViewData["Title"] = $"{server.Name} · Terminal";
+    ViewData["Page"] = "server-terminal";
+}
+
+@section Styles {
+    @if (canExecute)
+    {
+        <link rel="stylesheet" href="~/lib/xterm/xterm.css" />
+    }
+}
+
+<partial name="_ServerHeader" model="Model" />
+
+@if (canExecute)
+{
+    <section class="terminal-workspace" data-terminal-workspace
+             data-hub-url="@Url.Content("~" + TerminalHub.Path)"
+             data-server-id="@server.Id"
+             data-server-name="@server.Name"
+             data-history-url="@Url.Action("History", new { id = server.Id })">
+        <div class="terminal-tabbar">
+            <div class="terminal-tab-list" role="tablist" aria-label="Terminal oturumları" data-terminal-tabs></div>
+            <button type="button" class="terminal-tab-add" data-terminal-new title="Yeni oturum" aria-label="Yeni oturum">@Icons.Render("plus", "h-4 w-4")</button>
+        </div>
+
+        <div class="terminal-toolbar">
+            <span class="badge-neutral" data-terminal-status><span class="badge-dot"></span><span data-terminal-status-text>Bağlı değil</span></span>
+            <div class="terminal-search">
+                <span class="search-field-icon">@Icons.Render("search", "h-4 w-4")</span>
+                <input type="search" class="form-control terminal-search-input" placeholder="Çıktıda ara…" aria-label="Çıktıda ara" data-terminal-search />
+                <button type="button" class="terminal-icon-btn" data-terminal-search-prev title="Önceki eşleşme (Shift+Enter)" aria-label="Önceki eşleşme">@Icons.Render("chevron-left", "h-4 w-4")</button>
+                <button type="button" class="terminal-icon-btn" data-terminal-search-next title="Sonraki eşleşme (Enter)" aria-label="Sonraki eşleşme">@Icons.Render("chevron-right", "h-4 w-4")</button>
+            </div>
+            <div class="terminal-toolbar-end">
+                <button type="button" class="btn-secondary btn-sm" data-terminal-takeover hidden>@Icons.Render("refresh", "h-4 w-4") Buraya al</button>
+                <button type="button" class="btn-primary btn-sm" data-terminal-reconnect hidden>@Icons.Render("terminal", "h-4 w-4") Yeniden bağlan</button>
+                <button type="button" class="terminal-icon-btn" data-terminal-copy title="Seçimi kopyala (Ctrl+Shift+C)" aria-label="Seçimi kopyala">@Icons.Render("copy", "h-4 w-4")</button>
+                <button type="button" class="terminal-icon-btn" data-terminal-paste title="Yapıştır (Ctrl+Shift+V)" aria-label="Yapıştır">@Icons.Render("clipboard", "h-4 w-4")</button>
+                <button type="button" class="terminal-icon-btn" data-terminal-download title="Çıktıyı indir" aria-label="Çıktıyı indir">@Icons.Render("download", "h-4 w-4")</button>
+                <button type="button" class="terminal-icon-btn" data-terminal-history-toggle title="Komut geçmişi" aria-label="Komut geçmişi" aria-pressed="false">@Icons.Render("clock", "h-4 w-4")</button>
+                <button type="button" class="terminal-icon-btn" data-terminal-fullscreen title="Tam ekran" aria-label="Tam ekran">@Icons.Render("expand", "h-4 w-4")</button>
+            </div>
+        </div>
+
+        <div class="terminal-body">
+            <div class="terminal-screens" data-terminal-screens>
+                <div class="terminal-placeholder" data-terminal-placeholder hidden>
+                    <p>Açık oturum yok.</p>
+                    <button type="button" class="btn-primary btn-sm" data-terminal-new>@Icons.Render("plus", "h-4 w-4") Yeni oturum</button>
+                </div>
+            </div>
+            <aside class="terminal-history" data-terminal-history-panel hidden>
+                <div class="terminal-history-header">
+                    <h2 class="terminal-history-title">Komut geçmişi</h2>
+                    <button type="button" class="terminal-icon-btn" data-terminal-history-refresh title="Yenile" aria-label="Geçmişi yenile">@Icons.Render("refresh", "h-4 w-4")</button>
+                </div>
+                <input type="search" class="form-control terminal-history-filter" placeholder="Filtrele…" aria-label="Komut geçmişini filtrele" data-terminal-history-filter />
+                <ul class="terminal-history-list" data-terminal-history-list>
+                    <li class="terminal-history-empty">Yükleniyor…</li>
+                </ul>
+                <p class="terminal-history-hint">Tıklanan komut aktif oturuma yazılır; Enter'a basmadan çalışmaz.</p>
+            </aside>
+        </div>
+
+        <p class="terminal-footnote">
+            Oturumlar sayfa yenilense veya bağlantı kopsa da sunucuda açık kalır ve yeniden bağlanılır. Tehlikeli komutlar (rm -rf, mkfs, dd, shutdown, reboot, iptables, userdel…) çalıştırılmadan önce ikinci onay ister. Açılış, kapanış ve komutlar IP ve kullanıcı bilgisiyle kayda alınır.
+        </p>
+    </section>
+}
+else
+{
+    <div class="alert-info mb-6">Terminal açma yetkiniz yok; yalnızca oturum geçmişini görüntüleyebilirsiniz.</div>
+}
+
+<section class="panel mt-6">
+    <div class="panel-header">
+        <h2 class="panel-title">Oturum geçmişi</h2>
+        <button type="button" class="btn-ghost btn-sm" data-sessions-refresh>@Icons.Render("refresh", "h-4 w-4") Yenile</button>
+    </div>
+    <div data-terminal-sessions data-url="@Url.Action("Sessions", new { id = server.Id })">
+        <div class="empty-state">
+            <span class="spinner h-6 w-6"></span>
+            <p>Oturumlar yükleniyor…</p>
+        </div>
+    </div>
+</section>
+
+<div id="terminal-session-modal" class="modal-backdrop" data-modal hidden>
+    <div class="modal session-modal" role="dialog" aria-modal="true" aria-labelledby="terminal-session-title">
+        <div class="modal-body">
+            <div class="flex items-center justify-between gap-3">
+                <h2 id="terminal-session-title" class="modal-title">Oturum komutları</h2>
+                <button type="button" class="terminal-icon-btn" data-modal-close aria-label="Kapat">@Icons.Render("x", "h-4 w-4")</button>
+            </div>
+            <div data-session-body></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/lib/signalr/signalr.min.js"></script>
+    @if (canExecute)
+    {
+        <script src="~/lib/xterm/xterm.js"></script>
+        <script src="~/lib/xterm/addon-fit.js"></script>
+        <script src="~/lib/xterm/addon-search.js"></script>
+    }
+}

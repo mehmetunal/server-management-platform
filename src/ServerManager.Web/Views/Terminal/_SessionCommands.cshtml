@@ -1,0 +1,44 @@
+@model TerminalSessionDetailsDto
+@{
+    var session = Model.Session;
+}
+
+<div class="session-summary">
+    <span>@(session.UserName ?? "—")</span>
+    <span>·</span>
+    <span>@DateDisplay.Format(session.StartedAt, "dd.MM.yyyy HH:mm:ss")</span>
+    <span>·</span>
+    <span>@TerminalDisplay.KindText(session.Kind)@(string.IsNullOrEmpty(session.Container) ? "" : $" ({session.Container})")</span>
+    <span>·</span>
+    <span>@TerminalDisplay.Duration(session.StartedAt, session.EndedAt)</span>
+</div>
+
+@if (Model.Commands.Count == 0)
+{
+    <div class="empty-state">
+        <span class="empty-state-icon">@Icons.Render("list", "h-6 w-6")</span>
+        <p>Bu oturumda kaydedilmiş komut yok.</p>
+    </div>
+}
+else
+{
+    <ol class="session-commands">
+        @foreach (var command in Model.Commands)
+        {
+            <li class="session-command">
+                <span class="session-command-time">@DateDisplay.Format(command.ExecutedAt, "HH:mm:ss")</span>
+                <code class="session-command-text">@command.CommandText</code>
+                <span class="session-command-meta">
+                    @if (command.IsApproximate)
+                    {
+                        <span class="badge-neutral" title="Satır düzenleme tuşları (ok, Tab, geçmiş) kullanıldığı için metin yaklaşık olarak kaydedildi.">Yaklaşık</span>
+                    }
+                    @if (command.Status != TerminalCommandStatus.Executed || command.MatchedRule is not null)
+                    {
+                        <span class="@TerminalDisplay.CommandStatusBadgeClass(command.Status)" title="@command.MatchedRule">@TerminalDisplay.CommandStatusText(command.Status)</span>
+                    }
+                </span>
+            </li>
+        }
+    </ol>
+}

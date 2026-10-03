@@ -27,6 +27,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     public DbSet<ServerMetricSnapshot> ServerMetricSnapshots => Set<ServerMetricSnapshot>();
 
+    public DbSet<TerminalSessionLog> TerminalSessions => Set<TerminalSessionLog>();
+
+    public DbSet<TerminalCommandLog> TerminalCommands => Set<TerminalCommandLog>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

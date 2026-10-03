@@ -11,8 +11,4 @@ public sealed class DockerOptions
     public int DefaultLogTail { get; set; } = 200;
 
     public int MaxLogTail { get; set; } = 5000;
-
-    public int TerminalIdleTimeoutMinutes { get; set; } = 30;
-
-    public int MaxTerminalSessionsPerUser { get; set; } = 3;
 }

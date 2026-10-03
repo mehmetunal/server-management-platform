@@ -54,6 +54,16 @@ public static class RateLimitingServiceCollectionExtensions
                         QueueLimit = 0
                     }));
 
+            options.AddPolicy(RateLimitPolicies.FileAction, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 60,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0
+                    }));
+
             options.OnRejected = async (context, cancellationToken) =>
             {
                 var response = context.HttpContext.Response;

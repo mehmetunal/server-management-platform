@@ -21,6 +21,10 @@
   @apply mx-6 mt-2 mb-0 text-left text-sm text-slate-500 dark:text-slate-400;
 }
 
+.swal-code {
+  @apply mt-3 max-h-48 overflow-auto rounded-xl bg-slate-950 px-4 py-3 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-slate-100;
+}
+
 .swal-check {
   @apply mt-4 flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-300;
 }

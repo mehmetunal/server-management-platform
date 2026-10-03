@@ -13,7 +13,28 @@ const files = {
         '@xterm/xterm/lib/xterm.js',
         '@xterm/xterm/css/xterm.css',
         '@xterm/xterm/LICENSE',
-        '@xterm/addon-fit/lib/addon-fit.js'
+        '@xterm/addon-fit/lib/addon-fit.js',
+        '@xterm/addon-search/lib/addon-search.js'
+    ],
+    codemirror: [
+        'codemirror/lib/codemirror.js',
+        'codemirror/lib/codemirror.css',
+        'codemirror/LICENSE',
+        'codemirror/theme/material-darker.css',
+        'codemirror/addon/mode/simple.js',
+        'codemirror/addon/mode/overlay.js',
+        'codemirror/addon/dialog/dialog.js',
+        'codemirror/addon/dialog/dialog.css',
+        'codemirror/addon/search/search.js',
+        'codemirror/addon/search/searchcursor.js',
+        'codemirror/addon/search/jump-to-line.js',
+        'codemirror/addon/edit/matchbrackets.js',
+        'codemirror/addon/edit/closebrackets.js',
+        'codemirror/addon/selection/active-line.js',
+        'codemirror/mode/meta.js',
+        ...['javascript', 'css', 'xml', 'htmlmixed', 'yaml', 'clike', 'properties', 'markdown', 'nginx',
+            'dockerfile', 'shell', 'sql', 'python', 'toml', 'diff', 'go', 'php']
+            .map(mode => `codemirror/mode/${mode}/${mode}.js`)
     ],
     sweetalert2: ['sweetalert2/dist/sweetalert2.min.js', 'sweetalert2/LICENSE'],
     toastr: ['toastr/build/toastr.min.js'],

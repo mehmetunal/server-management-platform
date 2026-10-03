@@ -22,11 +22,7 @@ internal sealed class SshClientLease : IDisposable
     /// <exception cref="InvalidOperationException">Kimlik bilgisi eksik veya okunamıyor.</exception>
     public static SshClientLease Create(SshConnectionRequest request, SshOptions options)
     {
-        var authenticationMethod = SshAuthenticationFactory.Create(request);
-        var connectionInfo = new ConnectionInfo(request.Host, request.Port, request.Username, authenticationMethod)
-        {
-            Timeout = TimeSpan.FromSeconds(options.ConnectionTimeoutSeconds)
-        };
+        var (connectionInfo, authenticationScope) = SshConnectionInfoFactory.Create(request, options);
 
         var client = new SshClient(connectionInfo)
         {
@@ -34,7 +30,7 @@ internal sealed class SshClientLease : IDisposable
         };
         var verifier = new HostKeyVerifier(request.ExpectedHostKeyFingerprint);
         verifier.Attach(client);
-        return new SshClientLease(client, verifier, authenticationMethod as IDisposable);
+        return new SshClientLease(client, verifier, authenticationScope);
     }
 
     public async Task ConnectAsync(SshOptions options, CancellationToken cancellationToken)

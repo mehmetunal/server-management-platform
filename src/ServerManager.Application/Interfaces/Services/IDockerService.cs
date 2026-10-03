@@ -1,5 +1,6 @@
 using ServerManager.Application.Common;
 using ServerManager.Application.DTOs.Docker;
+using ServerManager.Application.DTOs.Terminal;
 using ServerManager.Application.Interfaces.Ssh;
 
 namespace ServerManager.Application.Interfaces.Services;
@@ -40,13 +41,11 @@ public interface IDockerService
 
     Task<ServiceResult> RemoveNetworkAsync(Guid serverId, string network, CancellationToken cancellationToken = default);
 
-    Task<ServiceResult<ContainerTerminalHandle>> OpenTerminalAsync(
+    Task<ServiceResult<TerminalHandle>> OpenTerminalAsync(
         Guid serverId,
         string container,
         int columns,
         int rows,
         ITerminalOutputSink sink,
         CancellationToken cancellationToken = default);
-
-    Task LogTerminalClosedAsync(ContainerTerminalHandle handle, string? userName, CancellationToken cancellationToken = default);
 }

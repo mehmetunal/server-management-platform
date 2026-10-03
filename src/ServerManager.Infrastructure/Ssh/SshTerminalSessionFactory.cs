@@ -40,6 +40,13 @@ public sealed class SshTerminalSessionFactory : ITerminalSessionFactory
             await lease.ConnectAsync(_options, cancellationToken);
             var stream = lease.Client.CreateShellStream("xterm-256color", (uint)request.Columns, (uint)request.Rows, 0, 0, 16384);
 
+            if (string.IsNullOrWhiteSpace(request.Command))
+            {
+                var shell = new SshTerminalSession(lease, stream, sink, null, _logger);
+                shell.Start(null);
+                return ServiceResult<ITerminalSession>.Success(shell);
+            }
+
             var sudoPassword = SudoCommandBuilder.RequiresPasswordInput(request.Context, request.Elevate)
                 ? request.Context.SudoPassword
                 : null;

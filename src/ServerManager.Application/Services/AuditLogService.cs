@@ -26,14 +26,14 @@ public class AuditLogService : IAuditLogService
     {
         var log = new AuditLog
         {
-            UserId = TextHelper.Truncate(_currentUser.UserId, 64),
+            UserId = TextHelper.Truncate(entry.UserIdOverride ?? _currentUser.UserId, 64),
             UserName = TextHelper.Truncate(entry.UserNameOverride ?? _currentUser.UserName, 256),
             Action = TextHelper.Truncate(entry.Action, 128)!,
             EntityType = TextHelper.Truncate(entry.EntityType, 64),
             EntityId = TextHelper.Truncate(entry.EntityId, 64),
             TargetName = TextHelper.Truncate(entry.TargetName, 256),
             Details = TextHelper.Truncate(entry.Details, 2000),
-            IpAddress = TextHelper.Truncate(_currentUser.IpAddress, 45),
+            IpAddress = TextHelper.Truncate(entry.IpAddressOverride ?? _currentUser.IpAddress, 45),
             UserAgent = TextHelper.Truncate(_currentUser.UserAgent, 512),
             IsSuccess = entry.IsSuccess,
             CreatedAt = DateTime.UtcNow

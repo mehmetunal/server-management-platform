@@ -2330,12 +2330,14 @@ Phase 2 (Monitoring) kapsamındaki özellikler: agentless SSH ile CPU, RAM, swap
 
 Phase 3 (Docker) kapsamındaki özellikler: SSH üzerinden Docker CLI ile genel bakış, container listesi (canlı CPU/RAM), container detayı (inspect, port, mount, network, env, label), start/stop/restart/pause/unpause/kill/remove/rename, loglar (arama, stderr filtresi, canlı takip, indirme), xterm.js ile container terminali, image (pull, sil, prune), volume (oluştur, sil, prune) ve network (oluştur, sil) yönetimi. Sudo yetkili kullanıcılar desteklenir.
 
+Phase 4 (Terminal & Files) kapsamındaki özellikler: tarayıcıdan SSH terminali (Browser → SignalR WebSocket → API → SSH; çoklu sekme, yeniden boyutlandırma, tam ekran, kopyala/yapıştır, arama, çıktı indirme, komut geçmişi, sayfa yenilenince/bağlantı kopunca aynı oturuma yeniden bağlanma, boşta kalma zaman aşımı), tehlikeli komutlarda ikinci onay, oturum ve komut geçmişi; SFTP tabanlı dosya yöneticisi (gezinme, oluşturma, yeniden adlandırma/taşıma, kopyalama, silme, sürükle-bırak yükleme, indirme, chmod/chown) ve CodeMirror editörü (JSON, YAML, XML, HTML, CSS, JS, TS, C#, ENV, Markdown, Nginx, Dockerfile, Shell ve daha fazlası).
+
 ### Teknoloji
 
 | Katman | Teknoloji |
 | --- | --- |
 | Web | ASP.NET Core MVC (.NET 10), Tailwind CSS v4 + Sass, ES module JavaScript |
-| Arayüz bileşenleri | SweetAlert2 (onay/uyarı), toastr (bildirim), xterm.js (terminal) |
+| Arayüz bileşenleri | SweetAlert2 (onay/uyarı), toastr (bildirim), xterm.js (terminal), CodeMirror 5 (dosya editörü) |
 | Kimlik | ASP.NET Core Identity (Guid anahtarlı), izin claim'leri |
 | Veri | MSSQL, EF Core (yalnızca sorgu), FluentMigrator (tüm şema) |
 | Doğrulama | FluentValidation |
@@ -2436,9 +2438,9 @@ Testler veritabanına veya gerçek sunuculara bağlanmaz. `global.json` içinde 
 | Rol | İzinler |
 | --- | --- |
 | SuperAdmin | Tümü |
-| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker izinleri, audit log |
-| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal |
-| Developer | Dashboard, sunucu görüntüleme, Docker görüntüleme/yeniden başlatma |
+| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker, terminal ve dosya izinleri, audit log |
+| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal, sunucu terminali, dosya görüntüleme/oluşturma/düzenleme/yükleme/indirme |
+| Developer | Dashboard, sunucu görüntüleme, Docker görüntüleme/yeniden başlatma, dosya görüntüleme/indirme |
 | Viewer | Dashboard, sunucu görüntüleme, Docker görüntüleme |
 
 İzinler `AspNetRoleClaims` tablosunda `permission` claim'i olarak tutulur. Seeder yalnızca eksik izinleri ekler; elle eklenmiş izinleri kaldırmaz.
@@ -2498,8 +2500,8 @@ Docker yönetimi agentless'tır: panel sunucuya SSH ile bağlanıp `docker` CLI 
 | `CommandTimeoutSeconds` | `60` | Docker komutu zaman aşımı |
 | `PullTimeoutSeconds` | `600` | Image pull zaman aşımı |
 | `DefaultLogTail` / `MaxLogTail` | `200` / `5000` | Log satır sayısı varsayılanı ve üst sınırı |
-| `TerminalIdleTimeoutMinutes` | `30` | Boşta kalan terminal oturumunun kapatılma süresi |
-| `MaxTerminalSessionsPerUser` | `3` | Kullanıcı başına eş zamanlı terminal oturumu |
+
+Container terminali sunucu terminaliyle aynı altyapıyı ve `Terminal:` ayarlarını kullanır (bkz. [Terminal](#terminal)).
 
 Güvenlik kuralları:
 
@@ -2507,7 +2509,7 @@ Güvenlik kuralları:
 - Stop, restart, kill, silme ve prune işlemleri onay ister; silme işlemlerinde kaynak adı yazılarak onaylanır. Her işlem audit log'a yazılır.
 - Network oluştururken verilen subnet sunucunun kendi ağlarıyla veya panelin bağlandığı adresle çakışıyorsa işlem reddedilir (aksi halde yeni bridge SSH erişimini kesebilir).
 - Docker aksiyonları kullanıcı başına dakikada 30 istekle sınırlandırılır.
-- Terminal `/hubs/terminal` SignalR hub'ı üzerinden çalışır; oturum açılışı ve kapanışı audit log'a yazılır, girilen komutlar ve çıktı loglanmaz.
+- Container terminali `/hubs/terminal` SignalR hub'ı üzerinden çalışır; oturum açılışı, kapanışı ve girilen komutlar kayda alınır, çıktı loglanmaz.
 
 #### Yerel Docker test sunucusu
 
@@ -2522,6 +2524,58 @@ docker compose --profile test up -d --build ssh-docker-test
 - `deploy` kullanıcısı `docker` grubundadır (sudo gerekmez).
 - `ops` kullanıcısı yalnızca `sudo docker` çalıştırabilir (sudo akışını test etmek için; panelde "Sudo kullanıcı" işaretlenir ve sudo parolası olarak aynı parola girilir).
 - Parola yalnızca git'e eklenmeyen `.env` dosyasındadır.
+
+### Terminal
+
+Sunucu detayındaki **Terminal** sekmesi tarayıcıdan SSH kabuğu açar: Browser → `/hubs/terminal` (SignalR WebSocket) → API → SSH. Sunucunun host key fingerprint'i doğrulanmış olmalıdır.
+
+| İzin | Kapsam |
+| --- | --- |
+| `terminal.view` | Terminal sekmesi ve oturum geçmişi (kendi oturumları; `audit.view` izni olan tüm kullanıcıların oturumlarını görür) |
+| `terminal.execute` | Sunucuda terminal oturumu açma, kendi komut geçmişi |
+
+- Birden fazla sekme açılabilir; sekme listesi tarayıcı oturumunda (`sessionStorage`) tutulur. Sayfa yenilenir veya bağlantı koparsa aynı SSH oturumuna yeniden bağlanılır ve son çıktı ekrana geri basılır. Oturum başka bir sekmede açıldığında eski sekme "Buraya al" ile geri alabilir.
+- Araç çubuğu: arama (Enter / Shift+Enter), kopyala (Ctrl+Shift+C), yapıştır (Ctrl+Shift+V), çıktıyı `.txt` olarak indirme, tam ekran, komut geçmişi paneli (tıklanan komut Enter'a basılmadan satıra yazılır).
+- Boşta kalan oturum `IdleTimeoutMinutes` sonunda, tarayıcısı kopmuş oturum `ReconnectGraceSeconds` sonunda kapatılır.
+- **Tehlikeli komutlar** (`rm -r`, `mkfs`, `dd of=`, `shutdown`/`poweroff`/`halt`, `reboot`, `iptables`/`nft`/`ufw`, `userdel`, disk aygıtına yazma, fork bomb) varsayılan olarak engellenmez; komut sunucuya gönderilmeden bekletilir ve kullanıcıdan ikinci onay istenir. Yanıt verilmezse `ConfirmationTimeoutSeconds` sonunda iptal edilir. Mod `Off` / `Warn` / `Confirm` / `Block` olarak ayarlanabilir, kurallar `DangerousCommands` ile değiştirilebilir (`[{ "Pattern": "<regex>", "Description": "…" }]`; boş liste varsayılan kuralları kullanır).
+- Oturum açılışı/kapanışı (kullanıcı, IP, süre) audit log'a, girilen komutlar `TerminalCommands` tablosuna yazılır. Tehlikeli komutlar ayrıca `terminal.dangerous_command` olarak audit log'a düşer. Parola sorusu (sudo, ssh) ekrandayken ve tam ekran uygulamalarda (vim, less, top) yazılanlar komut olarak kaydedilmez; çıktı hiç loglanmaz. Ok tuşu, Tab veya geçmişten çağırma ile değişen satırlar "yaklaşık" olarak işaretlenir.
+- Terminal geçmişi otomatik silinmez. Uygulama kapanırken açık kalan oturum kayıtları silinmeden "kapandı" olarak işaretlenir.
+
+| Anahtar (`Terminal:`) | Varsayılan | Açıklama |
+| --- | --- | --- |
+| `IdleTimeoutMinutes` | `30` | Boşta kalan oturumun kapatılma süresi |
+| `MaxSessionsPerUser` | `5` | Kullanıcı başına eş zamanlı oturum (sunucu + container) |
+| `ReconnectGraceSeconds` | `120` | Tarayıcı bağlantısı koptuğunda oturumun açık tutulduğu süre |
+| `OutputBufferKilobytes` | `256` | Yeniden bağlanınca geri basılan son çıktı |
+| `ConfirmationTimeoutSeconds` | `120` | Onay bekleyen tehlikeli komutun iptal süresi |
+| `DangerousCommandMode` | `Confirm` | `Off`, `Warn`, `Confirm` veya `Block` |
+| `DangerousCommands` | `[]` | Özel kural listesi (boşsa varsayılan kurallar) |
+
+### Dosyalar
+
+Sunucu detayındaki **Files** sekmesi SFTP üzerinden çalışır (sunucuya ek yazılım kurulmaz). Kopyalama, klasör silme, chmod ve chown SSH komutuyla (`cp -a`, `rm -rf`, `chmod`, `chown`; argümanlar shell quoting ile) yapılır; sunucuda "Sudo kullanıcı" işaretliyse bu komutlar sudo ile çalışır.
+
+| İzin | Kapsam |
+| --- | --- |
+| `file.view` | Klasör listeleme, dosyayı editörde salt okunur açma |
+| `file.create` | Dosya / klasör oluşturma, kopyalama |
+| `file.edit` | Dosya kaydetme, yeniden adlandırma / taşıma |
+| `file.delete` | Dosya / klasör silme |
+| `file.upload` | Dosya yükleme (düğme veya sürükle-bırak) |
+| `file.download` | Dosya indirme |
+| `file.permissions` | chmod / chown (owner/group/rwx tablosu veya gelişmiş modda ham değer, özyinelemeli seçenek) |
+
+- Editör: CodeMirror 5; söz dizimi dosya adından seçilir (JSON, YAML, XML, HTML, CSS, JS, TS, C#, ENV, Markdown, Nginx, Dockerfile, Shell, SQL, Python, Go, TOML, PHP, Diff) ve elle değiştirilebilir. Ctrl/Cmd+S kaydeder, Ctrl+F arar, Alt+G satıra gider. Yalnızca UTF-8 metin dosyaları açılır; BOM ve satır sonu (LF/CRLF) korunur. Dosya siz düzenlerken sunucuda değiştiyse kaydetme çakışma uyarısı verir ve üzerine yazma onayı ister. Kaydedilmemiş değişiklik varken sayfadan çıkış onay ister.
+- Dosya silme onay ister; klasör silme klasör adının birebir yazılmasıyla onaylanır. Var olan bir dosyanın üzerine yükleme ayrıca onay ister.
+- Sistem klasörleri (`/`, `/etc`, `/usr`, `/var` vb., `ProtectedPaths`) panelden silinemez, taşınamaz ve izinleri değiştirilemez (içlerindeki dosyalar etkilenmez).
+- Tüm işlemler (görüntüleme, kaydetme, oluşturma, taşıma, kopyalama, silme, izin, yükleme, indirme) audit log'a yazılır. Dosya aksiyonları kullanıcı başına dakikada 60 istekle sınırlandırılır.
+
+| Anahtar (`Files:`) | Varsayılan | Açıklama |
+| --- | --- | --- |
+| `MaxEditKilobytes` | `1024` | Editörde açılabilecek en büyük dosya |
+| `MaxUploadMegabytes` | `100` | Dosya başına yükleme sınırı |
+| `OperationTimeoutSeconds` | `60` | SFTP işlemleri ile kopyalama, klasör silme ve izin komutlarının zaman aşımı |
+| `ProtectedPaths` | `[]` | Korunan yollar (boşsa varsayılan sistem klasörleri) |
 
 ### Güvenlik notları
 

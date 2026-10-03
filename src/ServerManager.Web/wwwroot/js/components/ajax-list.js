@@ -24,10 +24,12 @@ function syncForm(form, url) {
 
 /**
  * Filtre formu ve sayfalama ile çalışan liste. Liste action'ı AJAX isteğinde partial döner;
- * URL pushState ile güncellenir, geri/ileri tuşları listeyi yeniden yükler.
+ * history açıkken URL pushState ile güncellenir, geri/ileri tuşları listeyi yeniden yükler.
+ * Sayfanın ana içeriği olmayan listelerde (ör. bir panel içindeki geçmiş) history: false kullanılır.
  */
-export function createAjaxList(root, { form, onLoaded } = {}) {
+export function createAjaxList(root, { form, onLoaded, history = true, url: initialUrl } = {}) {
     let sequence = 0;
+    let currentUrl = initialUrl ?? window.location.pathname + window.location.search;
 
     async function load(url, { push = true } = {}) {
         const current = ++sequence;
@@ -40,7 +42,8 @@ export function createAjaxList(root, { form, onLoaded } = {}) {
             return;
         }
         root.innerHTML = response.html;
-        if (push && url !== window.location.pathname + window.location.search) {
+        currentUrl = url;
+        if (history && push && url !== window.location.pathname + window.location.search) {
             window.history.pushState({ ajaxList: true }, '', url);
         }
         onLoaded?.(root);
@@ -67,12 +70,15 @@ export function createAjaxList(root, { form, onLoaded } = {}) {
         load(link.href);
     });
 
-    window.addEventListener('popstate', () => {
-        if (form) syncForm(form, window.location.href);
-        load(window.location.pathname + window.location.search, { push: false });
-    });
+    if (history) {
+        window.addEventListener('popstate', () => {
+            if (form) syncForm(form, window.location.href);
+            load(window.location.pathname + window.location.search, { push: false });
+        });
+    }
 
     return {
-        reload: () => load(window.location.pathname + window.location.search, { push: false })
+        load,
+        reload: () => load(currentUrl, { push: false })
     };
 }

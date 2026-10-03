@@ -89,6 +89,51 @@ export function postForm(url, data) {
     });
 }
 
+function parseXhr(xhr) {
+    if (xhr.status === 401) {
+        window.location.reload();
+        return failure(401, 'Oturum süresi doldu. Lütfen tekrar giriş yapın.');
+    }
+    if ((xhr.getResponseHeader('content-type') ?? '').includes('application/json')) {
+        try {
+            const body = JSON.parse(xhr.responseText);
+            return {
+                isSuccess: body.isSuccess === true,
+                status: xhr.status,
+                message: body.message || (body.isSuccess ? '' : statusMessage(xhr.status)),
+                data: body.data ?? null,
+                errors: body.errors ?? {},
+                validationMessages: body.validationMessages ?? []
+            };
+        } catch {
+            // Gövde JSON değilse durum koduna göre mesaj üretilir.
+        }
+    }
+    return failure(xhr.status, xhr.status === 413 ? 'Dosya izin verilen boyutu aşıyor.' : statusMessage(xhr.status));
+}
+
+/**
+ * multipart/form-data gönderir; fetch yükleme ilerlemesi vermediği için XMLHttpRequest kullanılır.
+ * onProgress(loaded, total) yükleme sürerken çağrılır. signal ile istek iptal edilebilir.
+ */
+export function uploadForm(url, formData, { onProgress, signal } = {}) {
+    return new Promise(resolve => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', url);
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.setRequestHeader('RequestVerificationToken', antiforgeryToken());
+        xhr.upload.addEventListener('progress', event => {
+            if (event.lengthComputable) onProgress?.(event.loaded, event.total);
+        });
+        xhr.addEventListener('load', () => resolve(parseXhr(xhr)));
+        xhr.addEventListener('error', () => resolve(failure(0, NETWORK_ERROR)));
+        xhr.addEventListener('abort', () => resolve(failure(0, 'Yükleme iptal edildi.')));
+        signal?.addEventListener('abort', () => xhr.abort());
+        xhr.send(formData);
+    });
+}
+
 /**
  * HTML parçası ister. partial: true iken liste action'ları yalnızca partial view döner;
  * false iken tam sayfa alınır (bölge yenileme için).

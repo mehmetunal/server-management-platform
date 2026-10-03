@@ -7,4 +7,6 @@ public sealed record AuditEntry(
     string? TargetName = null,
     string? Details = null,
     bool IsSuccess = true,
-    string? UserNameOverride = null);
+    string? UserNameOverride = null,
+    string? UserIdOverride = null,
+    string? IpAddressOverride = null);

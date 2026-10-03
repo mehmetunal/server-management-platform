@@ -22,9 +22,10 @@ function swal() {
     return window.Swal;
 }
 
-function buildContent(message, checkLabel) {
+function buildContent(message, checkLabel, code) {
     const content = element('div');
     if (message) content.appendChild(element('p', '', message));
+    if (code) content.appendChild(element('pre', 'swal-code', code));
     if (!checkLabel) return { content, check: null };
     const label = element('label', 'swal-check');
     const check = element('input', 'form-check');
@@ -37,11 +38,12 @@ function buildContent(message, checkLabel) {
 /**
  * Onay diyaloğu. expected verilirse kullanıcıdan bu değeri yazması istenir.
  * action, onaydan sonra diyalog açıkken çalışır; başarısız yanıt diyalogda gösterilir.
+ * code verilirse (ör. komut satırı) mesajın altında sabit genişlikli gösterilir.
  * Onaylanıp başarılı olursa action yanıtını, aksi halde null döner.
  */
-export async function confirmAction({ title, message, confirmText = 'Onayla', danger = true, expected, checkLabel, action }) {
+export async function confirmAction({ title, message, code, confirmText = 'Onayla', danger = true, expected, checkLabel, action }) {
     const Swal = swal();
-    const { content, check } = buildContent(message, checkLabel);
+    const { content, check } = buildContent(message, checkLabel, code);
 
     const result = await Swal.fire({
         ...BASE_OPTIONS,

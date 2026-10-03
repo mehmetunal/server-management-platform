@@ -1,0 +1,97 @@
+@model FileEditorViewModel
+@{
+    var serverId = Model.ServerId;
+    var canEdit = User.HasPermission(Permissions.FileEdit);
+    var canDownload = User.HasPermission(Permissions.FileDownload);
+    ViewData["Title"] = $"{Model.FileName} · {Model.Page.Server.Name}";
+    ViewData["Page"] = "file-editor";
+    string[] codeMirrorScripts =
+    [
+        "codemirror", "meta", "simple", "overlay", "dialog", "searchcursor", "search", "jump-to-line",
+        "matchbrackets", "closebrackets", "active-line",
+        "xml", "javascript", "css", "htmlmixed", "clike", "php", "yaml", "properties", "markdown",
+        "nginx", "dockerfile", "shell", "sql", "python", "toml", "diff", "go"
+    ];
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/lib/codemirror/codemirror.css" />
+    <link rel="stylesheet" href="~/lib/codemirror/dialog.css" />
+    <link rel="stylesheet" href="~/lib/codemirror/material-darker.css" />
+}
+
+<partial name="_ServerHeader" model="Model.Page" />
+
+<section class="panel file-editor" data-file-editor
+         data-path="@Model.Path"
+         data-read-url="@Url.Action("Read", new { id = serverId, path = Model.Path })"
+         data-save-url="@Url.Action("Save", new { id = serverId })"
+         data-download-url="@Url.Action("Download", new { id = serverId, path = Model.Path })"
+         data-can-edit="@(canEdit ? "true" : "false")">
+    <div class="editor-header">
+        <div class="editor-title">
+            <a asp-action="Index" asp-route-id="@serverId" asp-route-path="@Model.DirectoryPath" class="editor-back" title="Klasöre dön">@Icons.Render("chevron-left", "h-4 w-4") <span class="font-mono">@Model.DirectoryPath</span></a>
+            <h2 class="editor-file-name">@Model.FileName <span class="editor-dirty" data-editor-dirty hidden title="Kaydedilmemiş değişiklik var">●</span></h2>
+        </div>
+        <div class="editor-actions">
+            <button type="button" class="file-action" data-editor-search title="Ara (Ctrl+F)" aria-label="Ara">@Icons.Render("search", "h-4 w-4")</button>
+            <button type="button" class="file-action" data-editor-reload title="Sunucudan yeniden yükle" aria-label="Yeniden yükle">@Icons.Render("refresh", "h-4 w-4")</button>
+            @if (canDownload)
+            {
+                <button type="button" class="file-action" data-editor-download title="İndir" aria-label="İndir">@Icons.Render("download", "h-4 w-4")</button>
+            }
+            @if (canEdit)
+            {
+                <button type="button" class="btn-primary btn-sm" data-editor-save disabled>
+                    <span class="spinner" data-spinner hidden></span>
+                    @Icons.Render("check-circle", "h-4 w-4") <span data-label>Kaydet</span>
+                </button>
+            }
+        </div>
+    </div>
+
+    @if (!canEdit)
+    {
+        <p class="alert-info editor-banner">Dosyayı düzenleme yetkiniz yok; salt okunur görüntüleniyor.</p>
+    }
+
+    <div class="editor-body" data-editor-body>
+        <div class="empty-state" data-editor-loading>
+            <span class="spinner h-6 w-6"></span>
+            <p>Dosya yükleniyor…</p>
+        </div>
+        <div class="empty-state" data-editor-error hidden>
+            <span class="empty-state-icon">@Icons.Render("warning", "h-6 w-6")</span>
+            <p class="empty-state-title">Dosya editörde açılamadı</p>
+            <p data-editor-error-text></p>
+            @if (canDownload)
+            {
+                <button type="button" class="btn-secondary btn-sm" data-editor-download>@Icons.Render("download", "h-4 w-4") Dosyayı indir</button>
+            }
+        </div>
+        <textarea data-editor-textarea hidden aria-label="Dosya içeriği"></textarea>
+    </div>
+
+    <div class="editor-status">
+        <label class="editor-mode">
+            <span class="sr-only">Sözdizimi</span>
+            <select class="editor-mode-select" data-editor-mode aria-label="Sözdizimi"></select>
+        </label>
+        <span data-editor-encoding>UTF-8</span>
+        <span data-editor-line-ending>LF</span>
+        <span data-editor-cursor>Satır 1, Sütun 1</span>
+        <span data-editor-size></span>
+        <label class="check-inline ml-auto"><input type="checkbox" class="form-check" data-editor-wrap /> Satır kaydır</label>
+        <span class="editor-hint">Ctrl+S kaydet · Ctrl+F ara · Alt+G satıra git · en fazla @Model.MaxEditKilobytes KB</span>
+    </div>
+</section>
+
+<iframe name="file-download-frame" class="hidden" title="İndirme" data-file-download-frame></iframe>
+
+@section Scripts {
+    <script src="~/lib/signalr/signalr.min.js"></script>
+    @foreach (var script in codeMirrorScripts)
+    {
+        <script src="@Url.Content($"~/lib/codemirror/{script}.js")"></script>
+    }
+}

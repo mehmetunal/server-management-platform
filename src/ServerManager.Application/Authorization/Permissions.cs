@@ -20,6 +20,17 @@ public static class Permissions
     public const string DockerManage = "docker.manage";
     public const string DockerTerminal = "docker.terminal";
 
+    public const string TerminalView = "terminal.view";
+    public const string TerminalExecute = "terminal.execute";
+
+    public const string FileView = "file.view";
+    public const string FileCreate = "file.create";
+    public const string FileEdit = "file.edit";
+    public const string FileDelete = "file.delete";
+    public const string FileUpload = "file.upload";
+    public const string FileDownload = "file.download";
+    public const string FilePermissions = "file.permissions";
+
     public const string UserManage = "user.manage";
 
     public const string AuditView = "audit.view";
@@ -39,6 +50,15 @@ public static class Permissions
         DockerDelete,
         DockerManage,
         DockerTerminal,
+        TerminalView,
+        TerminalExecute,
+        FileView,
+        FileCreate,
+        FileEdit,
+        FileDelete,
+        FileUpload,
+        FileDownload,
+        FilePermissions,
         UserManage,
         AuditView
     ];
@@ -58,6 +78,15 @@ public static class Permissions
         [DockerDelete] = "Docker silme (container, image, volume, network, prune)",
         [DockerManage] = "Docker yönetimi (image pull, volume/network oluşturma, yeniden adlandırma)",
         [DockerTerminal] = "Container terminali",
+        [TerminalView] = "Terminal sayfası ve oturum geçmişi görüntüleme",
+        [TerminalExecute] = "Sunucuda terminal oturumu açma",
+        [FileView] = "Dosya listeleme ve içerik görüntüleme",
+        [FileCreate] = "Dosya / klasör oluşturma ve kopyalama",
+        [FileEdit] = "Dosya düzenleme, yeniden adlandırma ve taşıma",
+        [FileDelete] = "Dosya / klasör silme",
+        [FileUpload] = "Dosya yükleme",
+        [FileDownload] = "Dosya indirme",
+        [FilePermissions] = "Dosya izinleri ve sahiplik değiştirme (chmod / chown)",
         [UserManage] = "Kullanıcı yönetimi",
         [AuditView] = "Audit log görüntüleme"
     };

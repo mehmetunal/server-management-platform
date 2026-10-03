@@ -20,6 +20,15 @@ public static class DefaultRolePermissions
             Permissions.DockerDelete,
             Permissions.DockerManage,
             Permissions.DockerTerminal,
+            Permissions.TerminalView,
+            Permissions.TerminalExecute,
+            Permissions.FileView,
+            Permissions.FileCreate,
+            Permissions.FileEdit,
+            Permissions.FileDelete,
+            Permissions.FileUpload,
+            Permissions.FileDownload,
+            Permissions.FilePermissions,
             Permissions.AuditView
         ],
         [Roles.Operator] =
@@ -31,14 +40,23 @@ public static class DefaultRolePermissions
             Permissions.DockerStart,
             Permissions.DockerStop,
             Permissions.DockerRestart,
-            Permissions.DockerTerminal
+            Permissions.DockerTerminal,
+            Permissions.TerminalView,
+            Permissions.TerminalExecute,
+            Permissions.FileView,
+            Permissions.FileCreate,
+            Permissions.FileEdit,
+            Permissions.FileUpload,
+            Permissions.FileDownload
         ],
         [Roles.Developer] =
         [
             Permissions.DashboardView,
             Permissions.ServerView,
             Permissions.DockerView,
-            Permissions.DockerRestart
+            Permissions.DockerRestart,
+            Permissions.FileView,
+            Permissions.FileDownload
         ],
         [Roles.Viewer] =
         [
