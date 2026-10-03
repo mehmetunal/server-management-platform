@@ -1917,6 +1917,8 @@ görülebilmelidir.
 - Deployment logs
 - History
 
+> Durum: tamamlandı. Ayrıntılar için bkz. [Deployment](#deployment-1).
+
 ## Phase 7 — Monitoring & Alerts
 
 - Alert rules
@@ -2457,10 +2459,10 @@ Testler veritabanına veya gerçek sunuculara bağlanmaz. `global.json` içinde 
 | Rol | İzinler |
 | --- | --- |
 | SuperAdmin | Tümü (eklenti yönetimi `plugin.manage` yalnızca SuperAdmin'dedir) |
-| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker, terminal ve dosya izinleri, audit log |
-| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal, sunucu terminali, dosya görüntüleme/oluşturma/düzenleme/yükleme/indirme |
-| Developer | Dashboard, sunucu görüntüleme, Docker görüntüleme/yeniden başlatma, dosya görüntüleme/indirme |
-| Viewer | Dashboard, sunucu görüntüleme, Docker görüntüleme |
+| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker, terminal, dosya ve deployment izinleri, audit log |
+| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal, sunucu terminali, dosya görüntüleme/oluşturma/düzenleme/yükleme/indirme, deployment görüntüleme/çalıştırma |
+| Developer | Dashboard, sunucu görüntüleme, Docker görüntüleme/yeniden başlatma, dosya görüntüleme/indirme, deployment görüntüleme/çalıştırma |
+| Viewer | Dashboard, sunucu görüntüleme, Docker görüntüleme, deployment görüntüleme |
 
 İzinler `AspNetRoleClaims` tablosunda `permission` claim'i olarak tutulur. Seeder yalnızca eksik izinleri ekler; elle eklenmiş izinleri kaldırmaz. Eklentiler kendi izinlerini ve varsayılan rol dağılımını getirir; bunlar eklenti kurulurken ve her açılışta eksikse eklenir (Dokploy için bkz. [Dokploy](#dokploy)).
 
@@ -2639,6 +2641,53 @@ Durum ve ayarlar:
 | `HealthCheckIntervalMinutes` | `5` | Periyodik sağlık kontrolü aralığı (`0` kapatır) |
 | `MaxStoredOutputKilobytes` | `512` | Kurulum kaydında saklanan çıktı (son kısım) |
 | `InstallationHistoryCount` | `10` | Durum sayfasında gösterilen kurulum sayısı |
+
+### Deployment
+
+Git deposundaki bir uygulamayı kayıtlı bir sunucuya SSH üzerinden (agentless) dağıtır. Menüde **Projeler** ve **Deployment'lar** sayfaları, sunucu detayında **Deployments** sekmesi bulunur. Bu özellik çekirdeğin parçasıdır; Dokploy gibi üçüncü taraf araçlar eklenti olarak ayrı kalır.
+
+| İzin | Kapsam | Varsayılan roller |
+| --- | --- | --- |
+| `deployment.view` | Projeler, deployment geçmişi, canlı çıktı ve log indirme | SuperAdmin, Admin, Operator, Developer, Viewer |
+| `deployment.manage` | Proje ekleme, düzenleme, silme (Git erişim anahtarı, ortam değişkenleri, build/deploy komutları dahil) | SuperAdmin, Admin |
+| `deployment.execute` | Deployment başlatma, iptal etme, yeniden dağıtma, depo/dal kontrolü | SuperAdmin, Admin, Operator, Developer |
+
+> `deployment.manage` fiilen sunucuda komut çalıştırma yetkisidir: "Komutlar" build türündeki komutlar ve Dockerfile/compose içeriği hedef sunucuda çalışır. Bu izni yalnızca sunucuya terminal erişimi verilebilecek kişilere verin.
+
+Proje ayarları:
+
+- **Git:** sağlayıcı (GitHub, GitLab, Bitbucket, kendi sunucusu), `https://` veya SSH depo adresi, dal, isteğe bağlı kullanıcı adı ve erişim anahtarı (token). SSH adreslerinde hedef sunucudaki kullanıcının anahtarı depoda yetkili olmalıdır.
+- **Build türü:** Docker Compose (compose dosyası; proje adı `sm-<proje>`), Dockerfile (image `sm-<proje>:<kısa-sha>` ve `:latest`, tek container `sm-<proje>`, `--restart unless-stopped`, `sm.project` etiketi, isteğe bağlı port eşlemeleri) veya Komutlar (proje klasöründe `sh` ile çalışan build ve deploy komutları; isteğe bağlı sudo).
+- **Sunucudaki klasör:** mutlak yol; sistem klasörleri (`/etc`, `/usr`, `/bin`, `/root` vb.) reddedilir. SSH kullanıcısının yazabildiği bir yer olmalıdır.
+- **Ortam değişkenleri:** `.env` içeriği; değerler `Security:MasterKey` ile şifrelenir ve arayüzde geri gösterilmez (yalnızca anahtar adları listelenir). Düzenlemede boş bırakılırsa korunur, yazılırsa tamamı değişir.
+
+Deployment akışı (aşamalar ekranda adım adım görünür):
+
+1. **Hazırlık:** proje ve sunucu bağlantısı okunur, gizli bilgiler çözülür.
+2. **Kaynak kod:** klasör yoksa oluşturulur ve `git init` yapılır; dal (veya belirli commit) `--depth 1` ile çekilir, çalışma ağacı o commit'e alınır. Alınan commit hemen kayda yazılır; iptal edilen veya başarısız olan deployment da hangi commit'te olduğunu bilir ve yeniden dağıtılabilir. `.env` tanımlıysa yazılır.
+3. **Build:** türe göre `docker compose build`, `docker build` veya build komutu.
+4. **Deploy:** `docker compose up -d --remove-orphans`, eski container kaldırılıp `docker run`, veya deploy komutu.
+
+Çıktı `/hubs/deployments` SignalR hub'ı üzerinden canlı akar; sayfa yeniden açıldığında o ana kadarki çıktı baştan oynatılır. Deployment arka planda sürer, sayfayı kapatmak onu durdurmaz. Aynı projede aynı anda tek deployment çalışır. Liste sayfaları çalışan deployment varken 5 saniyede bir kendini yeniler. Log, deployment sayfasından düz metin olarak indirilebilir.
+
+- **Belirli commit:** Deploy formuna tam SHA girilebilir; geçmişteki bir deployment "Yeniden deploy" ile aynı commit'e, projenin güncel ayarlarıyla dağıtılır. SHA ile fetch, Git sunucusunun buna izin vermesini gerektirir (GitHub/GitLab izin verir; kendi sunucunuzda `uploadpack.allowReachableSHA1InWant`).
+- **İptal:** çalışan komut durdurulur, kayıt "İptal edildi" ve iptal eden kullanıcıyla saklanır. Sunucuda o ana kadar yapılanlar (çekilen kod, build edilen image) geri alınmaz. Uygulama kapanırken süren deployment "Kesildi" olarak işaretlenir; açılışta yarım kalan kayıtlar da "Kesildi"ye çekilir.
+- **Audit:** `project.create/update/delete`, `deployment.start`, `deployment.complete` (sonuç ve commit ile), `deployment.cancel`.
+
+Güvenlik notları:
+
+- Erişim anahtarı komut satırına, loglara veya sunucuda diske yazılmaz; stdin ile verilir ve yalnızca o komut süresince geçici bir credential helper ile kullanılır. Depo yapılandırmasına kaydedilmez.
+- `.env` stdin ile `umask 077` altında yazılır (yalnızca SSH kullanıcısı okuyabilir) ve yalnızca projede ortam değişkeni tanımlıysa yazılır; kayıtlı değişkenler kaldırılırsa sunucudaki mevcut dosyaya dokunulmaz.
+- Hiçbir adım dosya silmez (`git clean` / `rm -rf` yok). Dolu ve git deposu olmayan bir klasör reddedilir; mevcut bir git deposunda çalışma ağacı çekilen commit'e zorla alınır, izlenmeyen dosyalar kalır.
+- Submodule'ler çekilmez. Git komutları SSH kullanıcısıyla, Docker komutları sunucunun sudo ayarıyla çalışır.
+- Proje silme kaydı listeden gizler (soft delete); sunucudaki dosyalara, container'lara ve deployment geçmişine dokunulmaz.
+
+| Anahtar (`Deployment:`) | Varsayılan | Açıklama |
+| --- | --- | --- |
+| `GitTimeoutSeconds` | `300` | Depo kontrolü, fetch ve checkout zaman aşımı |
+| `BuildTimeoutMinutes` | `30` | Build adımının zaman aşımı |
+| `DeployTimeoutMinutes` | `10` | Deploy adımının zaman aşımı |
+| `MaxStoredLogKilobytes` | `1024` | Deployment kaydında saklanan log (son kısım; çalışırken 10 saniyede bir kaydedilir) |
 
 ### Eklentiler
 
