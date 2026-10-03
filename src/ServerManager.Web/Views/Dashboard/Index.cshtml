@@ -9,11 +9,11 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Dashboard</h1>
-        <p class="page-lead">Tüm sunucuların genel durumu</p>
+        <p class="page-lead">Tüm sunucuların anlık durumu, kaynak kullanımı ve son işlemler</p>
     </div>
     @if (canCreate)
     {
-        <a asp-controller="Servers" asp-action="Create" class="btn-primary">@Icons.Render("plus", "h-4 w-4") Sunucu ekle</a>
+        <a asp-controller="Servers" asp-action="Create" class="btn-primary" title="Panele yeni Linux sunucusu ekle">@Icons.Render("plus", "h-4 w-4") Sunucu ekle</a>
     }
 </div>
 
@@ -90,7 +90,7 @@
     <section class="panel">
         <div class="panel-header">
             <h2 class="panel-title">Son eklenen sunucular</h2>
-            <a asp-controller="Servers" asp-action="Index" class="panel-link">Tümü</a>
+            <a asp-controller="Servers" asp-action="Index" class="panel-link" title="Tüm sunucuları listele">Tümü</a>
         </div>
         @if (Model.RecentServers.Count == 0)
         {
@@ -100,7 +100,7 @@
                 <p>İlk sunucunuzu ekleyerek başlayın.</p>
                 @if (canCreate)
                 {
-                    <a asp-controller="Servers" asp-action="Create" class="btn-primary btn-sm mt-3">@Icons.Render("plus", "h-4 w-4") Sunucu ekle</a>
+                    <a asp-controller="Servers" asp-action="Create" class="btn-primary btn-sm mt-3" title="Panele yeni Linux sunucusu ekle">@Icons.Render("plus", "h-4 w-4") Sunucu ekle</a>
                 }
             </div>
         }
@@ -110,7 +110,7 @@
                 @foreach (var server in Model.RecentServers)
                 {
                     <li data-live-server-row="@server.Id">
-                        <a asp-controller="Servers" asp-action="Details" asp-route-id="@server.Id" class="flex items-center gap-4 px-5 py-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <a asp-controller="Servers" asp-action="Details" asp-route-id="@server.Id" title="Sunucu ayrıntılarını aç" class="flex items-center gap-4 px-5 py-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/50">
                             <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">@Icons.Render("server", "h-5 w-5")</span>
                             <span class="min-w-0 flex-1">
                                 <span class="block truncate text-sm font-medium text-slate-900 dark:text-slate-100">@server.Name</span>
@@ -129,7 +129,7 @@
             <h2 class="panel-title">Son sistem olayları</h2>
             @if (canAudit)
             {
-                <a asp-controller="AuditLogs" asp-action="Index" class="panel-link">Tümü</a>
+                <a asp-controller="AuditLogs" asp-action="Index" class="panel-link" title="Tüm audit kayıtlarını aç">Tümü</a>
             }
         </div>
         @if (Model.RecentEvents.Count == 0)

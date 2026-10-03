@@ -29,7 +29,7 @@
             <partial name="_ContainerActions" model="new DockerPanelModel<DockerContainerDto> { ServerId = Model.ServerId, Data = container }" />
             @if (User.HasPermission(Permissions.DockerManage))
             {
-                <button type="button" class="btn-secondary btn-sm" data-modal-open="rename-container-modal">@Icons.Render("pencil", "h-4 w-4") Yeniden adlandır</button>
+                <button type="button" class="btn-secondary btn-sm" data-modal-open="rename-container-modal" title="Container'a yeni bir ad ver">@Icons.Render("pencil", "h-4 w-4") Yeniden adlandır</button>
             }
         </div>
     </div>

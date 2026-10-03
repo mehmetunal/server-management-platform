@@ -8,7 +8,7 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Audit Log</h1>
-        <p class="page-lead">Panelde yapılan tüm kritik işlemler</p>
+        <p class="page-lead">Panelde kimin, ne zaman, hangi kritik işlemi yaptığının kaydı</p>
     </div>
 </div>
 
@@ -29,8 +29,8 @@
         <input type="date" name="from" value="@filter.From?.ToString("yyyy-MM-dd")" class="form-control" aria-label="Başlangıç tarihi" data-auto-submit />
         <input type="date" name="to" value="@filter.To?.ToString("yyyy-MM-dd")" class="form-control" aria-label="Bitiş tarihi" data-auto-submit />
         <div class="audit-filter-actions">
-            <button type="submit" class="btn-secondary btn-sm">@Icons.Render("search", "h-4 w-4") Filtrele</button>
-            <a asp-action="Index" class="btn-ghost btn-sm" data-list-link>Temizle</a>
+            <button type="submit" class="btn-secondary btn-sm" title="Kayıtları seçili ölçütlere göre süz">@Icons.Render("search", "h-4 w-4") Filtrele</button>
+            <a asp-action="Index" class="btn-ghost btn-sm" data-list-link title="Tüm filtreleri kaldır">Temizle</a>
         </div>
     </form>
 

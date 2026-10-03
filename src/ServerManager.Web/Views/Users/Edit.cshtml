@@ -6,9 +6,9 @@
 
 <div class="page-header">
     <div>
-        <a asp-action="Index" class="back-link">@Icons.Render("chevron-left", "h-4 w-4") Kullanıcılar</a>
+        <a asp-action="Index" class="back-link" title="Kullanıcı listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Kullanıcılar</a>
         <h1 class="page-title">Kullanıcıyı düzenle</h1>
-        <p class="page-lead">@Model.Email</p>
+        <p class="page-lead">@Model.Email hesabının rolünü, durumunu ve parolasını güncelleyin.</p>
     </div>
 </div>
 
@@ -52,7 +52,7 @@
         </div>
     </div>
     <div class="form-actions">
-        <a asp-action="Index" class="btn-secondary">İptal</a>
-        <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+        <a asp-action="Index" class="btn-secondary" title="Kaydetmeden listeye dön">İptal</a>
+        <button type="submit" class="btn-primary" title="Kullanıcı bilgilerini güncelle"><span class="spinner" data-spinner hidden></span> Kaydet</button>
     </div>
 </form>

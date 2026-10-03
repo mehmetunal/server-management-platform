@@ -50,7 +50,7 @@ else
                         <td class="font-mono text-xs">@(session.IpAddress ?? "—")</td>
                         <td class="session-reason" title="@session.CloseReason">@(session.CloseReason ?? "—")</td>
                         <td class="text-right">
-                            <button type="button" class="btn-ghost btn-sm" data-session-open
+                            <button type="button" class="btn-ghost btn-sm" title="Bu oturumda çalıştırılan komutları göster" data-session-open
                                     data-url="@Url.Action("Session", new { id = Model.ServerId, sessionId = session.Id })">
                                 @Icons.Render("eye", "h-4 w-4") Komutlar
                             </button>

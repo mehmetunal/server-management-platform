@@ -56,7 +56,7 @@ else
                                     <div class="flex flex-wrap gap-1">
                                         @foreach (var name in volume.Containers)
                                         {
-                                            <a asp-action="Container" asp-route-id="@Model.ServerId" asp-route-name="@name" class="tag font-mono">@name</a>
+                                            <a asp-action="Container" asp-route-id="@Model.ServerId" asp-route-name="@name" class="tag font-mono" title="Bu volume'ı kullanan container'ı aç">@name</a>
                                         }
                                     </div>
                                 }
@@ -70,7 +70,7 @@ else
                                     }
                                     else
                                     {
-                                        <button type="button" class="btn-ghost-danger btn-sm px-2" title="Sil"
+                                        <button type="button" class="btn-ghost-danger btn-sm px-2" title="Volume'ı ve verisini sil"
                                                 data-ajax-action data-url="@Url.Action("RemoveVolume", new { id = Model.ServerId })"
                                                 data-field-name="@volume.Name"
                                                 data-confirm-title="Volume'ı sil"

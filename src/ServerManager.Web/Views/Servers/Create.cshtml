@@ -6,7 +6,7 @@
 
 <div class="page-header">
     <div>
-        <a asp-action="Index" class="back-link">@Icons.Render("chevron-left", "h-4 w-4") Sunucular</a>
+        <a asp-action="Index" class="back-link" title="Sunucu listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Sunucular</a>
         <h1 class="page-title">Sunucu ekle</h1>
         <p class="page-lead">SSH bilgileriyle yeni bir sunucu tanımlayın.</p>
     </div>
@@ -16,7 +16,7 @@
     <partial name="_ServerForm" model="Model" />
 
     <div class="server-form-actions">
-        <a asp-action="Index" class="btn-secondary">İptal</a>
-        <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+        <a asp-action="Index" class="btn-secondary" title="Kaydetmeden listeye dön">İptal</a>
+        <button type="submit" class="btn-primary" title="Sunucuyu panele ekle"><span class="spinner" data-spinner hidden></span> Kaydet</button>
     </div>
 </form>

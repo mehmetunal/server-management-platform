@@ -32,7 +32,7 @@ else
                         <td class="text-sm">
                             @if (log.EntityType == AuditEntityTypes.Server && Guid.TryParse(log.EntityId, out var serverId))
                             {
-                                <a asp-controller="Servers" asp-action="Details" asp-route-id="@serverId" class="audit-target-link">@log.TargetName</a>
+                                <a asp-controller="Servers" asp-action="Details" asp-route-id="@serverId" class="audit-target-link" title="Sunucu sayfasını aç">@log.TargetName</a>
                             }
                             else
                             {

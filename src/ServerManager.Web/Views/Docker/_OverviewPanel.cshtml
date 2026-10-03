@@ -17,7 +17,7 @@
 <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
     @foreach (var (label, value, icon, valueClass, action) in cards)
     {
-        <a asp-action="@action" asp-route-id="@Model.ServerId" class="stat-card transition hover:ring-2 hover:ring-brand-500/30">
+        <a asp-action="@action" asp-route-id="@Model.ServerId" title="@label listesini aç" class="stat-card transition hover:ring-2 hover:ring-brand-500/30">
             <div class="flex items-center justify-between">
                 <span class="stat-label">@label</span>
                 <span class="text-slate-400">@Icons.Render(icon, "h-5 w-5")</span>

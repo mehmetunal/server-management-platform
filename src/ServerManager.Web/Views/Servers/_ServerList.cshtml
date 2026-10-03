@@ -19,7 +19,7 @@
             <p>SSH bilgileriyle ilk sunucunuzu ekleyin; bağlantıyı panelden test edebilirsiniz.</p>
             @if (canCreate)
             {
-                <a asp-action="Create" class="btn-primary btn-sm mt-3">@Icons.Render("plus", "h-4 w-4") Sunucu ekle</a>
+                <a asp-action="Create" class="btn-primary btn-sm mt-3" title="Panele yeni Linux sunucusu ekle">@Icons.Render("plus", "h-4 w-4") Sunucu ekle</a>
             }
         }
     </div>
@@ -46,7 +46,7 @@ else
                     var resources = Model.Resources.GetValueOrDefault(server.Id);
                     <tr data-live-server-row="@server.Id">
                         <td>
-                            <a asp-action="Details" asp-route-id="@server.Id" class="server-name">@server.Name</a>
+                            <a asp-action="Details" asp-route-id="@server.Id" class="server-name" title="Sunucu ayrıntılarını aç">@server.Name</a>
                             <p class="text-xs text-slate-500">@(server.OperatingSystem ?? server.Hostname)</p>
                         </td>
                         <td class="font-mono text-xs">@server.IpAddress:@server.SshPort</td>
@@ -63,7 +63,7 @@ else
                             <div class="server-tags">
                                 @foreach (var tag in server.Tags)
                                 {
-                                    <a asp-action="Index" asp-route-tag="@tag" class="tag" data-list-link>@tag</a>
+                                    <a asp-action="Index" asp-route-tag="@tag" class="tag" data-list-link title="Bu etiketli sunucuları listele">@tag</a>
                                 }
                             </div>
                         </td>

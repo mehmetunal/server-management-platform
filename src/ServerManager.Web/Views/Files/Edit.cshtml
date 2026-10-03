@@ -5,6 +5,9 @@
     var canDownload = User.HasPermission(Permissions.FileDownload);
     ViewData["Title"] = $"{Model.FileName} · {Model.Page.Server.Name}";
     ViewData["Page"] = "file-editor";
+    ViewData["PageLead"] = canEdit
+        ? "Dosyayı düzenleyip sunucuya kaydedin; başkası değiştirdiyse kaydetmeden önce uyarılırsınız."
+        : "Dosyayı salt okunur olarak görüntülüyorsunuz.";
     string[] codeMirrorScripts =
     [
         "codemirror", "meta", "simple", "overlay", "dialog", "searchcursor", "search", "jump-to-line",
@@ -42,7 +45,7 @@
             }
             @if (canEdit)
             {
-                <button type="button" class="btn-primary btn-sm" data-editor-save disabled>
+                <button type="button" class="btn-primary btn-sm" data-editor-save disabled title="Değişiklikleri sunucuya kaydet (Ctrl+S)">
                     <span class="spinner" data-spinner hidden></span>
                     @Icons.Render("check-circle", "h-4 w-4") <span data-label>Kaydet</span>
                 </button>
@@ -66,7 +69,7 @@
             <p data-editor-error-text></p>
             @if (canDownload)
             {
-                <button type="button" class="btn-secondary btn-sm" data-editor-download>@Icons.Render("download", "h-4 w-4") Dosyayı indir</button>
+                <button type="button" class="btn-secondary btn-sm" data-editor-download title="Dosyayı bilgisayarınıza indirin">@Icons.Render("download", "h-4 w-4") Dosyayı indir</button>
             }
         </div>
         <textarea data-editor-textarea hidden aria-label="Dosya içeriği"></textarea>

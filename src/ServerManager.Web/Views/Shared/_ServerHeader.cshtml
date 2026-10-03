@@ -10,13 +10,21 @@
     var canViewDocker = User.HasPermission(Permissions.DockerView);
     var canViewTerminal = User.HasPermission(Permissions.TerminalView);
     var canViewFiles = User.HasPermission(Permissions.FileView);
+    var tabLead = ViewData["PageLead"] as string ?? Model.ActiveTab switch
+    {
+        ServerPageViewModel.MetricsTab => "CPU, RAM, disk ve ağ kullanımının seçilen zaman aralığındaki grafikleri.",
+        ServerPageViewModel.DockerTab => "Sunucudaki Docker container, imaj, volume ve ağlarını görüntüleyip yönetin.",
+        ServerPageViewModel.TerminalTab => "Tarayıcıdan sunucuya SSH terminali açın; çalıştırılan komutlar kayıt altına alınır.",
+        ServerPageViewModel.FilesTab => "Sunucudaki dosyalara SFTP ile göz atın, yükleyin, indirin ve düzenleyin.",
+        _ => "Sunucunun bağlantı bilgileri, donanımı ve son izleme verileri."
+    };
     var disabledTabs = new[] { "Services", "Processes", "Logs", "Network", "Storage", "Security", "Deployments", "Backups", "Alerts", "Activity" };
 }
 
 <div data-region="server-header" data-live-server="@server.Id" data-hub-url="@Url.Content("~" + MonitoringHub.Path)">
     <div class="page-header">
         <div class="min-w-0">
-            <a asp-controller="Servers" asp-action="Index" class="back-link">@Icons.Render("chevron-left", "h-4 w-4") Sunucular</a>
+            <a asp-controller="Servers" asp-action="Index" class="back-link" title="Sunucu listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Sunucular</a>
             <div class="flex flex-wrap items-center gap-3">
                 <h1 class="page-title truncate">@server.Name</h1>
                 <span class="@ServerDisplay.StatusBadgeClass(server.Status)" data-live-status><span class="badge-dot"></span><span data-live-status-text>@ServerDisplay.StatusText(server.Status)</span></span>
@@ -27,14 +35,14 @@
         <div class="flex flex-wrap gap-2">
             @if (canConnect)
             {
-                <button type="button" class="btn-primary" data-connection-test data-url="@Url.Action("TestConnection", "Servers", new { id = server.Id })">
+                <button type="button" class="btn-primary" title="SSH bağlantısını dene ve host key'i doğrula" data-connection-test data-url="@Url.Action("TestConnection", "Servers", new { id = server.Id })">
                     <span class="spinner" data-spinner hidden></span>
                     @Icons.Render("bolt", "h-4 w-4")
                     <span data-label>Bağlantıyı Test Et</span>
                 </button>
                 @if (monitoring.HasTrustedHostKey)
                 {
-                    <button type="button" class="btn-secondary" data-collect-metrics data-url="@Url.Action("CollectMetrics", "Servers", new { id = server.Id })">
+                    <button type="button" class="btn-secondary" title="Metrikleri beklemeden hemen topla" data-collect-metrics data-url="@Url.Action("CollectMetrics", "Servers", new { id = server.Id })">
                         <span class="spinner" data-spinner hidden></span>
                         @Icons.Render("refresh", "h-4 w-4")
                         <span data-label>Şimdi topla</span>
@@ -43,11 +51,11 @@
             }
             @if (canEdit)
             {
-                <a asp-controller="Servers" asp-action="Edit" asp-route-id="@server.Id" class="btn-secondary">@Icons.Render("pencil", "h-4 w-4") Düzenle</a>
+                <a asp-controller="Servers" asp-action="Edit" asp-route-id="@server.Id" class="btn-secondary" title="Sunucu bilgilerini düzenle">@Icons.Render("pencil", "h-4 w-4") Düzenle</a>
             }
             @if (canDelete)
             {
-                <button type="button" class="btn-ghost-danger" data-ajax-action
+                <button type="button" class="btn-ghost-danger" title="Sunucuyu panelden kaldır" data-ajax-action
                         data-url="@Url.Action("Delete", "Servers", new { id = server.Id })"
                         data-confirm-title="Sunucuyu sil"
                         data-confirm-message="@server.Name sunucusu listeden kaldırılır ve panelden yönetilemez. Audit kayıtları korunur."
@@ -91,24 +99,25 @@
         }
     </section>
 
-    <nav class="tab-list mb-6" aria-label="Sunucu sekmeleri">
-        <a asp-controller="Servers" asp-action="Details" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.OverviewTab ? "is-active" : "")">Overview</a>
-        <a asp-controller="Servers" asp-action="Metrics" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.MetricsTab ? "is-active" : "")">Metrics</a>
+    <nav class="tab-list" aria-label="Sunucu sekmeleri">
+        <a asp-controller="Servers" asp-action="Details" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.OverviewTab ? "is-active" : "")" title="Sunucu özeti ve son durum">Overview</a>
+        <a asp-controller="Servers" asp-action="Metrics" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.MetricsTab ? "is-active" : "")" title="Kaynak kullanım grafikleri">Metrics</a>
         @if (canViewDocker)
         {
-            <a asp-controller="Docker" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.DockerTab ? "is-active" : "")">Docker</a>
+            <a asp-controller="Docker" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.DockerTab ? "is-active" : "")" title="Container, imaj, volume ve ağlar">Docker</a>
         }
         @if (canViewTerminal)
         {
-            <a asp-controller="Terminal" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.TerminalTab ? "is-active" : "")">Terminal</a>
+            <a asp-controller="Terminal" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.TerminalTab ? "is-active" : "")" title="Tarayıcıdan SSH terminali">Terminal</a>
         }
         @if (canViewFiles)
         {
-            <a asp-controller="Files" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.FilesTab ? "is-active" : "")">Files</a>
+            <a asp-controller="Files" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.FilesTab ? "is-active" : "")" title="SFTP dosya yöneticisi">Files</a>
         }
         @foreach (var tab in disabledTabs)
         {
             <span class="tab is-disabled" title="Sonraki fazda etkinleşecek">@tab</span>
         }
     </nav>
+    <p class="tab-lead">@tabLead</p>
 </div>

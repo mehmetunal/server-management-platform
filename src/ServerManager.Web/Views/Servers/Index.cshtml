@@ -8,11 +8,11 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Sunucular</h1>
-        <p class="page-lead">Panelden yönetilen tüm Linux sunucuları</p>
+        <p class="page-lead">Panelden yönetilen Linux sunucuları; arayın, filtreleyin ve ayrıntılarına gidin</p>
     </div>
     @if (canCreate)
     {
-        <a asp-action="Create" class="btn-primary">@Icons.Render("plus", "h-4 w-4") Sunucu ekle</a>
+        <a asp-action="Create" class="btn-primary" title="Panele yeni Linux sunucusu ekle">@Icons.Render("plus", "h-4 w-4") Sunucu ekle</a>
     }
 </div>
 
@@ -36,8 +36,8 @@
             }
         </select>
         <div class="server-filter-actions">
-            <button type="submit" class="btn-secondary btn-sm">@Icons.Render("search", "h-4 w-4") Filtrele</button>
-            <a asp-action="Index" class="btn-ghost btn-sm" data-list-link>Filtreleri temizle</a>
+            <button type="submit" class="btn-secondary btn-sm" title="Listeyi arama ve filtrelere göre süz">@Icons.Render("search", "h-4 w-4") Filtrele</button>
+            <a asp-action="Index" class="btn-ghost btn-sm" data-list-link title="Tüm filtreleri kaldır">Filtreleri temizle</a>
         </div>
     </form>
 

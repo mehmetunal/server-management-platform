@@ -109,10 +109,11 @@ export function createTerminalWorkspace(root) {
         tab.button = element('button', 'terminal-tab');
         tab.button.type = 'button';
         tab.button.setAttribute('role', 'tab');
+        tab.button.title = 'Bu oturuma geç';
         const close = element('span', 'terminal-tab-close', '×');
         close.setAttribute('role', 'button');
         close.setAttribute('aria-label', 'Oturumu kapat');
-        close.title = 'Oturumu kapat';
+        close.title = 'Oturumu sonlandır ve sekmeyi kapat';
         tab.button.append(element('span', 'terminal-tab-dot'), element('span', 'terminal-tab-label', `Terminal ${tab.number}`), close);
         tabList.appendChild(tab.button);
 
@@ -220,7 +221,7 @@ export function createTerminalWorkspace(root) {
             const item = element('li');
             const button = element('button', 'terminal-history-item', command);
             button.type = 'button';
-            button.title = command;
+            button.title = `Terminale yaz: ${command}`;
             button.dataset.command = command;
             item.appendChild(button);
             historyList.appendChild(item);

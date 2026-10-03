@@ -22,7 +22,7 @@ export function createUploader({ url, queue, maxBytes, getDirectory, onUploaded 
         const status = element('span', 'upload-item-status', formatBytes(file.size));
         const cancel = element('button', 'upload-item-cancel', '×');
         cancel.type = 'button';
-        cancel.title = 'İptal';
+        cancel.title = 'Yüklemeyi iptal et';
         cancel.setAttribute('aria-label', `${file.name} yüklemesini iptal et`);
         header.append(name, status, cancel);
         const track = element('div', 'usage-track');

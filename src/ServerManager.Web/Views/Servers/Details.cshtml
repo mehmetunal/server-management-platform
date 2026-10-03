@@ -31,7 +31,7 @@
                         }
                         @foreach (var tag in server.Tags)
                         {
-                            <a asp-action="Index" asp-route-tag="@tag" class="tag">@tag</a>
+                            <a asp-action="Index" asp-route-tag="@tag" class="tag" title="Bu etiketli sunucuları listele">@tag</a>
                         }
                     </dd>
                 </div>
@@ -45,7 +45,7 @@
         <section class="panel">
             <div class="panel-header">
                 <h2 class="panel-title">Sistem</h2>
-                <a asp-action="Metrics" asp-route-id="@server.Id" class="panel-link">Metrikler ve grafikler</a>
+                <a asp-action="Metrics" asp-route-id="@server.Id" class="panel-link" title="Metrics sekmesini aç">Metrikler ve grafikler</a>
             </div>
             @if (snapshot is null)
             {

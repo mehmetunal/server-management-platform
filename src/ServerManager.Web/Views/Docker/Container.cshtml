@@ -5,6 +5,7 @@
     var canTerminal = User.HasPermission(Permissions.DockerTerminal);
     ViewData["Title"] = $"{containerName} · {Model.ServerName}";
     ViewData["Page"] = "docker-container";
+    ViewData["PageLead"] = "Container'ın durumunu, yapılandırmasını ve loglarını inceleyin; gerekirse içinde kabuk açın.";
 }
 
 @section Styles {
@@ -19,22 +20,22 @@
 
 <div class="docker-toolbar">
     <div class="container-breadcrumb">
-        <a asp-action="Containers" asp-route-id="@serverId" class="container-breadcrumb-link">Container'lar</a>
+        <a asp-action="Containers" asp-route-id="@serverId" class="container-breadcrumb-link" title="Container listesine dön">Container'lar</a>
         <span class="container-breadcrumb-separator">/</span>
         <h2 class="container-title">@containerName</h2>
     </div>
-    <button type="button" class="btn-secondary" data-panel-refresh>
+    <button type="button" class="btn-secondary" data-panel-refresh title="Container bilgisini yeniden yükle">
         <span class="spinner" data-spinner hidden></span>
         @Icons.Render("refresh", "h-4 w-4") Yenile
     </button>
 </div>
 
 <nav class="tab-list mb-6" aria-label="Container sekmeleri" data-tabs>
-    <button type="button" class="tab is-active" data-tab="info">Genel</button>
-    <button type="button" class="tab" data-tab="logs">Loglar</button>
+    <button type="button" class="tab is-active" data-tab="info" title="Durum, yapılandırma ve kaynak kullanımı">Genel</button>
+    <button type="button" class="tab" data-tab="logs" title="Container çıktısı (docker logs)">Loglar</button>
     @if (canTerminal)
     {
-        <button type="button" class="tab" data-tab="terminal">Terminal</button>
+        <button type="button" class="tab" data-tab="terminal" title="Container içinde kabuk aç (docker exec)">Terminal</button>
     }
 </nav>
 
@@ -72,8 +73,8 @@
             <label class="check-inline"><input type="checkbox" class="form-check" data-logs-follow /> Canlı takip</label>
             <div class="log-toolbar-end">
                 <span class="text-xs text-slate-400" data-logs-status></span>
-                <button type="button" class="btn-secondary btn-sm" data-logs-reload>@Icons.Render("refresh", "h-4 w-4") Yenile</button>
-                <button type="button" class="btn-secondary btn-sm" data-logs-download>@Icons.Render("download", "h-4 w-4") İndir</button>
+                <button type="button" class="btn-secondary btn-sm" data-logs-reload title="Logları yeniden çek">@Icons.Render("refresh", "h-4 w-4") Yenile</button>
+                <button type="button" class="btn-secondary btn-sm" data-logs-download title="Görüntülenen logları dosya olarak indir">@Icons.Render("download", "h-4 w-4") İndir</button>
             </div>
         </div>
         <div class="log-output" data-logs-output>
@@ -90,9 +91,9 @@
                 <span class="badge-neutral" data-terminal-status><span class="badge-dot"></span><span data-terminal-status-text>Bağlı değil</span></span>
                 <p class="text-xs text-slate-500">Container içinde <span class="font-mono">bash</span> (yoksa <span class="font-mono">sh</span>) açılır. Sayfa yenilenirse aynı oturuma yeniden bağlanılır; açılış, kapanış ve komutlar kayda alınır.</p>
                 <div class="log-toolbar-end">
-                    <button type="button" class="btn-secondary btn-sm" data-terminal-takeover hidden>@Icons.Render("refresh", "h-4 w-4") Buraya al</button>
-                    <button type="button" class="btn-primary btn-sm" data-terminal-connect>@Icons.Render("terminal", "h-4 w-4") Bağlan</button>
-                    <button type="button" class="btn-secondary btn-sm" data-terminal-disconnect hidden>@Icons.Render("x", "h-4 w-4") Bağlantıyı kes</button>
+                    <button type="button" class="btn-secondary btn-sm" data-terminal-takeover hidden title="Başka sekmede açık oturumu bu sekmeye taşı">@Icons.Render("refresh", "h-4 w-4") Buraya al</button>
+                    <button type="button" class="btn-primary btn-sm" data-terminal-connect title="Container'da yeni kabuk oturumu başlat">@Icons.Render("terminal", "h-4 w-4") Bağlan</button>
+                    <button type="button" class="btn-secondary btn-sm" data-terminal-disconnect hidden title="Kabuk oturumunu kapat">@Icons.Render("x", "h-4 w-4") Bağlantıyı kes</button>
                 </div>
             </div>
             <div class="terminal-screen" data-terminal-screen></div>
@@ -118,8 +119,8 @@
                     <p class="alert-error" data-form-error hidden></p>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn-secondary" data-modal-close>Vazgeç</button>
-                    <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span>@Icons.Render("pencil", "h-4 w-4") Kaydet</button>
+                    <button type="button" class="btn-secondary" data-modal-close title="Pencereyi kapat">Vazgeç</button>
+                    <button type="submit" class="btn-primary" title="Yeni adı kaydet"><span class="spinner" data-spinner hidden></span>@Icons.Render("pencil", "h-4 w-4") Kaydet</button>
                 </div>
             </form>
         </div>

@@ -36,8 +36,8 @@
                 <button type="button" class="terminal-icon-btn" data-terminal-search-next title="Sonraki eşleşme (Enter)" aria-label="Sonraki eşleşme">@Icons.Render("chevron-right", "h-4 w-4")</button>
             </div>
             <div class="terminal-toolbar-end">
-                <button type="button" class="btn-secondary btn-sm" data-terminal-takeover hidden>@Icons.Render("refresh", "h-4 w-4") Buraya al</button>
-                <button type="button" class="btn-primary btn-sm" data-terminal-reconnect hidden>@Icons.Render("terminal", "h-4 w-4") Yeniden bağlan</button>
+                <button type="button" class="btn-secondary btn-sm" data-terminal-takeover hidden title="Başka sekmede açık oturumu bu sekmeye taşı">@Icons.Render("refresh", "h-4 w-4") Buraya al</button>
+                <button type="button" class="btn-primary btn-sm" data-terminal-reconnect hidden title="Kopan oturuma yeniden bağlan">@Icons.Render("terminal", "h-4 w-4") Yeniden bağlan</button>
                 <button type="button" class="terminal-icon-btn" data-terminal-copy title="Seçimi kopyala (Ctrl+Shift+C)" aria-label="Seçimi kopyala">@Icons.Render("copy", "h-4 w-4")</button>
                 <button type="button" class="terminal-icon-btn" data-terminal-paste title="Yapıştır (Ctrl+Shift+V)" aria-label="Yapıştır">@Icons.Render("clipboard", "h-4 w-4")</button>
                 <button type="button" class="terminal-icon-btn" data-terminal-download title="Çıktıyı indir" aria-label="Çıktıyı indir">@Icons.Render("download", "h-4 w-4")</button>
@@ -50,7 +50,7 @@
             <div class="terminal-screens" data-terminal-screens>
                 <div class="terminal-placeholder" data-terminal-placeholder hidden>
                     <p>Açık oturum yok.</p>
-                    <button type="button" class="btn-primary btn-sm" data-terminal-new>@Icons.Render("plus", "h-4 w-4") Yeni oturum</button>
+                    <button type="button" class="btn-primary btn-sm" data-terminal-new title="Yeni bir SSH terminal sekmesi aç">@Icons.Render("plus", "h-4 w-4") Yeni oturum</button>
                 </div>
             </div>
             <aside class="terminal-history" data-terminal-history-panel hidden>
@@ -79,7 +79,7 @@ else
 <section class="panel mt-6">
     <div class="panel-header">
         <h2 class="panel-title">Oturum geçmişi</h2>
-        <button type="button" class="btn-ghost btn-sm" data-sessions-refresh>@Icons.Render("refresh", "h-4 w-4") Yenile</button>
+        <button type="button" class="btn-ghost btn-sm" data-sessions-refresh title="Oturum geçmişini yeniden yükle">@Icons.Render("refresh", "h-4 w-4") Yenile</button>
     </div>
     <div data-terminal-sessions data-url="@Url.Action("Sessions", new { id = server.Id })">
         <div class="empty-state">

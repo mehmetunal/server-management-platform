@@ -10,21 +10,21 @@
 
 @if (!running && !paused && User.HasPermission(Permissions.DockerStart))
 {
-    <button type="button" class="@buttonClass" title="Başlat" data-ajax-action data-url="@actionUrl"
+    <button type="button" class="@buttonClass" title="Container'ı başlat" data-ajax-action data-url="@actionUrl"
             data-field-container="@container.Name" data-field-action="Start">
         @Icons.Render("play", "h-4 w-4 text-emerald-600")@(compact ? "" : " Başlat")
     </button>
 }
 @if (paused && User.HasPermission(Permissions.DockerStart))
 {
-    <button type="button" class="@buttonClass" title="Devam ettir" data-ajax-action data-url="@actionUrl"
+    <button type="button" class="@buttonClass" title="Duraklatılmış container'ı sürdür" data-ajax-action data-url="@actionUrl"
             data-field-container="@container.Name" data-field-action="Unpause">
         @Icons.Render("play", "h-4 w-4 text-emerald-600")@(compact ? "" : " Devam ettir")
     </button>
 }
 @if ((running || paused) && User.HasPermission(Permissions.DockerStop))
 {
-    <button type="button" class="@buttonClass" title="Durdur" data-ajax-action data-url="@actionUrl"
+    <button type="button" class="@buttonClass" title="Container'ı durdur (docker stop)" data-ajax-action data-url="@actionUrl"
             data-field-container="@container.Name" data-field-action="Stop"
             data-confirm-title="Container'ı durdur"
             data-confirm-message="@container.Name durdurulacak. Container'ın sunduğu servis erişilemez olur."
@@ -34,7 +34,7 @@
 }
 @if (running && User.HasPermission(Permissions.DockerRestart))
 {
-    <button type="button" class="@buttonClass" title="Yeniden başlat" data-ajax-action data-url="@actionUrl"
+    <button type="button" class="@buttonClass" title="Container'ı yeniden başlat" data-ajax-action data-url="@actionUrl"
             data-field-container="@container.Name" data-field-action="Restart"
             data-confirm-title="Container'ı yeniden başlat"
             data-confirm-message="@container.Name yeniden başlatılacak. Kısa bir kesinti olabilir."
@@ -46,11 +46,11 @@
 {
     @if (running && User.HasPermission(Permissions.DockerStop))
     {
-        <button type="button" class="@buttonClass" data-ajax-action data-url="@actionUrl"
+        <button type="button" class="@buttonClass" title="Container'daki tüm işlemleri dondur" data-ajax-action data-url="@actionUrl"
                 data-field-container="@container.Name" data-field-action="Pause">
             @Icons.Render("pause", "h-4 w-4") Duraklat
         </button>
-        <button type="button" class="@buttonClass" data-ajax-action data-url="@actionUrl"
+        <button type="button" class="@buttonClass" title="Container'ı SIGKILL ile anında sonlandır" data-ajax-action data-url="@actionUrl"
                 data-field-container="@container.Name" data-field-action="Kill"
                 data-confirm-title="Container'ı kill et"
                 data-confirm-message="@container.Name SIGKILL ile anında sonlandırılacak. Kaydedilmemiş veriler kaybolabilir."
@@ -60,7 +60,7 @@
     }
     @if (User.HasPermission(Permissions.DockerDelete))
     {
-        <button type="button" class="btn-ghost-danger btn-sm" data-ajax-action data-url="@actionUrl"
+        <button type="button" class="btn-ghost-danger btn-sm" title="Container'ı kalıcı olarak sil" data-ajax-action data-url="@actionUrl"
                 data-field-container="@container.Name" data-field-action="Remove"
                 data-confirm-title="Container'ı sil"
                 data-confirm-message="@container.Name kalıcı olarak silinecek. Bağlı named volume'lar silinmez."

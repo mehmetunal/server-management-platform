@@ -1,3 +1,4 @@
+import { initTooltips } from './components/tooltip.js';
 import { showPendingFlash } from './core/notify.js';
 import { closeAllDropdowns, initDropdowns } from './layout/dropdowns.js';
 import { initLogout } from './layout/session.js';
@@ -8,4 +9,5 @@ initDropdowns();
 initTheme({ onChange: () => closeAllDropdowns() });
 initSidebar();
 initLogout();
+initTooltips();
 showPendingFlash();

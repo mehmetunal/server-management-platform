@@ -6,7 +6,7 @@
 
 <div class="page-header">
     <div>
-        <a asp-action="Details" asp-route-id="@Model.Id" class="back-link">@Icons.Render("chevron-left", "h-4 w-4") @Model.Name</a>
+        <a asp-action="Details" asp-route-id="@Model.Id" class="back-link" title="Sunucu sayfasına dön">@Icons.Render("chevron-left", "h-4 w-4") @Model.Name</a>
         <h1 class="page-title">Sunucuyu düzenle</h1>
         <p class="page-lead">Bağlantı adresi değişirse kayıtlı host key fingerprint sıfırlanır.</p>
     </div>
@@ -16,7 +16,7 @@
     <partial name="_ServerForm" model="Model" />
 
     <div class="server-form-actions">
-        <a asp-action="Details" asp-route-id="@Model.Id" class="btn-secondary">İptal</a>
-        <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span> Değişiklikleri kaydet</button>
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn-secondary" title="Kaydetmeden sunucu sayfasına dön">İptal</a>
+        <button type="submit" class="btn-primary" title="Sunucu bilgilerini güncelle"><span class="spinner" data-spinner hidden></span> Değişiklikleri kaydet</button>
     </div>
 </form>

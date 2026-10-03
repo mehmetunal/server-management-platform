@@ -40,14 +40,14 @@
                         <span data-theme-icon="system">@Icons.Render("desktop")</span>
                     </button>
                     <div class="dropdown-menu w-40" data-dropdown-menu hidden>
-                        <button type="button" class="dropdown-item" data-theme-value="light">@Icons.Render("sun", "h-4 w-4") Açık</button>
-                        <button type="button" class="dropdown-item" data-theme-value="dark">@Icons.Render("moon", "h-4 w-4") Koyu</button>
-                        <button type="button" class="dropdown-item" data-theme-value="system">@Icons.Render("desktop", "h-4 w-4") Sistem</button>
+                        <button type="button" class="dropdown-item" data-theme-value="light" title="Açık temayı kullan">@Icons.Render("sun", "h-4 w-4") Açık</button>
+                        <button type="button" class="dropdown-item" data-theme-value="dark" title="Koyu temayı kullan">@Icons.Render("moon", "h-4 w-4") Koyu</button>
+                        <button type="button" class="dropdown-item" data-theme-value="system" title="İşletim sisteminin temasını takip et">@Icons.Render("desktop", "h-4 w-4") Sistem</button>
                     </div>
                 </div>
 
                 <div class="relative" data-dropdown>
-                    <button type="button" class="flex items-center gap-2 rounded-xl px-2 py-1.5 text-left transition hover:bg-slate-100 dark:hover:bg-slate-800" data-dropdown-toggle>
+                    <button type="button" class="flex items-center gap-2 rounded-xl px-2 py-1.5 text-left transition hover:bg-slate-100 dark:hover:bg-slate-800" data-dropdown-toggle title="Hesap menüsü">
                         <span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold uppercase text-white">@(userName?.FirstOrDefault() ?? '?')</span>
                         <span class="hidden min-w-0 sm:block">
                             <span class="block max-w-[12rem] truncate text-sm font-medium text-slate-800 dark:text-slate-100">@userName</span>
@@ -57,7 +57,7 @@
                     </button>
                     <div class="dropdown-menu" data-dropdown-menu hidden>
                         <div class="border-b border-slate-100 px-4 py-2 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:hidden">@userName</div>
-                        <button type="button" class="dropdown-item text-red-600 dark:text-red-400" data-logout data-url="@Url.Action("Logout", "Account")">@Icons.Render("logout", "h-4 w-4") Çıkış yap</button>
+                        <button type="button" class="dropdown-item text-red-600 dark:text-red-400" data-logout title="Oturumu kapatıp giriş sayfasına dön" data-url="@Url.Action("Logout", "Account")">@Icons.Render("logout", "h-4 w-4") Çıkış yap</button>
                     </div>
                 </div>
             </header>

@@ -35,7 +35,7 @@ else
                         var health = DockerDisplay.IsRunning(container) ? DockerDisplay.HealthText(container.Health) : null;
                         <tr data-container-row data-state="@container.State" data-search="@($"{container.Name} {container.Image} {container.ComposeProject}".ToLowerInvariant())">
                             <td class="min-w-[10rem]">
-                                <a asp-action="Container" asp-route-id="@Model.ServerId" asp-route-name="@container.Name" class="font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">@container.Name</a>
+                                <a asp-action="Container" asp-route-id="@Model.ServerId" asp-route-name="@container.Name" title="Container ayrıntılarını, loglarını ve terminalini aç" class="font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">@container.Name</a>
                                 <div class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                                     <span class="font-mono">@container.ShortId</span>
                                     @if (!string.IsNullOrEmpty(container.ComposeProject))

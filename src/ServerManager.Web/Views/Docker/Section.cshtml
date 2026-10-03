@@ -36,7 +36,7 @@
         {
             @if (canDelete)
             {
-                <button type="button" class="btn-secondary" data-ajax-action
+                <button type="button" class="btn-secondary" title="Kullanılmayan image'ları silerek yer aç" data-ajax-action
                         data-url="@Url.Action("PruneImages", new { id = serverId })"
                         data-confirm-title="Kullanılmayan image'ları temizle"
                         data-confirm-message="Etiketsiz (dangling) image'lar kalıcı olarak silinir. İşaretlerseniz hiçbir container'ın kullanmadığı tüm image'lar silinir."
@@ -49,18 +49,18 @@
             }
             @if (canManage)
             {
-                <button type="button" class="btn-primary" data-modal-open="pull-image-modal">@Icons.Render("download", "h-4 w-4") Image çek</button>
+                <button type="button" class="btn-primary" data-modal-open="pull-image-modal" title="Registry'den yeni image indir">@Icons.Render("download", "h-4 w-4") Image çek</button>
             }
         }
         @if (Model.Section == DockerPageViewModel.VolumesSection && canManage)
         {
-            <button type="button" class="btn-primary" data-modal-open="create-volume-modal">@Icons.Render("plus", "h-4 w-4") Volume oluştur</button>
+            <button type="button" class="btn-primary" data-modal-open="create-volume-modal" title="Yeni named volume oluştur">@Icons.Render("plus", "h-4 w-4") Volume oluştur</button>
         }
         @if (Model.Section == DockerPageViewModel.NetworksSection && canManage)
         {
-            <button type="button" class="btn-primary" data-modal-open="create-network-modal">@Icons.Render("plus", "h-4 w-4") Network oluştur</button>
+            <button type="button" class="btn-primary" data-modal-open="create-network-modal" title="Yeni Docker ağı oluştur">@Icons.Render("plus", "h-4 w-4") Network oluştur</button>
         }
-        <button type="button" class="btn-secondary" data-panel-refresh>
+        <button type="button" class="btn-secondary" data-panel-refresh title="Listeyi sunucudan yeniden yükle">
             <span class="spinner" data-spinner hidden></span>
             @Icons.Render("refresh", "h-4 w-4") Yenile
         </button>
@@ -92,8 +92,8 @@
                     <p class="alert-error" data-form-error hidden></p>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn-secondary" data-modal-close>Vazgeç</button>
-                    <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span>@Icons.Render("download", "h-4 w-4") Çek</button>
+                    <button type="button" class="btn-secondary" data-modal-close title="Pencereyi kapat">Vazgeç</button>
+                    <button type="submit" class="btn-primary" title="Image'ı sunucuya indir"><span class="spinner" data-spinner hidden></span>@Icons.Render("download", "h-4 w-4") Çek</button>
                 </div>
             </form>
         </div>
@@ -115,8 +115,8 @@
                     <p class="alert-error" data-form-error hidden></p>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn-secondary" data-modal-close>Vazgeç</button>
-                    <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span>@Icons.Render("plus", "h-4 w-4") Oluştur</button>
+                    <button type="button" class="btn-secondary" data-modal-close title="Pencereyi kapat">Vazgeç</button>
+                    <button type="submit" class="btn-primary" title="Volume'ı oluştur"><span class="spinner" data-spinner hidden></span>@Icons.Render("plus", "h-4 w-4") Oluştur</button>
                 </div>
             </form>
         </div>
@@ -160,8 +160,8 @@
                     <p class="alert-error" data-form-error hidden></p>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn-secondary" data-modal-close>Vazgeç</button>
-                    <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span>@Icons.Render("plus", "h-4 w-4") Oluştur</button>
+                    <button type="button" class="btn-secondary" data-modal-close title="Pencereyi kapat">Vazgeç</button>
+                    <button type="submit" class="btn-primary" title="Ağı oluştur"><span class="spinner" data-spinner hidden></span>@Icons.Render("plus", "h-4 w-4") Oluştur</button>
                 </div>
             </form>
         </div>

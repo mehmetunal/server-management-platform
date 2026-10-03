@@ -6,8 +6,9 @@
 
 <div class="page-header">
     <div>
-        <a asp-action="Index" class="back-link">@Icons.Render("chevron-left", "h-4 w-4") Kullanıcılar</a>
+        <a asp-action="Index" class="back-link" title="Kullanıcı listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Kullanıcılar</a>
         <h1 class="page-title">Kullanıcı ekle</h1>
+        <p class="page-lead">Panele giriş yapacak yeni bir kullanıcı tanımlayıp rolünü seçin.</p>
     </div>
 </div>
 
@@ -42,7 +43,7 @@
         </div>
     </div>
     <div class="form-actions">
-        <a asp-action="Index" class="btn-secondary">İptal</a>
-        <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span> Oluştur</button>
+        <a asp-action="Index" class="btn-secondary" title="Kaydetmeden listeye dön">İptal</a>
+        <button type="submit" class="btn-primary" title="Kullanıcıyı oluştur"><span class="spinner" data-spinner hidden></span> Oluştur</button>
     </div>
 </form>

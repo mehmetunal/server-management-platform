@@ -26,7 +26,7 @@
                 }
                 else
                 {
-                    <a class="file-breadcrumb" asp-action="Index" asp-route-id="@Model.ServerId" asp-route-path="@crumb.Path" data-list-link>@(crumb.Path == "/" ? "/" : crumb.Name)</a>
+                    <a class="file-breadcrumb" title="Bu klasöre git" asp-action="Index" asp-route-id="@Model.ServerId" asp-route-path="@crumb.Path" data-list-link>@(crumb.Path == "/" ? "/" : crumb.Name)</a>
                 }
             }
         </nav>
@@ -40,7 +40,7 @@
             <p>@Model.Error</p>
             @if (!string.IsNullOrEmpty(Model.RequestedPath))
             {
-                <a class="panel-link" asp-action="Index" asp-route-id="@Model.ServerId" data-list-link>Ev klasörüne dön</a>
+                <a class="panel-link" title="Kullanıcının ev klasörünü aç" asp-action="Index" asp-route-id="@Model.ServerId" data-list-link>Ev klasörüne dön</a>
             }
         </div>
     }
@@ -81,11 +81,11 @@
                                 <span class="@FileDisplay.IconClass(entry)" title="@FileDisplay.KindText(entry.Kind)">@Icons.Render(FileDisplay.Icon(entry), "h-4 w-4")</span>
                                 @if (entry.Kind is RemoteFileKind.Directory or RemoteFileKind.SymbolicLink)
                                 {
-                                    <a class="file-name" asp-action="Index" asp-route-id="@Model.ServerId" asp-route-path="@entry.Path" data-list-link>@entry.Name</a>
+                                    <a class="file-name" asp-action="Index" asp-route-id="@Model.ServerId" asp-route-path="@entry.Path" data-list-link title="Klasörü aç">@entry.Name</a>
                                 }
                                 else if (entry.Kind == RemoteFileKind.File)
                                 {
-                                    <a class="file-name" asp-action="Edit" asp-route-id="@Model.ServerId" asp-route-path="@entry.Path">@entry.Name</a>
+                                    <a class="file-name" asp-action="Edit" asp-route-id="@Model.ServerId" asp-route-path="@entry.Path" title="Dosyayı editörde aç">@entry.Name</a>
                                 }
                                 else
                                 {

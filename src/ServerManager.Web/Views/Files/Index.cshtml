@@ -25,18 +25,18 @@
         </div>
         <form class="file-path-form" action="@Url.Action("Index", new { id = serverId })" data-file-path-form novalidate>
             <input type="text" name="path" class="form-control form-control-mono" value="@Model.List.CurrentPath" aria-label="Klasör yolu" autocomplete="off" spellcheck="false" data-file-path-input />
-            <button type="submit" class="btn-secondary btn-sm">Git</button>
+            <button type="submit" class="btn-secondary btn-sm" title="Yazılan yola git">Git</button>
         </form>
         <div class="file-toolbar-end">
             <label class="check-inline"><input type="checkbox" class="form-check" data-file-show-hidden /> Gizli dosyalar</label>
             @if (canCreate)
             {
-                <button type="button" class="btn-secondary btn-sm" data-file-create="directory">@Icons.Render("folder-plus", "h-4 w-4") Yeni klasör</button>
-                <button type="button" class="btn-secondary btn-sm" data-file-create="file">@Icons.Render("document-plus", "h-4 w-4") Yeni dosya</button>
+                <button type="button" class="btn-secondary btn-sm" data-file-create="directory" title="Bu klasörde yeni klasör oluştur">@Icons.Render("folder-plus", "h-4 w-4") Yeni klasör</button>
+                <button type="button" class="btn-secondary btn-sm" data-file-create="file" title="Bu klasörde boş dosya oluştur">@Icons.Render("document-plus", "h-4 w-4") Yeni dosya</button>
             }
             @if (canUpload)
             {
-                <button type="button" class="btn-primary btn-sm" data-file-upload>@Icons.Render("upload", "h-4 w-4") Yükle</button>
+                <button type="button" class="btn-primary btn-sm" data-file-upload title="Bilgisayarınızdan bu klasöre dosya yükleyin (sürükle-bırak da olur)">@Icons.Render("upload", "h-4 w-4") Yükle</button>
                 <input type="file" multiple hidden data-file-upload-input />
             }
         </div>
@@ -80,8 +80,8 @@
                     <p class="alert-error" data-form-error hidden></p>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn-secondary" data-modal-close>Vazgeç</button>
-                    <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span>@Icons.Render("plus", "h-4 w-4") Oluştur</button>
+                    <button type="button" class="btn-secondary" data-modal-close title="Pencereyi kapat">Vazgeç</button>
+                    <button type="submit" class="btn-primary" title="Yeni öğeyi bu klasörde oluştur"><span class="spinner" data-spinner hidden></span>@Icons.Render("plus", "h-4 w-4") Oluştur</button>
                 </div>
             </form>
         </div>
@@ -103,8 +103,8 @@
                     <p class="alert-error" data-form-error hidden></p>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn-secondary" data-modal-close>Vazgeç</button>
-                    <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span>@Icons.Render("copy", "h-4 w-4") Kopyala</button>
+                    <button type="button" class="btn-secondary" data-modal-close title="Pencereyi kapat">Vazgeç</button>
+                    <button type="submit" class="btn-primary" title="Seçili öğeyi hedefe kopyala"><span class="spinner" data-spinner hidden></span>@Icons.Render("copy", "h-4 w-4") Kopyala</button>
                 </div>
             </form>
         </div>
@@ -129,8 +129,8 @@
                     <p class="alert-error" data-form-error hidden></p>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn-secondary" data-modal-close>Vazgeç</button>
-                    <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span>@Icons.Render("arrows", "h-4 w-4") Uygula</button>
+                    <button type="button" class="btn-secondary" data-modal-close title="Pencereyi kapat">Vazgeç</button>
+                    <button type="submit" class="btn-primary" title="Yeni ada veya konuma taşı"><span class="spinner" data-spinner hidden></span>@Icons.Render("arrows", "h-4 w-4") Uygula</button>
                 </div>
             </form>
         </div>
@@ -206,8 +206,8 @@
                     <p class="alert-error" data-form-error hidden></p>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn-secondary" data-modal-close>Vazgeç</button>
-                    <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span>@Icons.Render("key", "h-4 w-4") Uygula</button>
+                    <button type="button" class="btn-secondary" data-modal-close title="Pencereyi kapat">Vazgeç</button>
+                    <button type="submit" class="btn-primary" title="İzin ve sahiplik değişikliklerini uygula"><span class="spinner" data-spinner hidden></span>@Icons.Render("key", "h-4 w-4") Uygula</button>
                 </div>
             </form>
         </div>

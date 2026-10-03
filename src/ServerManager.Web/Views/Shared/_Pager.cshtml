@@ -6,12 +6,12 @@
     <nav class="pager" aria-label="Sayfalama">
         <p class="text-sm text-slate-500 dark:text-slate-400">Toplam <span class="font-medium text-slate-700 dark:text-slate-200">@Model.TotalCount</span> kayıt · Sayfa @Model.Page / @Model.TotalPages</p>
         <div class="flex items-center gap-1">
-            <a class="pager-link @(Model.Page <= 1 ? "is-disabled" : "")" asp-action="@Model.Action" asp-all-route-data="Model.RouteValuesFor(Model.Page - 1)" aria-label="Önceki">@Icons.Render("chevron-left", "h-4 w-4")</a>
+            <a class="pager-link @(Model.Page <= 1 ? "is-disabled" : "")" asp-action="@Model.Action" asp-all-route-data="Model.RouteValuesFor(Model.Page - 1)" aria-label="Önceki" title="Önceki sayfa">@Icons.Render("chevron-left", "h-4 w-4")</a>
             @for (var i = start; i <= end; i++)
             {
-                <a class="pager-link @(i == Model.Page ? "is-active" : "")" asp-action="@Model.Action" asp-all-route-data="Model.RouteValuesFor(i)">@i</a>
+                <a class="pager-link @(i == Model.Page ? "is-active" : "")" asp-action="@Model.Action" asp-all-route-data="Model.RouteValuesFor(i)" title="Sayfa @i">@i</a>
             }
-            <a class="pager-link @(Model.Page >= Model.TotalPages ? "is-disabled" : "")" asp-action="@Model.Action" asp-all-route-data="Model.RouteValuesFor(Model.Page + 1)" aria-label="Sonraki">@Icons.Render("chevron-right", "h-4 w-4")</a>
+            <a class="pager-link @(Model.Page >= Model.TotalPages ? "is-disabled" : "")" asp-action="@Model.Action" asp-all-route-data="Model.RouteValuesFor(Model.Page + 1)" aria-label="Sonraki" title="Sonraki sayfa">@Icons.Render("chevron-right", "h-4 w-4")</a>
         </div>
     </nav>
 }
