@@ -1,6 +1,7 @@
 using ServerManager.Application.DTOs.Monitoring;
 using ServerManager.Application.Monitoring;
 using ServerManager.Web.Helpers;
+using ServerManager.Web.Framework.UI;
 
 namespace ServerManager.Web.Models;
 

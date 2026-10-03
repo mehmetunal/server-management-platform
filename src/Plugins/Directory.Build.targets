@@ -1,0 +1,23 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildThisFileDirectory)../'))"
+          Condition="Exists($([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildThisFileDirectory)../')))" />
+
+  <ItemGroup>
+    <Content Remove="plugin.json;Content\**;Styles\**" />
+    <None Remove="plugin.json;Content\**" />
+    <None Include="plugin.json;Content\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Çekirdek projeler ve onların paket içerikleri uygulamada zaten var; eklenti klasörüne kopyalanmaz. -->
+  <Target Name="ExcludeHostAssembliesFromPluginOutput" AfterTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)" Condition="'%(ReferenceCopyLocalPaths.ReferenceSourceTarget)' == 'ProjectReference'" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="ExcludeHostPackageContentFromPluginOutput" BeforeTargets="AssignTargetPaths">
+    <ItemGroup>
+      <None Remove="@(None)" Condition="'$(NuGetPackageRoot)' != '' And $([System.String]::Copy('%(None.FullPath)').StartsWith('$(NuGetPackageRoot)'))" />
+    </ItemGroup>
+  </Target>
+</Project>

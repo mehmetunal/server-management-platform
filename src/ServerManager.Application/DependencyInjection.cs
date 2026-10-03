@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using ServerManager.Application.Auditing;
 using ServerManager.Application.Interfaces.Services;
 using ServerManager.Application.Interfaces.Ssh;
 using ServerManager.Application.Services;
@@ -22,7 +23,8 @@ public static class DependencyInjection
         services.AddScoped<IDockerService, DockerService>();
         services.AddScoped<ITerminalService, TerminalService>();
         services.AddScoped<IFileService, FileService>();
-        services.AddScoped<IDokployService, DokployService>();
+        services.AddScoped<IPluginService, PluginService>();
+        services.AddSingleton<AuditActionCatalog>();
         services.AddSingleton<DangerousCommandDetector>();
         services.AddSingleton<TerminalCommandQueue>();
         services.TryAddSingleton(TimeProvider.System);

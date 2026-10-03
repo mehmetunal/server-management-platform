@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using ServerManager.Application.Authorization;
-using ServerManager.Web.Authorization;
+using ServerManager.Web.Framework.Authorization;
 
 namespace ServerManager.Web.Hubs;
 

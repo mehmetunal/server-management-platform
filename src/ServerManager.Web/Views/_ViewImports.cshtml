@@ -1,9 +1,12 @@
 @using ServerManager.Web
-@using ServerManager.Web.Authorization
 @using ServerManager.Web.Helpers
 @using ServerManager.Web.Hubs
 @using ServerManager.Web.Middleware
 @using ServerManager.Web.Models
+@using ServerManager.Web.Framework.Authorization
+@using ServerManager.Web.Framework.Plugins
+@using ServerManager.Web.Framework.Servers
+@using ServerManager.Web.Framework.UI
 @using ServerManager.Application.Auditing
 @using ServerManager.Application.Authorization
 @using ServerManager.Application.Common
@@ -11,9 +14,8 @@
 @using ServerManager.Application.DTOs.AuditLogs
 @using ServerManager.Application.DTOs.Dashboard
 @using ServerManager.Application.DTOs.Docker
-@using ServerManager.Application.DTOs.Dokploy
-@using ServerManager.Application.Dokploy
 @using ServerManager.Application.DTOs.Files
+@using ServerManager.Application.DTOs.Plugins
 @using ServerManager.Application.DTOs.Terminal
 @using ServerManager.Application.Files
 @using ServerManager.Application.Docker

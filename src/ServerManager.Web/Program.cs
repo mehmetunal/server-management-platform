@@ -11,10 +11,12 @@ using ServerManager.Application.Interfaces;
 using ServerManager.Application.Interfaces.Monitoring;
 using ServerManager.Application.Monitoring;
 using ServerManager.Infrastructure;
-using ServerManager.Web.Authorization;
 using ServerManager.Web.BackgroundJobs;
 using ServerManager.Web.Extensions;
-using ServerManager.Web.Dokploy;
+using ServerManager.Web.Framework.Authorization;
+using ServerManager.Web.Framework.Mvc;
+using ServerManager.Web.Framework.Plugins;
+using ServerManager.Web.Framework.Servers;
 using ServerManager.Web.Hubs;
 using ServerManager.Web.Middleware;
 using ServerManager.Web.Models;
@@ -45,8 +47,6 @@ try
     builder.Services.AddSignalR();
     builder.Services.AddSingleton<IMonitoringNotifier, SignalRMonitoringNotifier>();
     builder.Services.AddSingleton<TerminalManager>();
-    builder.Services.AddSingleton<DokployInstallationManager>();
-    builder.Services.AddHostedService<DokployHealthWorker>();
     builder.Services.AddHostedService<TerminalCommandWriter>();
     builder.Services.AddHostedService<TerminalIdleSweeper>();
     if (builder.Configuration.GetValue($"{MonitoringOptions.SectionName}:Enabled", true))
@@ -114,7 +114,7 @@ try
         options.Cookie.SecurePolicy = cookieSecurePolicy;
     });
 
-    builder.Services.AddControllersWithViews(options =>
+    var mvcBuilder = builder.Services.AddControllersWithViews(options =>
     {
         options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
         options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
@@ -122,6 +122,7 @@ try
     });
 
     builder.Services.AddAppRateLimiting();
+    builder.AddPlugins(mvcBuilder);
 
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
     {
@@ -157,7 +158,7 @@ try
     app.MapControllerRoute(name: "default", pattern: "{controller=Dashboard}/{action=Index}/{id?}");
     app.MapHub<MonitoringHub>(MonitoringHub.Path);
     app.MapHub<TerminalHub>(TerminalHub.Path);
-    app.MapHub<DokployHub>(DokployHub.Path);
+    app.MapPluginEndpoints();
 
     await app.RunAsync();
 }

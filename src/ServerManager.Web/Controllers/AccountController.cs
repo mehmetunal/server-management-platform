@@ -5,6 +5,7 @@ using ServerManager.Application.DTOs.Account;
 using ServerManager.Application.Interfaces.Services;
 using ServerManager.Web.Extensions;
 using ServerManager.Web.RateLimiting;
+using ServerManager.Web.Framework.Mvc;
 
 namespace ServerManager.Web.Controllers;
 

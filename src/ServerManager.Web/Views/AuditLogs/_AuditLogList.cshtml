@@ -1,4 +1,5 @@
 @model AuditLogIndexViewModel
+@inject AuditActionCatalog AuditCatalog
 
 @if (Model.Logs.Items.Count == 0)
 {
@@ -28,7 +29,7 @@ else
                     <tr>
                         <td class="audit-time">@DateDisplay.Format(log.CreatedAt, "dd.MM.yyyy HH:mm:ss")</td>
                         <td class="text-sm">@(log.UserName ?? "—")</td>
-                        <td><span class="font-medium">@AuditDisplay.ActionText(log.Action)</span><p class="audit-action-code">@log.Action</p></td>
+                        <td><span class="font-medium">@AuditCatalog.DisplayName(log.Action)</span><p class="audit-action-code">@log.Action</p></td>
                         <td class="text-sm">
                             @if (log.EntityType == AuditEntityTypes.Server && Guid.TryParse(log.EntityId, out var serverId))
                             {

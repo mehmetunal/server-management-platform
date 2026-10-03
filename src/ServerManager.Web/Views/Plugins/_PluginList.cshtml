@@ -1,0 +1,131 @@
+@model IReadOnlyList<PluginDto>
+
+@if (Model.Count == 0)
+{
+    <section class="panel">
+        <p class="plugin-empty">Plugins klasöründe eklenti bulunamadı. Eklentiyi derleyip uygulamayı yeniden başlatın.</p>
+    </section>
+}
+else
+{
+    @foreach (var group in Model.GroupBy(p => p.Group))
+    {
+        <section class="panel mb-6">
+            <div class="panel-header">
+                <h2 class="panel-title">@group.Key</h2>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Eklenti</th>
+                            <th>Sürüm</th>
+                            <th>Durum</th>
+                            <th>Kurulum</th>
+                            <th class="text-right">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var plugin in group)
+                        {
+                            <tr>
+                                <td>
+                                    <p class="plugin-name">@plugin.FriendlyName</p>
+                                    <p class="plugin-system-name">@plugin.SystemName@(plugin.Author is null ? "" : $" · {plugin.Author}")</p>
+                                    @if (!string.IsNullOrEmpty(plugin.Description))
+                                    {
+                                        <p class="plugin-description">@plugin.Description</p>
+                                    }
+                                    @if (plugin.LoadError is not null)
+                                    {
+                                        <p class="plugin-error">@plugin.LoadError</p>
+                                    }
+                                </td>
+                                <td class="whitespace-nowrap">
+                                    @plugin.Version
+                                    @if (plugin.InstalledVersion is not null && plugin.InstalledVersion != plugin.Version)
+                                    {
+                                        <p class="plugin-meta" title="Veritabanında kayıtlı sürüm">Kayıtlı: @plugin.InstalledVersion</p>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!plugin.IsLoaded)
+                                    {
+                                        <span class="badge-danger">Yüklenemedi</span>
+                                    }
+                                    else if (!plugin.IsInstalled)
+                                    {
+                                        <span class="badge-neutral">Kurulu değil</span>
+                                    }
+                                    else if (plugin.IsEnabled)
+                                    {
+                                        <span class="badge-success">Etkin</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-warning">Devre dışı</span>
+                                    }
+                                </td>
+                                <td class="plugin-meta" title="@DateDisplay.Format(plugin.InstalledAt)">
+                                    @if (plugin.IsInstalled)
+                                    {
+                                        @DateDisplay.Relative(plugin.InstalledAt)
+                                        <span>· @(plugin.InstalledBy ?? "—")</span>
+                                    }
+                                    else
+                                    {
+                                        <span>—</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="plugin-actions">
+                                        @if (plugin.IsLoaded && !plugin.IsInstalled)
+                                        {
+                                            <button type="button" class="btn-primary btn-sm" title="Tablolarını oluştur, izinlerini rollere ekle ve etkinleştir" data-ajax-action
+                                                    data-url="@Url.Action("Install")"
+                                                    data-field-system-name="@plugin.SystemName"
+                                                    data-confirm-title="Eklentiyi kur"
+                                                    data-confirm-message="@plugin.FriendlyName eklentisinin veritabanı tabloları oluşturulur ve varsayılan izinleri rollere eklenir."
+                                                    data-confirm-label="Kur"
+                                                    data-confirm-tone="neutral">
+                                                <span class="spinner" data-spinner hidden></span>
+                                                @Icons.Render("download", "h-4 w-4") Kur
+                                            </button>
+                                        }
+                                        else if (plugin.IsInstalled && plugin.IsEnabled)
+                                        {
+                                            <button type="button" class="btn-ghost-danger btn-sm" title="Eklentinin sayfalarını, sekmelerini ve arka plan işlerini durdur" data-ajax-action
+                                                    data-url="@Url.Action("SetEnabled")"
+                                                    data-field-system-name="@plugin.SystemName"
+                                                    data-field-enabled="false"
+                                                    data-confirm-title="Eklentiyi devre dışı bırak"
+                                                    data-confirm-message="@plugin.FriendlyName sayfaları ve sunucu sekmesi kapanır, arka plan işleri durur. Tabloları ve verisi silinmez."
+                                                    data-confirm-label="Devre dışı bırak">
+                                                <span class="spinner" data-spinner hidden></span>
+                                                @Icons.Render("power", "h-4 w-4") Devre dışı bırak
+                                            </button>
+                                        }
+                                        else if (plugin.IsInstalled && plugin.IsLoaded)
+                                        {
+                                            <button type="button" class="btn-secondary btn-sm" title="Eklentinin sayfalarını ve sekmelerini yeniden aç" data-ajax-action
+                                                    data-url="@Url.Action("SetEnabled")"
+                                                    data-field-system-name="@plugin.SystemName"
+                                                    data-field-enabled="true"
+                                                    data-confirm-title="Eklentiyi etkinleştir"
+                                                    data-confirm-message="@plugin.FriendlyName sayfaları ve sunucu sekmesi yeniden kullanılabilir olur."
+                                                    data-confirm-label="Etkinleştir"
+                                                    data-confirm-tone="neutral">
+                                                <span class="spinner" data-spinner hidden></span>
+                                                @Icons.Render("play", "h-4 w-4") Etkinleştir
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
+}

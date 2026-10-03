@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Mvc;
 using ServerManager.Application.Authorization;
 using ServerManager.Application.Interfaces.Services;
 using ServerManager.Application.Monitoring;
-using ServerManager.Web.Authorization;
 using ServerManager.Web.Models;
 using ServerManager.Web.Services;
+using ServerManager.Web.Framework.Authorization;
+using ServerManager.Web.Framework.Mvc;
+using ServerManager.Web.Framework.Servers;
 
 namespace ServerManager.Web.Controllers;
 

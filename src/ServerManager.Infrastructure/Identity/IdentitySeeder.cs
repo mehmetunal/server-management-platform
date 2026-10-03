@@ -6,7 +6,7 @@ using ServerManager.Application.Authorization;
 
 namespace ServerManager.Infrastructure.Identity;
 
-public class IdentitySeeder
+public class IdentitySeeder : IPermissionSeeder
 {
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly UserManager<ApplicationUser> _userManager;
@@ -28,19 +28,20 @@ public class IdentitySeeder
     public async Task SeedAsync()
     {
         await SeedRolesAsync();
+        await SeedAsync(DefaultRolePermissions.Matrix);
         await SeedAdminAsync();
     }
 
-    private async Task SeedRolesAsync()
+    public async Task SeedAsync(IReadOnlyDictionary<string, IReadOnlyList<string>> rolePermissions, CancellationToken cancellationToken = default)
     {
-        foreach (var roleName in Roles.All)
+        foreach (var (roleName, permissions) in rolePermissions)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var role = await _roleManager.FindByNameAsync(roleName);
             if (role is null)
             {
-                role = new ApplicationRole(roleName) { Description = Roles.Descriptions[roleName] };
-                EnsureSucceeded(await _roleManager.CreateAsync(role), $"Rol oluşturulamadı: {roleName}");
-                _logger.LogInformation("Rol oluşturuldu: {Role}", roleName);
+                _logger.LogWarning("İzin eklenecek rol bulunamadı: {Role}", roleName);
+                continue;
             }
 
             var existingPermissions = (await _roleManager.GetClaimsAsync(role))
@@ -48,13 +49,26 @@ public class IdentitySeeder
                 .Select(c => c.Value)
                 .ToHashSet(StringComparer.Ordinal);
 
-            foreach (var permission in DefaultRolePermissions.Matrix[roleName].Where(p => !existingPermissions.Contains(p)))
+            foreach (var permission in permissions.Where(p => !existingPermissions.Contains(p)))
             {
                 EnsureSucceeded(
                     await _roleManager.AddClaimAsync(role, new Claim(Permissions.ClaimType, permission)),
                     $"Yetki eklenemedi: {roleName} / {permission}");
                 _logger.LogInformation("Yetki eklendi: {Role} -> {Permission}", roleName, permission);
             }
+        }
+    }
+
+    private async Task SeedRolesAsync()
+    {
+        foreach (var roleName in Roles.All)
+        {
+            if (await _roleManager.FindByNameAsync(roleName) is not null)
+                continue;
+
+            var role = new ApplicationRole(roleName) { Description = Roles.Descriptions[roleName] };
+            EnsureSucceeded(await _roleManager.CreateAsync(role), $"Rol oluşturulamadı: {roleName}");
+            _logger.LogInformation("Rol oluşturuldu: {Role}", roleName);
         }
     }
 

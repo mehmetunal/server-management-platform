@@ -1,0 +1,16 @@
+@model IReadOnlyList<PluginDto>
+@{
+    ViewData["Title"] = "Eklentiler";
+    ViewData["Page"] = "plugins-index";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Eklentiler</h1>
+        <p class="page-lead">Dokploy gibi DevOps araçlarını eklenti olarak kurun; devre dışı bırakılan eklentinin verisi korunur.</p>
+    </div>
+</div>
+
+<div data-ajax-list>
+    <partial name="_PluginList" model="Model" />
+</div>

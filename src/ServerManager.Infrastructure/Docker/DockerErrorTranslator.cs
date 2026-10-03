@@ -2,7 +2,7 @@ using ServerManager.Application.DTOs.Ssh;
 
 namespace ServerManager.Infrastructure.Docker;
 
-internal static class DockerErrorTranslator
+public static class DockerErrorTranslator
 {
     private const int MaxRawMessageLength = 300;
 

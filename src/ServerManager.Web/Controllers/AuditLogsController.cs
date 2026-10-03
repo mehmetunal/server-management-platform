@@ -2,9 +2,10 @@ using Microsoft.AspNetCore.Mvc;
 using ServerManager.Application.Authorization;
 using ServerManager.Application.DTOs.AuditLogs;
 using ServerManager.Application.Interfaces.Services;
-using ServerManager.Web.Authorization;
 using ServerManager.Web.Extensions;
 using ServerManager.Web.Models;
+using ServerManager.Web.Framework.Authorization;
+using ServerManager.Web.Framework.Mvc;
 
 namespace ServerManager.Web.Controllers;
 

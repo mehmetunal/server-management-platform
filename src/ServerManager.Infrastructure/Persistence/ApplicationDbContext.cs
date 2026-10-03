@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using ServerManager.Application.Plugins;
 using ServerManager.Domain.Entities;
 using ServerManager.Infrastructure.Identity;
 
@@ -7,8 +8,11 @@ namespace ServerManager.Infrastructure.Persistence;
 
 public class ApplicationDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+    private readonly IPluginCatalog? _pluginCatalog;
+
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IPluginCatalog? pluginCatalog = null) : base(options)
     {
+        _pluginCatalog = pluginCatalog;
     }
 
     public DbSet<Server> Servers => Set<Server>();
@@ -31,13 +35,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     public DbSet<TerminalCommandLog> TerminalCommands => Set<TerminalCommandLog>();
 
-    public DbSet<DokployInstance> DokployInstances => Set<DokployInstance>();
-
-    public DbSet<DokployInstallation> DokployInstallations => Set<DokployInstallation>();
+    public DbSet<InstalledPlugin> InstalledPlugins => Set<InstalledPlugin>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
         builder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+
+        // Model bir kez kurulup önbelleğe alınır; eklenti listesi açılışta sabitlendiği için bu güvenlidir.
+        foreach (var assembly in _pluginCatalog?.LoadedAssemblies ?? [])
+            builder.ApplyConfigurationsFromAssembly(assembly);
     }
 }

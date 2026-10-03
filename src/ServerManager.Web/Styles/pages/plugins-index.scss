@@ -1,0 +1,27 @@
+.plugin-name {
+  @apply font-medium text-slate-900 dark:text-slate-100;
+}
+
+.plugin-system-name {
+  @apply font-mono text-xs text-slate-500;
+}
+
+.plugin-description {
+  @apply mt-1 max-w-xl text-xs text-slate-600 dark:text-slate-400;
+}
+
+.plugin-error {
+  @apply mt-1 max-w-xl text-xs text-red-600 dark:text-red-400;
+}
+
+.plugin-meta {
+  @apply whitespace-nowrap text-xs text-slate-500;
+}
+
+.plugin-actions {
+  @apply flex justify-end gap-1;
+}
+
+.plugin-empty {
+  @apply p-5 text-sm text-slate-500;
+}

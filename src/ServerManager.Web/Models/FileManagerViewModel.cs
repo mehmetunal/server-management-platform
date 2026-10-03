@@ -1,3 +1,5 @@
+using ServerManager.Web.Framework.Servers;
+
 namespace ServerManager.Web.Models;
 
 public sealed class FileManagerViewModel

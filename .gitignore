@@ -5,6 +5,7 @@ obj/
 *.user
 *.suo
 TestResults/
+src/ServerManager.Web/Plugins/
 node_modules/
 logs/
 .env

@@ -1,4 +1,5 @@
 @model AuditLogIndexViewModel
+@inject AuditActionCatalog AuditCatalog
 @{
     ViewData["Title"] = "Audit Log";
     ViewData["Page"] = "audit-logs";
@@ -18,7 +19,7 @@
             <span class="search-field-icon">@Icons.Render("search", "h-4 w-4")</span>
             <input type="search" name="search" value="@filter.Search" class="form-control" placeholder="Kullanıcı, hedef, IP ara…" data-live-search />
         </div>
-        <select name="@AuditLogIndexViewModel.ActionQueryKey" class="form-control" data-auto-submit asp-items="AuditDisplay.ActionOptions(filter.Action)">
+        <select name="@AuditLogIndexViewModel.ActionQueryKey" class="form-control" data-auto-submit asp-items="AuditDisplay.ActionOptions(AuditCatalog, filter.Action)">
             <option value="">Tüm işlemler</option>
         </select>
         <select name="isSuccess" class="form-control" data-auto-submit>

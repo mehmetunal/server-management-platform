@@ -10,7 +10,7 @@
     <span>·</span>
     <span>@TerminalDisplay.KindText(session.Kind)@(string.IsNullOrEmpty(session.Container) ? "" : $" ({session.Container})")</span>
     <span>·</span>
-    <span>@TerminalDisplay.Duration(session.StartedAt, session.EndedAt)</span>
+    <span>@DateDisplay.Duration(session.StartedAt, session.EndedAt)</span>
 </div>
 
 @if (Model.Commands.Count == 0)

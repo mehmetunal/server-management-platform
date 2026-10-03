@@ -7,5 +7,4 @@ public static class RateLimitPolicies
     public const string MetricsCollect = "metrics-collect";
     public const string DockerAction = "docker-action";
     public const string FileAction = "file-action";
-    public const string DokployAction = "dokploy-action";
 }

@@ -1359,16 +1359,29 @@ src/
 │   ├── Security/
 │   └── BackgroundJobs/
 │
-└── ServerManager.Web/
-    ├── Controllers/
-    ├── Hubs/
-    ├── Views/
-    ├── Components/
-    ├── wwwroot/
-    └── Middleware/
+├── ServerManager.Web.Framework/      # Host ile eklentilerin ortak web altyapısı
+│   ├── Authorization/
+│   ├── Mvc/
+│   ├── Plugins/
+│   ├── Servers/
+│   └── UI/
+│
+├── ServerManager.Web/
+│   ├── Controllers/
+│   ├── Hubs/
+│   ├── Views/
+│   ├── Components/
+│   ├── wwwroot/
+│   └── Middleware/
+│
+└── Plugins/                          # nopCommerce tarzı eklentiler (Modül / Eklenti)
+    ├── ServerManager.Plugin.DevOps.Dokploy/
+    └── ServerManager.Plugin.DevOps.Dokku/      # örnek: ileride eklenecek
 ```
 
 Repository pattern kullanılmalı; database erişimi repository katmanında tutulmalıdır.
+
+Çekirdek (sunucu, izleme, Docker, terminal, dosya, kullanıcı, audit) host uygulamada kalır. Dokploy, Dokku, Coolify, CapRover, Portainer gibi üçüncü parti DevOps araçları ve isteğe bağlı entegrasyonlar **eklenti** olarak geliştirilir: her biri kendi projesinde, kendi entity, migration, servis, controller, view, JS/CSS, izin ve audit tanımlarıyla durur; host'a dokunmadan eklenir, kurulur, etkinleştirilir veya devre dışı bırakılır.
 
 ---
 
@@ -1382,7 +1395,6 @@ Server işlemleri doğrudan controller'a yazılmamalıdır.
 IServerProvider
    ├── SshServerProvider
    ├── DockerProvider
-   ├── DokployProvider
    └── CloudProvider
 ```
 
@@ -1392,15 +1404,18 @@ Docker:
 IDockerProvider
 ```
 
-Dokploy:
-
-```text
-IDokployProvider
-```
-
 gibi abstraction kullanılmalıdır.
 
-Bu yapı ileride yeni provider eklemeyi kolaylaştırır.
+DevOps araçlarının provider'ları kendi eklentisinin içinde tanımlanır ve host'un ortak SSH/Docker altyapısını (`IServerConnectionProvider`, `IRemoteCommandExecutor`, `ISecretProtector`) kullanır:
+
+```text
+Plugins/
+ ├── DevOps.Dokploy   → IDokployProvider (SshDokployProvider), IDokployApiClient
+ ├── DevOps.Dokku     → IDokkuProvider (SSH üzerinden dokku CLI)
+ └── DevOps.Coolify   → ICoolifyProvider
+```
+
+Bu yapı ileride yeni provider eklemeyi kolaylaştırır; yeni araç için host kodu değişmez (bkz. [Eklenti geliştirme](#eklenti-geliştirme)).
 
 ---
 
@@ -2257,6 +2272,7 @@ Cursor AI projeyi geliştirirken:
 16. Gereksiz refactor yapmamalıdır.
 17. Test edilebilir kod yazmalıdır.
 18. Production secretlarını loglamamalıdır.
+19. Dokploy, Dokku gibi üçüncü parti DevOps araçlarını ve isteğe bağlı entegrasyonları host'a değil, `src/Plugins/` altında ayrı bir eklenti olarak geliştirmelidir; eklenti host projesine referans eklememeli, yalnızca `Application`, `Infrastructure` ve `Web.Framework` üzerinden çalışmalıdır.
 
 ---
 
@@ -2332,7 +2348,7 @@ Phase 3 (Docker) kapsamındaki özellikler: SSH üzerinden Docker CLI ile genel 
 
 Phase 4 (Terminal & Files) kapsamındaki özellikler: tarayıcıdan SSH terminali (Browser → SignalR WebSocket → API → SSH; çoklu sekme, yeniden boyutlandırma, tam ekran, kopyala/yapıştır, arama, çıktı indirme, komut geçmişi, sayfa yenilenince/bağlantı kopunca aynı oturuma yeniden bağlanma, boşta kalma zaman aşımı), tehlikeli komutlarda ikinci onay, oturum ve komut geçmişi; SFTP tabanlı dosya yöneticisi (gezinme, oluşturma, yeniden adlandırma/taşıma, kopyalama, silme, sürükle-bırak yükleme, indirme, chmod/chown) ve CodeMirror editörü (JSON, YAML, XML, HTML, CSS, JS, TS, C#, ENV, Markdown, Nginx, Dockerfile, Shell ve daha fazlası).
 
-Phase 5 (Dokploy) kapsamındaki özellikler: Dokploy kurulum sihirbazı (sunucu seçimi → uyumluluk → Docker → port → onay → kurulum → sağlık kontrolü → tamamlandı), ön kontroller (işletim sistemi, mimari, container ortamı, root/sudo, RAM, disk, port, internet), canlı kurulum çıktısı (sayfa kapansa da kurulum sürer, geri dönünce çıktı yeniden oynatılır), kurulum geçmişi; Dokploy durumu (sürüm, durum, adres, port, swarm servisleri ve container'lar, son sağlık kontrolü, yanıt süresi), periyodik sağlık kontrolü ve API anahtarıyla proje özeti.
+Phase 5 (Dokploy) kapsamındaki özellikler — `DevOps.Dokploy` eklentisi olarak (bkz. [Eklentiler](#eklentiler)): Dokploy kurulum sihirbazı (sunucu seçimi → uyumluluk → Docker → port → onay → kurulum → sağlık kontrolü → tamamlandı), ön kontroller (işletim sistemi, mimari, container ortamı, root/sudo, RAM, disk, port, internet), canlı kurulum çıktısı (sayfa kapansa da kurulum sürer, geri dönünce çıktı yeniden oynatılır), kurulum geçmişi; Dokploy durumu (sürüm, durum, adres, port, swarm servisleri ve container'lar, son sağlık kontrolü, yanıt süresi), periyodik sağlık kontrolü ve API anahtarıyla proje özeti.
 
 ### Teknoloji
 
@@ -2348,7 +2364,7 @@ Phase 5 (Dokploy) kapsamındaki özellikler: Dokploy kurulum sihirbazı (sunucu 
 | Log | Serilog (konsol + `logs/` dosyası) |
 | Test | xUnit v3, NSubstitute |
 
-Mimari: `Domain` → `Application` (servisler, DTO, validator, arayüzler) → `Infrastructure` (EF Core, repository, Identity, şifreleme, SSH) → `Web` (controller, view). Mediator yoktur; akış `Controller → Service → Repository` şeklindedir.
+Mimari: `Domain` → `Application` (servisler, DTO, validator, arayüzler) → `Infrastructure` (EF Core, repository, Identity, şifreleme, SSH) → `Web.Framework` (yetkilendirme, JSON yanıtı, sunucu sayfası, eklenti yükleyici) → `Web` (controller, view). Eklentiler `src/Plugins/` altında `Infrastructure` ve `Web.Framework`'e referans veren ayrı projelerdir; host eklentilere derleme zamanında bağlı değildir. Mediator yoktur; akış `Controller → Service → Repository` şeklindedir.
 
 ### Gereksinimler
 
@@ -2412,8 +2428,9 @@ Frontend yapısı:
 | `wwwroot/js/components` | `ajax-actions`, `ajax-list`, `modal`, `remote-panels`, `tabs` |
 | `wwwroot/js/features` | Monitoring, sunucu ve Docker modülleri |
 | `wwwroot/js/pages/<sayfa>.js` | Sayfanın giriş modülü |
+| `src/Plugins/<eklenti>/Styles/pages/<sayfa>.scss` | Eklenti sayfası stili → eklentinin `Content/css/pages/<sayfa>.css` dosyası (aynı `npm run build:css` derler) |
 
-- View'da `ViewData["Page"] = "<sayfa>"` atanınca layout `css/pages/<sayfa>.css` ve `js/pages/<sayfa>.js` dosyalarını ekler.
+- View'da `ViewData["Page"] = "<sayfa>"` atanınca layout `css/pages/<sayfa>.css` ve `js/pages/<sayfa>.js` dosyalarını ekler. Eklenti view'larında ayrıca `ViewData[PluginContent.PagePluginKey]` atanır; dosyalar `/plugins/<eklenti-adı-küçük-harf>/` altından yüklenir.
 - JavaScript yalnızca ES module'dür; layout'taki import map her modülü sürüm parametreli adrese eşler (önbellek bozma).
 - Veri çekme, ekleme, düzenleme, silme ve uyarıların tamamı AJAX ile yapılır; sayfa yenilenmez. Listeler partial view + `pushState` ile filtrelenir, formlar JSON (`isSuccess`, `message`, `data`, `errors`) döner.
 - Onaylar SweetAlert2 ile (tehlikeli işlemlerde ad yazarak), bildirimler toastr ile gösterilir.
@@ -2439,13 +2456,13 @@ Testler veritabanına veya gerçek sunuculara bağlanmaz. `global.json` içinde 
 
 | Rol | İzinler |
 | --- | --- |
-| SuperAdmin | Tümü |
-| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker, terminal, dosya ve Dokploy izinleri, audit log |
-| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal, sunucu terminali, dosya görüntüleme/oluşturma/düzenleme/yükleme/indirme, Dokploy görüntüleme |
-| Developer | Dashboard, sunucu görüntüleme, Docker görüntüleme/yeniden başlatma, dosya görüntüleme/indirme, Dokploy görüntüleme |
-| Viewer | Dashboard, sunucu görüntüleme, Docker görüntüleme, Dokploy görüntüleme |
+| SuperAdmin | Tümü (eklenti yönetimi `plugin.manage` yalnızca SuperAdmin'dedir) |
+| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker, terminal ve dosya izinleri, audit log |
+| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal, sunucu terminali, dosya görüntüleme/oluşturma/düzenleme/yükleme/indirme |
+| Developer | Dashboard, sunucu görüntüleme, Docker görüntüleme/yeniden başlatma, dosya görüntüleme/indirme |
+| Viewer | Dashboard, sunucu görüntüleme, Docker görüntüleme |
 
-İzinler `AspNetRoleClaims` tablosunda `permission` claim'i olarak tutulur. Seeder yalnızca eksik izinleri ekler; elle eklenmiş izinleri kaldırmaz.
+İzinler `AspNetRoleClaims` tablosunda `permission` claim'i olarak tutulur. Seeder yalnızca eksik izinleri ekler; elle eklenmiş izinleri kaldırmaz. Eklentiler kendi izinlerini ve varsayılan rol dağılımını getirir; bunlar eklenti kurulurken ve her açılışta eksikse eklenir (Dokploy için bkz. [Dokploy](#dokploy)).
 
 Metrik ve grafik görüntüleme `server.view`, "Şimdi topla" (anlık metrik toplama) `server.connect` izni gerektirir.
 
@@ -2581,13 +2598,15 @@ Sunucu detayındaki **Files** sekmesi SFTP üzerinden çalışır (sunucuya ek y
 
 ### Dokploy
 
+> Eklenti: `DevOps.Dokploy` (`src/Plugins/ServerManager.Plugin.DevOps.Dokploy`). Varsayılan olarak `Plugins:InstallOnStartup` listesindedir; devre dışı bırakılırsa sekme, sayfalar, hub ve sağlık kontrolü durur, kayıtlar silinmez.
+
 Sunucu detayındaki **Dokploy** sekmesi Dokploy kurulumunun durumunu gösterir; **Dokploy kur** sihirbazı resmi kurulum betiğiyle (`https://dokploy.com/install.sh`) kurulum yapar. Durum agentless olarak SSH ile (`docker service ls`, `docker ps`, sunucu içinden `/api/health`) okunur; panel adresi ve API anahtarı tanımlıysa panelden HTTP ile sağlık kontrolü ve proje özeti alınır.
 
-| İzin | Kapsam |
-| --- | --- |
-| `dokploy.view` | Dokploy sekmesi, durum, sağlık kontrolü, kurulum geçmişi ve kurulum çıktıları |
-| `dokploy.install` | Uyumluluk kontrolü ve kurulumu başlatma |
-| `dokploy.manage` | Panel adresi ve API anahtarı ayarları |
+| İzin | Kapsam | Varsayılan roller |
+| --- | --- | --- |
+| `dokploy.view` | Dokploy sekmesi, durum, sağlık kontrolü, kurulum geçmişi ve kurulum çıktıları | SuperAdmin, Admin, Operator, Developer, Viewer |
+| `dokploy.install` | Uyumluluk kontrolü ve kurulumu başlatma | SuperAdmin, Admin |
+| `dokploy.manage` | Panel adresi ve API anahtarı ayarları | SuperAdmin, Admin |
 
 Kurulum akışı:
 
@@ -2620,6 +2639,169 @@ Durum ve ayarlar:
 | `HealthCheckIntervalMinutes` | `5` | Periyodik sağlık kontrolü aralığı (`0` kapatır) |
 | `MaxStoredOutputKilobytes` | `512` | Kurulum kaydında saklanan çıktı (son kısım) |
 | `InstallationHistoryCount` | `10` | Durum sayfasında gösterilen kurulum sayısı |
+
+### Eklentiler
+
+Sistem nopCommerce'teki plugin mantığıyla genişler: Dokploy, Dokku ve diğer DevOps araçları host'tan bağımsız birer eklentidir. Her eklenti `Plugins/{SystemName}/` klasöründe `plugin.json` tanımı, derlenmiş assembly'si (controller, derlenmiş Razor view'ları, servisler, migration'lar) ve `Content/` klasörüyle (CSS/JS) durur.
+
+**Yönetim → Eklentiler** sayfası (`plugin.manage`, yalnızca SuperAdmin) bulunan eklentileri grup halinde listeler:
+
+| İşlem | Davranış |
+| --- | --- |
+| Kur | Eklentinin migration'ları çalışır, izinleri varsayılan rollere eklenir, kayıt `InstalledPlugins` tablosuna yazılır ve eklenti etkinleşir. |
+| Devre dışı bırak | Controller'ları 404 döner, SignalR hub'ları bağlantıyı reddeder, sunucu sekmesi gizlenir, arka plan işleri durur. **Tablolar ve veriler silinmez.** |
+| Etkinleştir | Eklenti kaldığı yerden çalışır. |
+
+- Kurma, etkinleştirme ve devre dışı bırakma yeniden başlatma gerektirmez; yeni bir eklenti klasörü eklemek veya eklenti dll'ini güncellemek yeniden başlatma gerektirir.
+- Kaldırma (uninstall) yoktur: eklenti verisi kullanıcı verisidir ve silinmez. Bir eklentiyi tamamen kapatmak için devre dışı bırakın.
+- Açılışta kurulu her eklentinin yeni migration'ları ve eksik izinleri uygulanır; `plugin.json` sürümü değiştiyse kayıttaki sürüm güncellenir.
+- Yüklenemeyen eklenti (bozuk `plugin.json`, eksik dll, aynı `SystemName`) uygulamayı durdurmaz; sayfada hatasıyla listelenir ve loglanır.
+- İşlemler audit log'a `plugin.install`, `plugin.enable`, `plugin.disable` olarak yazılır.
+
+| Anahtar (`Plugins:`) | Varsayılan | Açıklama |
+| --- | --- | --- |
+| `Directory` | `Plugins` | Eklenti klasörlerinin bulunduğu dizin (uygulama kök dizinine göre) |
+| `InstallOnStartup` | `["DevOps.Dokploy"]` | Daha önce hiç kurulmamışsa açılışta otomatik kurulan eklentiler; sonradan devre dışı bırakılan eklenti yeniden etkinleştirilmez |
+
+| Eklenti | Grup | Durum |
+| --- | --- | --- |
+| `DevOps.Dokploy` | DevOps | Hazır (bkz. [Dokploy](#dokploy)) |
+| `DevOps.Dokku` | DevOps | Planlandı |
+
+### Eklenti geliştirme
+
+Aşağıdaki adımlar örnek bir **Dokku** eklentisi üzerinden anlatılır; yeni bir DevOps aracı için host kodunda değişiklik gerekmez.
+
+**1. Proje** — `src/Plugins/ServerManager.Plugin.DevOps.Dokku/ServerManager.Plugin.DevOps.Dokku.csproj`. Proje adı `ServerManager.Plugin.{SystemName}` olmalıdır; çıktı klasörü bu addan türetilir. Projeyi `ServerManager.slnx` içindeki `/src/Plugins/` klasörüne ekleyin; Web projesi `src/Plugins/*/*.csproj` projelerini otomatik olarak önce derler (assembly referansı vermeden).
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\ServerManager.Infrastructure\ServerManager.Infrastructure.csproj" Private="false" />
+    <ProjectReference Include="..\..\ServerManager.Web.Framework\ServerManager.Web.Framework.csproj" Private="false" />
+  </ItemGroup>
+</Project>
+```
+
+`src/Plugins/Directory.Build.props` ve `Directory.Build.targets` ortak ayarları getirir: çıktı `src/ServerManager.Web/Plugins/{SystemName}/` klasörüne yazılır, `plugin.json` ve `Content/**` kopyalanır, host'ta zaten bulunan assembly ve paket dosyaları çıktıya alınmaz. Eklentiye özel bir NuGet paketi gerekiyorsa projede `<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>` açılır; paket dll'i eklenti klasöründen yüklenir (host'ta bulunan paketler her zaman host'tan yüklenir).
+
+**2. `plugin.json`**
+
+```json
+{
+  "SystemName": "DevOps.Dokku",
+  "FriendlyName": "Dokku",
+  "Group": "DevOps",
+  "Version": "1.0.0",
+  "Author": "Server Manager",
+  "Description": "Dokku kurulumu, uygulama listesi ve deploy durumu.",
+  "DisplayOrder": 2,
+  "AssemblyFileName": "ServerManager.Plugin.DevOps.Dokku.dll"
+}
+```
+
+`SystemName` yalnızca harf, rakam ve nokta içerir, sonradan değiştirilmez (kurulum kaydı, statik dosya adresi `/plugins/devops.dokku/` ve audit kayıtları buna bağlıdır).
+
+**3. Kimlik sabitleri ve sağlayıcılar** — izin ve audit adları kalıcıdır, değiştirilmez:
+
+```csharp
+public static class DokkuPermissions
+{
+    public const string View = "dokku.view";
+    public const string Manage = "dokku.manage";
+}
+
+public sealed class DokkuPermissionProvider : IPermissionProvider
+{
+    public IReadOnlyList<PermissionDefinition> GetPermissions() =>
+    [
+        new(DokkuPermissions.View, "Dokku uygulamalarını görüntüleme"),
+        new(DokkuPermissions.Manage, "Dokku uygulamalarını yönetme")
+    ];
+
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> GetDefaultRolePermissions() => new Dictionary<string, IReadOnlyList<string>>
+    {
+        [Roles.Admin] = [DokkuPermissions.View, DokkuPermissions.Manage],
+        [Roles.Operator] = [DokkuPermissions.View]
+    };
+}
+```
+
+SuperAdmin eklentinin tüm izinlerini otomatik alır. Audit etiketleri `IAuditActionProvider` ile (`["dokku.app_restart"] = "Dokku uygulaması yeniden başlatıldı"`), sunucu detay sekmesi `IServerTabProvider` ile tanımlanır:
+
+```csharp
+public IEnumerable<ServerTab> GetTabs() =>
+[
+    new ServerTab("dokku", "Dokku", "Dokku uygulamaları", "Sunucudaki Dokku uygulamalarını görün ve yönetin.",
+        DokkuPermissions.View, Controller: "Dokku", Order: 20)
+];
+```
+
+Her tip kendi dosyasındadır (bir dosyada tek tip kuralı eklentiler için de geçerlidir).
+
+**4. Giriş noktası** — `IPluginStartup` uygulayan sınıf açılışta bulunur ve çağrılır:
+
+```csharp
+public sealed class DokkuStartup : IPluginStartup
+{
+    public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<DokkuOptions>(configuration.GetSection("Dokku"));
+        services.AddValidatorsFromAssembly(typeof(DokkuStartup).Assembly, includeInternalTypes: true);
+
+        services.AddSingleton<IPermissionProvider, DokkuPermissionProvider>();
+        services.AddSingleton<IAuditActionProvider, DokkuAuditActionProvider>();
+        services.AddSingleton<IServerTabProvider, DokkuServerTabProvider>();
+
+        services.AddSingleton<IDokkuProvider, SshDokkuProvider>();
+        services.AddScoped<IDokkuRepository, DokkuRepository>();
+        services.AddScoped<IDokkuService, DokkuService>();
+        services.Configure<RateLimiterOptions>(o => o.AddPerUserPolicy("dokku-action", 20));
+    }
+
+    public void MapEndpoints(IEndpointRouteBuilder endpoints) =>
+        endpoints.MapHub<DokkuHub>("/hubs/dokku");   // gerekiyorsa
+}
+```
+
+`ConfigureServices` eklenti devre dışıyken de çalışır. Controller, hub ve sekmeler otomatik olarak engellenir; `BackgroundService` yazıyorsanız her turda `IPluginCatalog.IsEnabled(SystemName)` ile kontrol edin.
+
+**5. Veri** — entity'ler eklentidedir; `IEntityTypeConfiguration<T>` sınıfları `ApplicationDbContext`'e otomatik eklenir, repository `_context.Set<DokkuApp>()` kullanır. Şema yalnızca FluentMigrator ile değişir: migration sınıfları eklenti assembly'sinde durur ve kurulumda/açılışta çalışır. Sürüm numarası tüm uygulamada benzersiz bir zaman damgası olmalıdır (`[Migration(202611150001, "Dokku tabloları")]`); host tablolarına (ör. `Servers`) yalnızca foreign key ile bağlanın, host tablolarını değiştirmeyin. Şema değişiklikleri yalnızca eklemelidir.
+
+**6. Web** — controller'lar normal MVC controller'larıdır (`[HasPermission(DokkuPermissions.View)]`, JSON yanıtları `ApiResponse` ile). Sunucu sayfası için `ServerPageBuilder` ve `_ServerHeader` partial'ı kullanılır. View'lar `Views/Dokku/*.cshtml` altında derlenir; `Views/_ViewImports.cshtml` eklentinin ve `ServerManager.Web.Framework.*` namespace'lerini içe aktarır. Sayfa view'ında:
+
+```cshtml
+@{
+    ViewData["Page"] = "dokku";
+    ViewData[PluginContent.PagePluginKey] = DokkuPlugin.SystemName;
+}
+```
+
+**7. Stil ve JavaScript**
+
+| Yol | Açıklama |
+| --- | --- |
+| `Styles/pages/dokku.scss` | Sayfa stili; `npm run build:css` bunu host temasıyla derleyip `Content/css/pages/dokku.css` dosyasına yazar (derlenmiş CSS repoya dahildir) |
+| `Content/js/pages/dokku.js` | Sayfanın giriş modülü |
+| `Content/js/features/*.js` | Eklentinin kendi modülleri (göreli import: `../features/app-list.js`) |
+
+Host modülleri `@app/` önekiyle içe aktarılır; import map bunu sürüm parametreli host adresine çevirir:
+
+```js
+import { qs, on } from '@app/core/dom.js';
+import { postForm, failureMessage } from '@app/core/http.js';
+import { notify } from '@app/core/notify.js';
+import { confirmAction } from '@app/core/dialog.js';
+```
+
+Frontend kuralları host ile aynıdır: yalnızca ES module, inline script/style yok, tüm işlemler AJAX, onay SweetAlert2, bildirim toastr, her buton/bağlantıda `title` tooltip'i, sayfa başında kısa açıklama.
+
+**8. Test** — `tests/ServerManager.Plugin.DevOps.Dokku.Tests` projesi oluşturun (Dokploy test projesini örnek alın) ve `ServerManager.slnx`'e ekleyin. İzin/audit adlarının ve `plugin.json`'ın assembly ile eşleştiğini doğrulayan sözleşme testi önerilir (`DokployPluginContractTests`).
+
+**9. Derleme ve yayın** — `dotnet build` eklentiyi `src/ServerManager.Web/Plugins/DevOps.Dokku/` klasörüne yazar (git'e eklenmez). `dotnet publish src/ServerManager.Web` tüm eklenti klasörlerini yayın çıktısındaki `Plugins/` dizinine kopyalar. Hazır bir eklentiyi çalışan bir kuruluma eklemek için klasörünü `Plugins/` altına kopyalayıp uygulamayı yeniden başlatmak ve **Eklentiler** sayfasından kurmak yeterlidir.
 
 ### Güvenlik notları
 

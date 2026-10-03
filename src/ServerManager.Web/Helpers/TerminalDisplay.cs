@@ -27,17 +27,4 @@ public static class TerminalDisplay
         TerminalCommandStatus.Blocked => "badge-danger",
         _ => "badge-success"
     };
-
-    public static string Duration(DateTime startedAt, DateTime? endedAt)
-    {
-        if (endedAt is null)
-            return "Açık";
-
-        var duration = endedAt.Value - startedAt;
-        if (duration.TotalMinutes < 1)
-            return $"{Math.Max(0, (int)duration.TotalSeconds)} sn";
-        if (duration.TotalHours < 1)
-            return $"{(int)duration.TotalMinutes} dk";
-        return $"{(int)duration.TotalHours} sa {duration.Minutes} dk";
-    }
 }

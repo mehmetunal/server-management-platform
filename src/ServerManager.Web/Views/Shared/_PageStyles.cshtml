@@ -1,8 +1,10 @@
 @{
     var page = ViewData["Page"] as string;
+    var plugin = ViewData[PluginContent.PagePluginKey] as string;
+    var assetRoot = string.IsNullOrEmpty(plugin) ? "~" : $"~/{PluginContent.BasePath(plugin)}";
 }
 <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 @if (!string.IsNullOrEmpty(page))
 {
-    <link rel="stylesheet" href="@Url.Content($"~/css/pages/{page}.css")" asp-append-version="true" />
+    <link rel="stylesheet" href="@Url.Content($"{assetRoot}/css/pages/{page}.css")" asp-append-version="true" />
 }

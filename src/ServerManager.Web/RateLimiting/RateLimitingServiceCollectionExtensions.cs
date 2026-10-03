@@ -1,6 +1,6 @@
 using System.Threading.RateLimiting;
-using ServerManager.Web.Extensions;
-using ServerManager.Web.Models;
+using ServerManager.Web.Framework.Mvc;
+using ServerManager.Web.Framework.RateLimiting;
 
 namespace ServerManager.Web.RateLimiting;
 
@@ -24,55 +24,11 @@ public static class RateLimitingServiceCollectionExtensions
                         QueueLimit = 0
                     }));
 
-            options.AddPolicy(RateLimitPolicies.ConnectionTest, context =>
-                RateLimitPartition.GetFixedWindowLimiter(
-                    context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                    _ => new FixedWindowRateLimiterOptions
-                    {
-                        PermitLimit = 10,
-                        Window = TimeSpan.FromMinutes(1),
-                        QueueLimit = 0
-                    }));
-
-            options.AddPolicy(RateLimitPolicies.MetricsCollect, context =>
-                RateLimitPartition.GetFixedWindowLimiter(
-                    context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                    _ => new FixedWindowRateLimiterOptions
-                    {
-                        PermitLimit = 10,
-                        Window = TimeSpan.FromMinutes(1),
-                        QueueLimit = 0
-                    }));
-
-            options.AddPolicy(RateLimitPolicies.DockerAction, context =>
-                RateLimitPartition.GetFixedWindowLimiter(
-                    context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                    _ => new FixedWindowRateLimiterOptions
-                    {
-                        PermitLimit = 30,
-                        Window = TimeSpan.FromMinutes(1),
-                        QueueLimit = 0
-                    }));
-
-            options.AddPolicy(RateLimitPolicies.FileAction, context =>
-                RateLimitPartition.GetFixedWindowLimiter(
-                    context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                    _ => new FixedWindowRateLimiterOptions
-                    {
-                        PermitLimit = 60,
-                        Window = TimeSpan.FromMinutes(1),
-                        QueueLimit = 0
-                    }));
-
-            options.AddPolicy(RateLimitPolicies.DokployAction, context =>
-                RateLimitPartition.GetFixedWindowLimiter(
-                    context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                    _ => new FixedWindowRateLimiterOptions
-                    {
-                        PermitLimit = 20,
-                        Window = TimeSpan.FromMinutes(1),
-                        QueueLimit = 0
-                    }));
+            options
+                .AddPerUserPolicy(RateLimitPolicies.ConnectionTest, 10)
+                .AddPerUserPolicy(RateLimitPolicies.MetricsCollect, 10)
+                .AddPerUserPolicy(RateLimitPolicies.DockerAction, 30)
+                .AddPerUserPolicy(RateLimitPolicies.FileAction, 60);
 
             options.OnRejected = async (context, cancellationToken) =>
             {

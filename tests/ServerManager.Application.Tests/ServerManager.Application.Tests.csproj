@@ -8,6 +8,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\ServerManager.Application\ServerManager.Application.csproj" />
     <ProjectReference Include="..\..\src\ServerManager.Infrastructure\ServerManager.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\ServerManager.Web.Framework\ServerManager.Web.Framework.csproj" />
   </ItemGroup>
 
   <ItemGroup>

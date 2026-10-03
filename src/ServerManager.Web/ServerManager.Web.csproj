@@ -7,6 +7,12 @@
   <ItemGroup>
     <ProjectReference Include="..\ServerManager.Application\ServerManager.Application.csproj" />
     <ProjectReference Include="..\ServerManager.Infrastructure\ServerManager.Infrastructure.csproj" />
+    <ProjectReference Include="..\ServerManager.Web.Framework\ServerManager.Web.Framework.csproj" />
+  </ItemGroup>
+
+  <!-- Eklentiler yalnızca derleme sırası için referanslanır; uygulama onları Plugins/ klasöründen çalışma anında yükler. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Plugins\*\*.csproj" ReferenceOutputAssembly="false" Private="false" />
   </ItemGroup>
 
   <ItemGroup>
@@ -14,8 +20,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Remove="package.json;package-lock.json" />
+    <Content Remove="package.json;package-lock.json;Plugins\**" />
+    <None Remove="Plugins\**" />
     <None Include="package.json;package-lock.json" />
   </ItemGroup>
+
+  <Target Name="PublishPlugins" AfterTargets="Publish">
+    <ItemGroup>
+      <PluginFile Include="Plugins\**" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PluginFile)" DestinationFiles="@(PluginFile->'$(PublishDir)Plugins\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>

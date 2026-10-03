@@ -1,4 +1,5 @@
 @model ServerPageViewModel
+@inject ServerTabRegistry TabRegistry
 @{
     var server = Model.Server;
     var monitoring = Model.Monitoring;
@@ -10,14 +11,15 @@
     var canViewDocker = User.HasPermission(Permissions.DockerView);
     var canViewTerminal = User.HasPermission(Permissions.TerminalView);
     var canViewFiles = User.HasPermission(Permissions.FileView);
-    var canViewDokploy = User.HasPermission(Permissions.DokployView);
+    var pluginTabs = TabRegistry.GetTabs().Where(t => User.HasPermission(t.Permission)).ToList();
+    var activePluginTab = pluginTabs.FirstOrDefault(t => t.Key == Model.ActiveTab);
     var tabLead = ViewData["PageLead"] as string ?? Model.ActiveTab switch
     {
         ServerPageViewModel.MetricsTab => "CPU, RAM, disk ve ağ kullanımının seçilen zaman aralığındaki grafikleri.",
         ServerPageViewModel.DockerTab => "Sunucudaki Docker container, imaj, volume ve ağlarını görüntüleyip yönetin.",
         ServerPageViewModel.TerminalTab => "Tarayıcıdan sunucuya SSH terminali açın; çalıştırılan komutlar kayıt altına alınır.",
         ServerPageViewModel.FilesTab => "Sunucudaki dosyalara SFTP ile göz atın, yükleyin, indirin ve düzenleyin.",
-        ServerPageViewModel.DokployTab => "Sunucudaki Dokploy kurulumunun durumunu izleyin, sağlık kontrolü yapın ve projelerini görün.",
+        _ when activePluginTab is not null => activePluginTab.Lead,
         _ => "Sunucunun bağlantı bilgileri, donanımı ve son izleme verileri."
     };
     var disabledTabs = new[] { "Services", "Processes", "Logs", "Network", "Storage", "Security", "Deployments", "Backups", "Alerts", "Activity" };
@@ -116,9 +118,9 @@
         {
             <a asp-controller="Files" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.FilesTab ? "is-active" : "")" title="SFTP dosya yöneticisi">Files</a>
         }
-        @if (canViewDokploy)
+        @foreach (var tab in pluginTabs)
         {
-            <a asp-controller="Dokploy" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.DokployTab ? "is-active" : "")" title="Dokploy kurulumu, durumu ve projeleri">Dokploy</a>
+            <a href="@Url.Action(tab.Action, tab.Controller, new { id = server.Id })" class="tab @(Model.ActiveTab == tab.Key ? "is-active" : "")" title="@tab.Tooltip">@tab.Title</a>
         }
         @foreach (var tab in disabledTabs)
         {
