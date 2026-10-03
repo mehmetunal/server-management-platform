@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<IDockerService, DockerService>();
         services.AddScoped<ITerminalService, TerminalService>();
         services.AddScoped<IFileService, FileService>();
+        services.AddScoped<IDokployService, DokployService>();
         services.AddSingleton<DangerousCommandDetector>();
         services.AddSingleton<TerminalCommandQueue>();
         services.TryAddSingleton(TimeProvider.System);

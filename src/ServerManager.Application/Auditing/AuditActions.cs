@@ -46,6 +46,12 @@ public static class AuditActions
     public const string FileCopy = "file.copy";
     public const string FilePermissions = "file.permissions";
 
+    public const string DokployInstallStart = "dokploy.install_start";
+    public const string DokployInstallComplete = "dokploy.install_complete";
+    public const string DokployDetected = "dokploy.detected";
+    public const string DokploySettingsUpdate = "dokploy.settings_update";
+    public const string DokployApiKeyRemove = "dokploy.api_key_remove";
+
     public const string UserCreate = "user.create";
     public const string UserUpdate = "user.update";
     public const string UserLock = "user.lock";
@@ -92,6 +98,11 @@ public static class AuditActions
         [FileMove] = "Dosya taşıma / yeniden adlandırma",
         [FileCopy] = "Dosya kopyalama",
         [FilePermissions] = "Dosya izinleri değiştirme",
+        [DokployInstallStart] = "Dokploy kurulumu başlatıldı",
+        [DokployInstallComplete] = "Dokploy kurulumu tamamlandı",
+        [DokployDetected] = "Dokploy tespit edildi",
+        [DokploySettingsUpdate] = "Dokploy ayarları güncellendi",
+        [DokployApiKeyRemove] = "Dokploy API anahtarı kaldırıldı",
         [UserCreate] = "Kullanıcı ekleme",
         [UserUpdate] = "Kullanıcı güncelleme",
         [UserLock] = "Kullanıcı kilitleme",

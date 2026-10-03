@@ -1,0 +1,46 @@
+@model DokployPanelModel<DokployCompatibilityReportDto>
+@{
+    var report = Model.Data;
+    var groups = DokployDisplay.CompatibilityGroups
+        .Select(g => (g.Step, g.Title, Checks: report.Checks.Where(c => g.Keys.Contains(c.Key)).ToList()))
+        .ToList();
+}
+
+<div data-compatibility data-can-install="@(report.CanInstall ? "true" : "false")">
+    @foreach (var group in groups)
+    {
+        var status = DokployDisplay.GroupStatus(group.Checks);
+        <section class="panel dokploy-check-group" data-check-group="@group.Step" data-status="@status.ToString().ToLowerInvariant()">
+            <div class="panel-header">
+                <h3 class="panel-title">@group.Title</h3>
+                <span class="@DokployDisplay.CheckBadgeClass(status)">@DokployDisplay.CheckText(status)</span>
+            </div>
+            <ul class="dokploy-check-list">
+                @foreach (var check in group.Checks)
+                {
+                    <li class="dokploy-check is-@check.Status.ToString().ToLowerInvariant()">
+                        <span class="dokploy-check-icon">@Icons.Render(DokployDisplay.CheckIcon(check.Status), "h-5 w-5")</span>
+                        <div class="min-w-0">
+                            <p class="dokploy-check-title">@check.Title</p>
+                            <p class="dokploy-check-detail">@check.Detail</p>
+                        </div>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+
+    @if (report.CanInstall)
+    {
+        <p class="@(report.HasWarnings ? "alert-warning" : "alert-success")">
+            @(report.HasWarnings
+                ? "Sunucu kuruluma uygun, ancak yukarıdaki uyarıları gözden geçirin."
+                : "Sunucu tüm kontrollerden geçti; kuruluma devam edebilirsiniz.")
+        </p>
+    }
+    else
+    {
+        <p class="alert-error">Kurulumu engelleyen sorunlar var. Sorunları giderip kontrolü tekrarlayın.</p>
+    }
+    <p class="mt-3 text-xs text-slate-400">Kontrol zamanı: @DateDisplay.Format(report.CheckedAt)</p>
+</div>

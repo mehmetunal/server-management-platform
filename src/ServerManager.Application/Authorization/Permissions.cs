@@ -31,6 +31,10 @@ public static class Permissions
     public const string FileDownload = "file.download";
     public const string FilePermissions = "file.permissions";
 
+    public const string DokployView = "dokploy.view";
+    public const string DokployInstall = "dokploy.install";
+    public const string DokployManage = "dokploy.manage";
+
     public const string UserManage = "user.manage";
 
     public const string AuditView = "audit.view";
@@ -59,6 +63,9 @@ public static class Permissions
         FileUpload,
         FileDownload,
         FilePermissions,
+        DokployView,
+        DokployInstall,
+        DokployManage,
         UserManage,
         AuditView
     ];
@@ -87,6 +94,9 @@ public static class Permissions
         [FileUpload] = "Dosya yükleme",
         [FileDownload] = "Dosya indirme",
         [FilePermissions] = "Dosya izinleri ve sahiplik değiştirme (chmod / chown)",
+        [DokployView] = "Dokploy durumu, projeler ve kurulum geçmişi görüntüleme",
+        [DokployInstall] = "Sunucuya Dokploy kurma",
+        [DokployManage] = "Dokploy bağlantı ayarları ve API anahtarı yönetimi",
         [UserManage] = "Kullanıcı yönetimi",
         [AuditView] = "Audit log görüntüleme"
     };

@@ -6,9 +6,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ServerManager.Application.Docker;
+using ServerManager.Application.Dokploy;
 using ServerManager.Application.Files;
 using ServerManager.Application.Terminal;
 using ServerManager.Application.Interfaces.Docker;
+using ServerManager.Application.Interfaces.Dokploy;
 using ServerManager.Application.Interfaces.Files;
 using ServerManager.Application.Interfaces.Monitoring;
 using ServerManager.Application.Interfaces.Repositories;
@@ -18,6 +20,7 @@ using ServerManager.Application.Interfaces.Services;
 using ServerManager.Application.Interfaces.Ssh;
 using ServerManager.Application.Validators.Users;
 using ServerManager.Infrastructure.Docker;
+using ServerManager.Infrastructure.Dokploy;
 using ServerManager.Infrastructure.Files;
 using ServerManager.Infrastructure.Identity;
 using ServerManager.Infrastructure.Monitoring;
@@ -71,6 +74,7 @@ public static class DependencyInjection
         services.Configure<DockerOptions>(configuration.GetSection(DockerOptions.SectionName));
         services.Configure<TerminalOptions>(configuration.GetSection(TerminalOptions.SectionName));
         services.Configure<FileManagerOptions>(configuration.GetSection(FileManagerOptions.SectionName));
+        services.Configure<DokployOptions>(configuration.GetSection(DokployOptions.SectionName));
 
         services.AddSingleton<ISecretProtector, AesGcmSecretProtector>();
         services.AddSingleton<ISshConnectionTester, SshNetConnectionTester>();
@@ -79,11 +83,27 @@ public static class DependencyInjection
         services.AddSingleton<ITerminalSessionFactory, SshTerminalSessionFactory>();
         services.AddSingleton<IDockerClient, SshDockerClient>();
         services.AddSingleton<IRemoteFileSystem, SftpRemoteFileSystem>();
+        services.AddSingleton<IDokployProvider, SshDokployProvider>();
+
+        // API anahtarı başlığı başka bir adrese taşınmasın diye yönlendirmeler izlenmez.
+        services.AddHttpClient(DokployApiClient.HttpClientName, (provider, client) =>
+            {
+                var options = provider.GetRequiredService<IOptions<DokployOptions>>().Value;
+                client.Timeout = TimeSpan.FromSeconds(Math.Clamp(options.HttpTimeoutSeconds, 2, 120));
+            })
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                AllowAutoRedirect = false,
+                UseCookies = false,
+                ConnectTimeout = TimeSpan.FromSeconds(10)
+            });
+        services.AddSingleton<IDokployApiClient, DokployApiClient>();
 
         services.AddScoped<IServerRepository, ServerRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IServerMetricRepository, ServerMetricRepository>();
         services.AddScoped<ITerminalLogRepository, TerminalLogRepository>();
+        services.AddScoped<IDokployRepository, DokployRepository>();
 
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<IUserManagementService, UserManagementService>();

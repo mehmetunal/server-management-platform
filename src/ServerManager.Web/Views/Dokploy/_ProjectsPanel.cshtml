@@ -1,0 +1,39 @@
+@model DokployPanelModel<IReadOnlyList<DokployProjectDto>>
+
+<div class="table-scroll">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Proje</th>
+                <th class="text-right">Ortam</th>
+                <th class="text-right">Uygulama</th>
+                <th class="text-right">Compose</th>
+                <th class="text-right">Veritabanı</th>
+                <th>Oluşturulma</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Model.Data.Count == 0)
+            {
+                <tr><td colspan="6" class="text-center text-slate-500">Dokploy'da henüz proje yok.</td></tr>
+            }
+            @foreach (var project in Model.Data)
+            {
+                <tr>
+                    <td>
+                        <span class="font-medium text-slate-900 dark:text-slate-100">@project.Name</span>
+                        @if (!string.IsNullOrEmpty(project.Description))
+                        {
+                            <span class="block max-w-md truncate text-xs text-slate-500" title="@project.Description">@project.Description</span>
+                        }
+                    </td>
+                    <td class="text-right tabular-nums">@(project.EnvironmentCount == 0 ? "—" : project.EnvironmentCount.ToString())</td>
+                    <td class="text-right tabular-nums">@project.ApplicationCount</td>
+                    <td class="text-right tabular-nums">@project.ComposeCount</td>
+                    <td class="text-right tabular-nums">@project.DatabaseCount</td>
+                    <td class="whitespace-nowrap">@DateDisplay.Format(project.CreatedAt)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

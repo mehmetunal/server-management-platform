@@ -29,6 +29,9 @@ public static class DefaultRolePermissions
             Permissions.FileUpload,
             Permissions.FileDownload,
             Permissions.FilePermissions,
+            Permissions.DokployView,
+            Permissions.DokployInstall,
+            Permissions.DokployManage,
             Permissions.AuditView
         ],
         [Roles.Operator] =
@@ -47,7 +50,8 @@ public static class DefaultRolePermissions
             Permissions.FileCreate,
             Permissions.FileEdit,
             Permissions.FileUpload,
-            Permissions.FileDownload
+            Permissions.FileDownload,
+            Permissions.DokployView
         ],
         [Roles.Developer] =
         [
@@ -56,13 +60,15 @@ public static class DefaultRolePermissions
             Permissions.DockerView,
             Permissions.DockerRestart,
             Permissions.FileView,
-            Permissions.FileDownload
+            Permissions.FileDownload,
+            Permissions.DokployView
         ],
         [Roles.Viewer] =
         [
             Permissions.DashboardView,
             Permissions.ServerView,
-            Permissions.DockerView
+            Permissions.DockerView,
+            Permissions.DokployView
         ]
     };
 }

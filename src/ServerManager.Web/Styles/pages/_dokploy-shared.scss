@@ -1,0 +1,15 @@
+.dokploy-toolbar {
+  @apply mb-4 flex flex-wrap items-center justify-between gap-3;
+}
+
+.dokploy-toolbar-title {
+  @apply flex items-center gap-3;
+}
+
+.dokploy-toolbar-actions {
+  @apply flex flex-wrap items-center gap-2;
+}
+
+.dokploy-heading {
+  @apply text-lg font-semibold text-slate-900 dark:text-slate-100;
+}

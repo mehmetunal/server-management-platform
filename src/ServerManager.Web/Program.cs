@@ -14,6 +14,7 @@ using ServerManager.Infrastructure;
 using ServerManager.Web.Authorization;
 using ServerManager.Web.BackgroundJobs;
 using ServerManager.Web.Extensions;
+using ServerManager.Web.Dokploy;
 using ServerManager.Web.Hubs;
 using ServerManager.Web.Middleware;
 using ServerManager.Web.Models;
@@ -44,6 +45,8 @@ try
     builder.Services.AddSignalR();
     builder.Services.AddSingleton<IMonitoringNotifier, SignalRMonitoringNotifier>();
     builder.Services.AddSingleton<TerminalManager>();
+    builder.Services.AddSingleton<DokployInstallationManager>();
+    builder.Services.AddHostedService<DokployHealthWorker>();
     builder.Services.AddHostedService<TerminalCommandWriter>();
     builder.Services.AddHostedService<TerminalIdleSweeper>();
     if (builder.Configuration.GetValue($"{MonitoringOptions.SectionName}:Enabled", true))
@@ -154,6 +157,7 @@ try
     app.MapControllerRoute(name: "default", pattern: "{controller=Dashboard}/{action=Index}/{id?}");
     app.MapHub<MonitoringHub>(MonitoringHub.Path);
     app.MapHub<TerminalHub>(TerminalHub.Path);
+    app.MapHub<DokployHub>(DokployHub.Path);
 
     await app.RunAsync();
 }

@@ -2332,6 +2332,8 @@ Phase 3 (Docker) kapsamındaki özellikler: SSH üzerinden Docker CLI ile genel 
 
 Phase 4 (Terminal & Files) kapsamındaki özellikler: tarayıcıdan SSH terminali (Browser → SignalR WebSocket → API → SSH; çoklu sekme, yeniden boyutlandırma, tam ekran, kopyala/yapıştır, arama, çıktı indirme, komut geçmişi, sayfa yenilenince/bağlantı kopunca aynı oturuma yeniden bağlanma, boşta kalma zaman aşımı), tehlikeli komutlarda ikinci onay, oturum ve komut geçmişi; SFTP tabanlı dosya yöneticisi (gezinme, oluşturma, yeniden adlandırma/taşıma, kopyalama, silme, sürükle-bırak yükleme, indirme, chmod/chown) ve CodeMirror editörü (JSON, YAML, XML, HTML, CSS, JS, TS, C#, ENV, Markdown, Nginx, Dockerfile, Shell ve daha fazlası).
 
+Phase 5 (Dokploy) kapsamındaki özellikler: Dokploy kurulum sihirbazı (sunucu seçimi → uyumluluk → Docker → port → onay → kurulum → sağlık kontrolü → tamamlandı), ön kontroller (işletim sistemi, mimari, container ortamı, root/sudo, RAM, disk, port, internet), canlı kurulum çıktısı (sayfa kapansa da kurulum sürer, geri dönünce çıktı yeniden oynatılır), kurulum geçmişi; Dokploy durumu (sürüm, durum, adres, port, swarm servisleri ve container'lar, son sağlık kontrolü, yanıt süresi), periyodik sağlık kontrolü ve API anahtarıyla proje özeti.
+
 ### Teknoloji
 
 | Katman | Teknoloji |
@@ -2438,10 +2440,10 @@ Testler veritabanına veya gerçek sunuculara bağlanmaz. `global.json` içinde 
 | Rol | İzinler |
 | --- | --- |
 | SuperAdmin | Tümü |
-| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker, terminal ve dosya izinleri, audit log |
-| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal, sunucu terminali, dosya görüntüleme/oluşturma/düzenleme/yükleme/indirme |
-| Developer | Dashboard, sunucu görüntüleme, Docker görüntüleme/yeniden başlatma, dosya görüntüleme/indirme |
-| Viewer | Dashboard, sunucu görüntüleme, Docker görüntüleme |
+| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker, terminal, dosya ve Dokploy izinleri, audit log |
+| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal, sunucu terminali, dosya görüntüleme/oluşturma/düzenleme/yükleme/indirme, Dokploy görüntüleme |
+| Developer | Dashboard, sunucu görüntüleme, Docker görüntüleme/yeniden başlatma, dosya görüntüleme/indirme, Dokploy görüntüleme |
+| Viewer | Dashboard, sunucu görüntüleme, Docker görüntüleme, Dokploy görüntüleme |
 
 İzinler `AspNetRoleClaims` tablosunda `permission` claim'i olarak tutulur. Seeder yalnızca eksik izinleri ekler; elle eklenmiş izinleri kaldırmaz.
 
@@ -2576,6 +2578,48 @@ Sunucu detayındaki **Files** sekmesi SFTP üzerinden çalışır (sunucuya ek y
 | `MaxUploadMegabytes` | `100` | Dosya başına yükleme sınırı |
 | `OperationTimeoutSeconds` | `60` | SFTP işlemleri ile kopyalama, klasör silme ve izin komutlarının zaman aşımı |
 | `ProtectedPaths` | `[]` | Korunan yollar (boşsa varsayılan sistem klasörleri) |
+
+### Dokploy
+
+Sunucu detayındaki **Dokploy** sekmesi Dokploy kurulumunun durumunu gösterir; **Dokploy kur** sihirbazı resmi kurulum betiğiyle (`https://dokploy.com/install.sh`) kurulum yapar. Durum agentless olarak SSH ile (`docker service ls`, `docker ps`, sunucu içinden `/api/health`) okunur; panel adresi ve API anahtarı tanımlıysa panelden HTTP ile sağlık kontrolü ve proje özeti alınır.
+
+| İzin | Kapsam |
+| --- | --- |
+| `dokploy.view` | Dokploy sekmesi, durum, sağlık kontrolü, kurulum geçmişi ve kurulum çıktıları |
+| `dokploy.install` | Uyumluluk kontrolü ve kurulumu başlatma |
+| `dokploy.manage` | Panel adresi ve API anahtarı ayarları |
+
+Kurulum akışı:
+
+- Ön kontroller: işletim sistemi (Ubuntu, Debian, Fedora, CentOS/RHEL dışı dağıtımlar uyarı), mimari, container içinde çalışma (engeller; Swarm container içinde çalışmaz), root veya tam sudo yetkisi, en az `MinMemoryMb` RAM, `RecommendedDiskGb` altı boş disk (uyarı), Docker ve Swarm durumu, `RequiredPorts` portlarının boş olması, betik adresine ve Docker Hub'a erişim, `curl` varlığı. Engelleyen sorun varsa onay adımı açılmaz.
+- Onay: sunucu adı birebir yazılarak onaylanır; sürüm son kararlı, canary veya belirli bir etiket (`v0.25.3` gibi) seçilebilir.
+- Betik sunucuya `/tmp` altına indirilir, yalnızca sahibi okuyabilir yapılır, SHA-256 özeti kurulum kaydına yazılır, `sudo` ile (gerekirse) root olarak çalıştırılır ve işlem bitince silinir.
+- Çıktı `/hubs/dokploy` SignalR hub'ı üzerinden canlı akar. Kurulum arka planda sürer; sayfa kapanıp yeniden açıldığında çıktı baştan oynatılır, biten kurulumların çıktısı geçmişten "Görüntüle" ile açılır. Aynı sunucuda aynı anda tek kurulum çalışır.
+- Betik bittikten sonra Dokploy'un `/api/health` yanıtı `StartupTimeoutSeconds` boyunca beklenir; yanıt gelirse kurulum başarılı sayılır.
+- Kurulum başlangıcı (`dokploy.install_start`) ve sonucu (`dokploy.install_complete`; başarılı/başarısız, betik SHA-256 özetiyle) audit log'a yazılır. Uygulama kurulum sırasında kapanırsa kayıt silinmez, "Kesildi" olarak işaretlenir.
+
+Durum ve ayarlar:
+
+- Durum: Çalışıyor, Sorunlu (eksik bileşen veya panelden erişilemiyor), Durdu, Kurulu değil. Arka plan servisi (`DokployHealthWorker`) kayıtlı her kurulumu `HealthCheckIntervalMinutes` aralığıyla kontrol eder.
+- API anahtarı Dokploy'da **Settings → Profile → API/CLI** bölümünden oluşturulur; kaydetmeden önce panelde doğrulanır, `Security:MasterKey` ile şifrelenerek saklanır ve hiçbir yerde gösterilmez. Proje özetinde yalnızca proje adı ve uygulama/compose/veritabanı sayıları okunur; ortam değişkenleri ve parolalar eşlenmez.
+- HTTP isteklerinde yönlendirme izlenmez (API anahtarı başlığı başka bir adrese taşınmasın diye); yanıt boyutu 4 MB ile sınırlıdır.
+- Dokploy aksiyonları kullanıcı başına dakikada 20 istekle sınırlandırılır.
+
+| Anahtar (`Dokploy:`) | Varsayılan | Açıklama |
+| --- | --- | --- |
+| `InstallScriptUrl` | `https://dokploy.com/install.sh` | Kurulum betiği |
+| `RegistryCheckUrl` | `https://registry-1.docker.io/v2/` | İnternet kontrolünde erişilmesi gereken registry |
+| `Port` | `3000` | Dokploy panel portu |
+| `RequiredPorts` | `[80, 443, 3000]` | Boş olması gereken portlar (`appsettings` içinde değiştirilecekse ortam değişkeniyle verin; liste varsayılana eklenir) |
+| `MinMemoryMb` | `2048` | En az RAM |
+| `RecommendedDiskGb` | `30` | Altı uyarı olarak gösterilen boş disk |
+| `CommandTimeoutSeconds` | `30` | Kontrol komutlarının zaman aşımı |
+| `InstallTimeoutMinutes` | `30` | Kurulum betiğinin zaman aşımı |
+| `StartupTimeoutSeconds` | `180` | Kurulumdan sonra sağlık yanıtı için bekleme süresi |
+| `HttpTimeoutSeconds` | `10` | Dokploy API isteklerinin zaman aşımı |
+| `HealthCheckIntervalMinutes` | `5` | Periyodik sağlık kontrolü aralığı (`0` kapatır) |
+| `MaxStoredOutputKilobytes` | `512` | Kurulum kaydında saklanan çıktı (son kısım) |
+| `InstallationHistoryCount` | `10` | Durum sayfasında gösterilen kurulum sayısı |
 
 ### Güvenlik notları
 

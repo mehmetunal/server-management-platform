@@ -31,6 +31,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     public DbSet<TerminalCommandLog> TerminalCommands => Set<TerminalCommandLog>();
 
+    public DbSet<DokployInstance> DokployInstances => Set<DokployInstance>();
+
+    public DbSet<DokployInstallation> DokployInstallations => Set<DokployInstallation>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
