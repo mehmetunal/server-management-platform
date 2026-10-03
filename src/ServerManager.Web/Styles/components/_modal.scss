@@ -1,0 +1,18 @@
+// Çok alanlı form diyalogları için; onay ve uyarılar SweetAlert2 ile gösterilir.
+@layer components {
+  .modal-backdrop {
+    @apply fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4;
+  }
+
+  .modal {
+    @apply w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-900;
+  }
+
+  .modal-body {
+    @apply space-y-4 p-6;
+  }
+
+  .modal-title {
+    @apply text-base font-semibold;
+  }
+}

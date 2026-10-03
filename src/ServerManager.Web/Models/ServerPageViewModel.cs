@@ -8,6 +8,7 @@ public sealed class ServerPageViewModel
 {
     public const string OverviewTab = "overview";
     public const string MetricsTab = "metrics";
+    public const string DockerTab = "docker";
 
     public required ServerDetailsDto Server { get; init; }
 

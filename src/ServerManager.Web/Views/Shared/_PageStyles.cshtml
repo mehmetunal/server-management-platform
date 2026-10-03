@@ -1,0 +1,8 @@
+@{
+    var page = ViewData["Page"] as string;
+}
+<link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+@if (!string.IsNullOrEmpty(page))
+{
+    <link rel="stylesheet" href="@Url.Content($"~/css/pages/{page}.css")" asp-append-version="true" />
+}

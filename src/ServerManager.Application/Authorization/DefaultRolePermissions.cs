@@ -13,23 +13,38 @@ public static class DefaultRolePermissions
             Permissions.ServerEdit,
             Permissions.ServerDelete,
             Permissions.ServerConnect,
+            Permissions.DockerView,
+            Permissions.DockerStart,
+            Permissions.DockerStop,
+            Permissions.DockerRestart,
+            Permissions.DockerDelete,
+            Permissions.DockerManage,
+            Permissions.DockerTerminal,
             Permissions.AuditView
         ],
         [Roles.Operator] =
         [
             Permissions.DashboardView,
             Permissions.ServerView,
-            Permissions.ServerConnect
+            Permissions.ServerConnect,
+            Permissions.DockerView,
+            Permissions.DockerStart,
+            Permissions.DockerStop,
+            Permissions.DockerRestart,
+            Permissions.DockerTerminal
         ],
         [Roles.Developer] =
         [
             Permissions.DashboardView,
-            Permissions.ServerView
+            Permissions.ServerView,
+            Permissions.DockerView,
+            Permissions.DockerRestart
         ],
         [Roles.Viewer] =
         [
             Permissions.DashboardView,
-            Permissions.ServerView
+            Permissions.ServerView,
+            Permissions.DockerView
         ]
     };
 }

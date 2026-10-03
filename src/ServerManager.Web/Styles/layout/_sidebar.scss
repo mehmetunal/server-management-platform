@@ -1,0 +1,37 @@
+@layer components {
+  .app-sidebar {
+    @apply fixed inset-y-0 left-0 z-50 flex w-64 -translate-x-full flex-col border-r border-slate-800 bg-slate-900 text-slate-300 transition-transform duration-200 lg:translate-x-0;
+
+    &.is-open {
+      @apply translate-x-0;
+    }
+  }
+
+  .app-sidebar-nav {
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .nav-group {
+    @apply px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-slate-500;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white;
+
+    &.is-active {
+      @apply bg-brand-600 text-white hover:bg-brand-600;
+    }
+
+    &.is-disabled {
+      @apply cursor-not-allowed text-slate-500 hover:bg-transparent hover:text-slate-500;
+    }
+  }
+
+  .nav-soon {
+    @apply ml-auto rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-400;
+  }
+}

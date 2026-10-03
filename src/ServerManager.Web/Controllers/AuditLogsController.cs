@@ -3,6 +3,7 @@ using ServerManager.Application.Authorization;
 using ServerManager.Application.DTOs.AuditLogs;
 using ServerManager.Application.Interfaces.Services;
 using ServerManager.Web.Authorization;
+using ServerManager.Web.Extensions;
 using ServerManager.Web.Models;
 
 namespace ServerManager.Web.Controllers;
@@ -25,6 +26,7 @@ public class AuditLogsController : Controller
     {
         filter.Action = auditAction;
         var logs = await _auditLogService.SearchAsync(filter, cancellationToken);
-        return View(new AuditLogIndexViewModel { Logs = logs, Filter = filter });
+        var model = new AuditLogIndexViewModel { Logs = logs, Filter = filter };
+        return Request.IsAjax() ? PartialView("_AuditLogList", model) : View(model);
     }
 }

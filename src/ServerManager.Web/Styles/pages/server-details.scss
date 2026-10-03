@@ -1,0 +1,11 @@
+.server-details-grid {
+  @apply grid grid-cols-1 gap-6 xl:grid-cols-3;
+}
+
+.server-details-main {
+  @apply space-y-6 xl:col-span-2;
+}
+
+.server-details-side {
+  @apply space-y-6;
+}

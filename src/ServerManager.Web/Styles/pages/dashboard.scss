@@ -1,0 +1,19 @@
+.dashboard-stats {
+  @apply grid grid-cols-2 gap-4 lg:grid-cols-4;
+}
+
+.dashboard-badges {
+  @apply mt-4 flex flex-wrap gap-2;
+}
+
+.dashboard-chart {
+  @apply relative h-64;
+}
+
+.dashboard-chart-empty {
+  @apply absolute inset-0 flex items-center justify-center text-sm text-slate-400;
+}
+
+.dashboard-lists {
+  @apply mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2;
+}

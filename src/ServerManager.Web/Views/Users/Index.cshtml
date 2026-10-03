@@ -1,6 +1,7 @@
 @model IReadOnlyList<UserListItemDto>
 @{
     ViewData["Title"] = "Kullanıcılar";
+    ViewData["Page"] = "users-index";
 }
 
 <div class="page-header">
@@ -11,63 +12,6 @@
     <a asp-action="Create" class="btn-primary">@Icons.Render("plus", "h-4 w-4") Kullanıcı ekle</a>
 </div>
 
-<section class="panel">
-    <div class="overflow-x-auto">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Kullanıcı</th>
-                    <th>Rol</th>
-                    <th>Durum</th>
-                    <th>2FA</th>
-                    <th>Son giriş</th>
-                    <th class="text-right">İşlem</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var user in Model)
-                {
-                    <tr>
-                        <td>
-                            <p class="font-medium text-slate-900 dark:text-slate-100">@(user.FullName ?? user.Email)</p>
-                            <p class="text-xs text-slate-500">@user.Email</p>
-                        </td>
-                        <td>
-                            @foreach (var role in user.Roles)
-                            {
-                                <span class="@(role == Roles.SuperAdmin ? "badge-brand" : "badge-neutral")">@role</span>
-                            }
-                        </td>
-                        <td>
-                            @if (!user.IsActive)
-                            {
-                                <span class="badge-neutral">Pasif</span>
-                            }
-                            else if (user.IsLockedOut)
-                            {
-                                <span class="badge-danger">Kilitli</span>
-                            }
-                            else
-                            {
-                                <span class="badge-success">Aktif</span>
-                            }
-                        </td>
-                        <td>@(user.TwoFactorEnabled ? "Açık" : "Kapalı")</td>
-                        <td class="whitespace-nowrap text-xs text-slate-500" title="@DateDisplay.Format(user.LastLoginAt)">@DateDisplay.Relative(user.LastLoginAt)</td>
-                        <td>
-                            <div class="flex justify-end gap-1">
-                                <a asp-action="Edit" asp-route-id="@user.Id" class="btn-ghost btn-sm" title="Düzenle">@Icons.Render("pencil", "h-4 w-4")</a>
-                                <form asp-action="ToggleLock" asp-route-id="@user.Id" method="post">
-                                    <input type="hidden" name="locked" value="@(user.IsLockedOut ? "false" : "true")" />
-                                    <button type="submit" class="btn-ghost btn-sm" title="@(user.IsLockedOut ? "Kilidi aç" : "Kilitle")">
-                                        @Icons.Render(user.IsLockedOut ? "key" : "lock", "h-4 w-4")
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-</section>
+<div data-ajax-list>
+    <partial name="_UserList" model="Model" />
+</div>

@@ -1,0 +1,23 @@
+@model DockerPageViewModel
+@{
+    var items = new[]
+    {
+        (DockerPageViewModel.OverviewSection, "Index", "Genel bakış", "squares"),
+        (DockerPageViewModel.ContainersSection, "Containers", "Container'lar", "cube"),
+        (DockerPageViewModel.ImagesSection, "Images", "Image'lar", "archive"),
+        (DockerPageViewModel.VolumesSection, "Volumes", "Volume'lar", "database"),
+        (DockerPageViewModel.NetworksSection, "Networks", "Network'ler", "globe")
+    };
+}
+
+<nav class="mb-6 flex flex-wrap gap-2" aria-label="Docker menüsü">
+    @foreach (var (section, action, label, icon) in items)
+    {
+        var active = Model.Section == section;
+        <a asp-controller="Docker" asp-action="@action" asp-route-id="@Model.ServerId"
+           class="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition @(active ? "bg-brand-600 text-white shadow-sm" : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-800 dark:hover:bg-slate-800")"
+           aria-current="@(active ? "page" : null)">
+            @Icons.Render(icon, "h-4 w-4") @label
+        </a>
+    }
+</nav>

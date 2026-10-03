@@ -1,0 +1,74 @@
+@model DockerPanelModel<DockerContainerDto>
+@{
+    var container = Model.Data;
+    var actionUrl = Url.Action("ContainerAction", "Docker", new { id = Model.ServerId });
+    var running = DockerDisplay.IsRunning(container);
+    var paused = DockerDisplay.IsPaused(container);
+    var compact = ViewData["Compact"] as bool? ?? false;
+    var buttonClass = compact ? "btn-ghost btn-sm px-2" : "btn-secondary btn-sm";
+}
+
+@if (!running && !paused && User.HasPermission(Permissions.DockerStart))
+{
+    <button type="button" class="@buttonClass" title="Başlat" data-ajax-action data-url="@actionUrl"
+            data-field-container="@container.Name" data-field-action="Start">
+        @Icons.Render("play", "h-4 w-4 text-emerald-600")@(compact ? "" : " Başlat")
+    </button>
+}
+@if (paused && User.HasPermission(Permissions.DockerStart))
+{
+    <button type="button" class="@buttonClass" title="Devam ettir" data-ajax-action data-url="@actionUrl"
+            data-field-container="@container.Name" data-field-action="Unpause">
+        @Icons.Render("play", "h-4 w-4 text-emerald-600")@(compact ? "" : " Devam ettir")
+    </button>
+}
+@if ((running || paused) && User.HasPermission(Permissions.DockerStop))
+{
+    <button type="button" class="@buttonClass" title="Durdur" data-ajax-action data-url="@actionUrl"
+            data-field-container="@container.Name" data-field-action="Stop"
+            data-confirm-title="Container'ı durdur"
+            data-confirm-message="@container.Name durdurulacak. Container'ın sunduğu servis erişilemez olur."
+            data-confirm-label="Durdur">
+        @Icons.Render("stop", "h-4 w-4 text-red-600")@(compact ? "" : " Durdur")
+    </button>
+}
+@if (running && User.HasPermission(Permissions.DockerRestart))
+{
+    <button type="button" class="@buttonClass" title="Yeniden başlat" data-ajax-action data-url="@actionUrl"
+            data-field-container="@container.Name" data-field-action="Restart"
+            data-confirm-title="Container'ı yeniden başlat"
+            data-confirm-message="@container.Name yeniden başlatılacak. Kısa bir kesinti olabilir."
+            data-confirm-label="Yeniden başlat">
+        @Icons.Render("refresh", "h-4 w-4 text-brand-600")@(compact ? "" : " Yeniden başlat")
+    </button>
+}
+@if (!compact)
+{
+    @if (running && User.HasPermission(Permissions.DockerStop))
+    {
+        <button type="button" class="@buttonClass" data-ajax-action data-url="@actionUrl"
+                data-field-container="@container.Name" data-field-action="Pause">
+            @Icons.Render("pause", "h-4 w-4") Duraklat
+        </button>
+        <button type="button" class="@buttonClass" data-ajax-action data-url="@actionUrl"
+                data-field-container="@container.Name" data-field-action="Kill"
+                data-confirm-title="Container'ı kill et"
+                data-confirm-message="@container.Name SIGKILL ile anında sonlandırılacak. Kaydedilmemiş veriler kaybolabilir."
+                data-confirm-label="Kill">
+            @Icons.Render("power", "h-4 w-4 text-red-600") Kill
+        </button>
+    }
+    @if (User.HasPermission(Permissions.DockerDelete))
+    {
+        <button type="button" class="btn-ghost-danger btn-sm" data-ajax-action data-url="@actionUrl"
+                data-field-container="@container.Name" data-field-action="Remove"
+                data-confirm-title="Container'ı sil"
+                data-confirm-message="@container.Name kalıcı olarak silinecek. Bağlı named volume'lar silinmez."
+                data-confirm-name="@container.Name"
+                data-confirm-check="@(running || paused ? "Çalışan container'ı zorla sil (docker rm -f)" : null)"
+                data-confirm-label="Container'ı sil"
+                data-redirect="@Url.Action("Containers", "Docker", new { id = Model.ServerId })">
+            @Icons.Render("trash", "h-4 w-4") Sil
+        </button>
+    }
+}

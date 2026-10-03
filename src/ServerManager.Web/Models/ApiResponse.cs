@@ -14,6 +14,9 @@ public sealed class ApiResponse<T>
 
     public IReadOnlyList<string> ValidationMessages { get; init; } = [];
 
+    /// <summary>Form alanı adına göre doğrulama hataları; boş anahtar alana bağlı olmayan hatalardır.</summary>
+    public IReadOnlyDictionary<string, string[]> Errors { get; init; } = new Dictionary<string, string[]>();
+
     public DateTimeOffset TimeStamp { get; init; } = DateTimeOffset.Now;
 
     public string ApiVersion { get; init; } = CurrentApiVersion;
@@ -26,11 +29,16 @@ public sealed class ApiResponse<T>
         Message = message
     };
 
-    public static ApiResponse<T> Fail(string message, int statusCode, IReadOnlyList<string>? validationMessages = null) => new()
+    public static ApiResponse<T> Fail(
+        string message,
+        int statusCode,
+        IReadOnlyList<string>? validationMessages = null,
+        IReadOnlyDictionary<string, string[]>? errors = null) => new()
     {
         IsSuccess = false,
         StatusCode = statusCode,
         Message = message,
-        ValidationMessages = validationMessages ?? []
+        ValidationMessages = validationMessages ?? [],
+        Errors = errors ?? new Dictionary<string, string[]>()
     };
 }

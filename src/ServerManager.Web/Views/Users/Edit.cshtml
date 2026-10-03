@@ -1,19 +1,20 @@
 @model UpdateUserDto
 @{
     ViewData["Title"] = $"{Model.Email} · Düzenle";
+    ViewData["Page"] = "user-form";
 }
 
 <div class="page-header">
     <div>
-        <a asp-action="Index" class="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">@Icons.Render("chevron-left", "h-4 w-4") Kullanıcılar</a>
+        <a asp-action="Index" class="back-link">@Icons.Render("chevron-left", "h-4 w-4") Kullanıcılar</a>
         <h1 class="page-title">Kullanıcıyı düzenle</h1>
         <p class="page-lead">@Model.Email</p>
     </div>
 </div>
 
-<form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="panel max-w-2xl" data-loading novalidate autocomplete="off">
-    <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <div asp-validation-summary="ModelOnly" class="validation-summary-errors sm:col-span-2"></div>
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="panel user-form" data-user-form novalidate autocomplete="off">
+    <div class="panel-body user-form-grid">
+        <p class="alert-error sm:col-span-2" data-form-error hidden></p>
         <div>
             <label asp-for="Email" class="form-label">E-posta *</label>
             <input asp-for="Email" type="email" class="form-control" autocomplete="off" />
@@ -29,11 +30,11 @@
             <partial name="_RoleSelect" model="Model.Role" />
             <span asp-validation-for="Role" class="field-validation-error"></span>
         </div>
-        <label class="flex items-start gap-3 rounded-xl border border-slate-200 p-3 sm:col-span-2 dark:border-slate-700">
-            <input asp-for="IsActive" type="checkbox" class="form-check mt-0.5" />
+        <label class="check-card sm:col-span-2">
+            <input asp-for="IsActive" type="checkbox" class="form-check" />
             <span>
-                <span class="block text-sm font-medium text-slate-800 dark:text-slate-200">Aktif</span>
-                <span class="block text-xs text-slate-500">Pasif kullanıcılar giriş yapamaz; açık oturumları en geç 1 dakika içinde sonlanır.</span>
+                <span class="check-card-title">Aktif</span>
+                <span class="check-card-text">Pasif kullanıcılar giriş yapamaz; açık oturumları en geç 1 dakika içinde sonlanır.</span>
             </span>
         </label>
 
@@ -50,7 +51,7 @@
             <span asp-validation-for="ConfirmNewPassword" class="field-validation-error"></span>
         </div>
     </div>
-    <div class="flex justify-end gap-3 border-t border-slate-200 px-6 py-4 dark:border-slate-800">
+    <div class="form-actions">
         <a asp-action="Index" class="btn-secondary">İptal</a>
         <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span> Kaydet</button>
     </div>

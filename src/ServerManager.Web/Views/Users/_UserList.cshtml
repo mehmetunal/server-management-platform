@@ -1,0 +1,80 @@
+@model IReadOnlyList<UserListItemDto>
+
+<section class="panel">
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Kullanıcı</th>
+                    <th>Rol</th>
+                    <th>Durum</th>
+                    <th>2FA</th>
+                    <th>Son giriş</th>
+                    <th class="text-right">İşlem</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in Model)
+                {
+                    var displayName = user.FullName ?? user.Email;
+                    <tr>
+                        <td>
+                            <p class="user-name">@displayName</p>
+                            <p class="user-email">@user.Email</p>
+                        </td>
+                        <td>
+                            @foreach (var role in user.Roles)
+                            {
+                                <span class="@(role == Roles.SuperAdmin ? "badge-brand" : "badge-neutral")">@role</span>
+                            }
+                        </td>
+                        <td>
+                            @if (!user.IsActive)
+                            {
+                                <span class="badge-neutral">Pasif</span>
+                            }
+                            else if (user.IsLockedOut)
+                            {
+                                <span class="badge-danger">Kilitli</span>
+                            }
+                            else
+                            {
+                                <span class="badge-success">Aktif</span>
+                            }
+                        </td>
+                        <td>@(user.TwoFactorEnabled ? "Açık" : "Kapalı")</td>
+                        <td class="user-last-login" title="@DateDisplay.Format(user.LastLoginAt)">@DateDisplay.Relative(user.LastLoginAt)</td>
+                        <td>
+                            <div class="user-actions">
+                                <a asp-action="Edit" asp-route-id="@user.Id" class="btn-ghost btn-sm" title="Düzenle">@Icons.Render("pencil", "h-4 w-4")</a>
+                                @if (user.IsLockedOut)
+                                {
+                                    <button type="button" class="btn-ghost btn-sm" title="Kilidi aç" data-ajax-action
+                                            data-url="@Url.Action("ToggleLock", new { id = user.Id })"
+                                            data-field-locked="false"
+                                            data-confirm-title="Kilidi aç"
+                                            data-confirm-message="@displayName yeniden giriş yapabilecek."
+                                            data-confirm-label="Kilidi aç"
+                                            data-confirm-tone="neutral">
+                                        @Icons.Render("key", "h-4 w-4")
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn-ghost btn-sm" title="Kilitle" data-ajax-action
+                                            data-url="@Url.Action("ToggleLock", new { id = user.Id })"
+                                            data-field-locked="true"
+                                            data-confirm-title="Kullanıcıyı kilitle"
+                                            data-confirm-message="@displayName panele giriş yapamaz; açık oturumları en geç 1 dakika içinde sonlanır."
+                                            data-confirm-label="Kilitle">
+                                        @Icons.Render("lock", "h-4 w-4")
+                                    </button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

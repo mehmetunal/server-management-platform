@@ -2,6 +2,7 @@
 @{
     var server = Model.Server;
     ViewData["Title"] = $"{server.Name} · Metrikler";
+    ViewData["Page"] = "server-metrics";
     var rangeCode = MetricRanges.Code(Model.Range);
     var charts = new[]
     {
@@ -11,24 +12,30 @@
         ("network", "Ağ trafiği", "B/s"),
         ("load", "Load average (1 dk)", "")
     };
+    string Description(MetricRange range) =>
+        $"{MetricRanges.DisplayName(range)} · {(MetricRanges.UsesHourlyData(range) ? "saatlik ortalamalar" : "ham ölçümler")}";
 }
 
 <partial name="_ServerHeader" model="Model" />
 
-<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <div class="inline-flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900" role="group" aria-label="Zaman aralığı">
+<div class="metrics-toolbar">
+    <div class="range-switch" role="group" aria-label="Zaman aralığı">
         @foreach (var range in MetricRanges.All)
         {
             var code = MetricRanges.Code(range);
             <a asp-action="Metrics" asp-route-id="@server.Id" asp-route-range="@code"
-               class="rounded-lg px-3 py-1.5 text-sm font-medium transition @(range == Model.Range ? "bg-brand-600 text-white" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800")"
-               title="@MetricRanges.DisplayName(range)">@code</a>
+               class="range-option @(range == Model.Range ? "is-active" : "")"
+               title="@MetricRanges.DisplayName(range)"
+               data-range-link
+               data-series-url="@Url.Action("MetricSeries", new { id = server.Id, range = code })"
+               data-live="@(range == MetricRange.OneHour ? "true" : "false")"
+               data-description="@Description(range)">@code</a>
         }
     </div>
-    <p class="text-sm text-slate-500 dark:text-slate-400">@MetricRanges.DisplayName(Model.Range) · @(MetricRanges.UsesHourlyData(Model.Range) ? "saatlik ortalamalar" : "ham ölçümler")</p>
+    <p class="text-sm text-slate-500 dark:text-slate-400" data-range-description>@Description(Model.Range)</p>
 </div>
 
-<div class="grid grid-cols-1 gap-6 lg:grid-cols-2" data-metric-charts data-series-url="@Url.Action("MetricSeries", new { id = server.Id, range = rangeCode })" data-live-range="@(Model.Range == MetricRange.OneHour ? "true" : "false")">
+<div class="metrics-grid" data-metric-charts data-series-url="@Url.Action("MetricSeries", new { id = server.Id, range = rangeCode })" data-live-range="@(Model.Range == MetricRange.OneHour ? "true" : "false")">
     @foreach (var (key, title, unit) in charts)
     {
         <section class="panel @(key == "load" ? "lg:col-span-2" : "")">
@@ -40,9 +47,9 @@
                 }
             </div>
             <div class="panel-body">
-                <div class="relative h-56">
+                <div class="chart-box">
                     <canvas data-metric-chart="@key" aria-label="@title grafiği" role="img"></canvas>
-                    <p class="absolute inset-0 flex items-center justify-center text-sm text-slate-400" data-chart-empty hidden>Bu aralık için veri yok.</p>
+                    <p class="chart-empty" data-chart-empty hidden>Bu aralık için veri yok.</p>
                 </div>
             </div>
         </section>
@@ -56,5 +63,4 @@
 @section Scripts {
     <script src="~/lib/chart.js/chart.umd.min.js"></script>
     <script src="~/lib/signalr/signalr.min.js"></script>
-    <script src="~/js/monitoring.js" asp-append-version="true"></script>
 }

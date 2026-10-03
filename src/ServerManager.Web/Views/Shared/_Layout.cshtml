@@ -11,7 +11,8 @@
     <meta name="robots" content="noindex, nofollow" />
     <title>@(string.IsNullOrEmpty(title) ? "Server Manager" : $"{title} · Server Manager")</title>
     <partial name="_ThemeScript" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+    <partial name="_PageStyles" />
 </head>
 <body>
     @Html.AntiForgeryToken()
@@ -56,9 +57,7 @@
                     </button>
                     <div class="dropdown-menu" data-dropdown-menu hidden>
                         <div class="border-b border-slate-100 px-4 py-2 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:hidden">@userName</div>
-                        <form asp-controller="Account" asp-action="Logout" method="post">
-                            <button type="submit" class="dropdown-item text-red-600 dark:text-red-400">@Icons.Render("logout", "h-4 w-4") Çıkış yap</button>
-                        </form>
+                        <button type="button" class="dropdown-item text-red-600 dark:text-red-400" data-logout data-url="@Url.Action("Logout", "Account")">@Icons.Render("logout", "h-4 w-4") Çıkış yap</button>
                     </div>
                 </div>
             </header>
@@ -69,8 +68,8 @@
         </div>
     </div>
 
-    <partial name="_Toasts" />
-    <script src="~/js/site.js" asp-append-version="true"></script>
+    <partial name="_VendorScripts" />
     @await RenderSectionAsync("Scripts", required: false)
+    <partial name="_PageModules" />
 </body>
 </html>

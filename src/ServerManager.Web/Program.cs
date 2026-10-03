@@ -37,9 +37,13 @@ try
 
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+    builder.Services.AddScoped<ServerPageBuilder>();
+    builder.Services.AddSingleton<ScriptImportMap>();
 
     builder.Services.AddSignalR();
     builder.Services.AddSingleton<IMonitoringNotifier, SignalRMonitoringNotifier>();
+    builder.Services.AddSingleton<ContainerTerminalManager>();
+    builder.Services.AddHostedService<TerminalIdleSweeper>();
     if (builder.Configuration.GetValue($"{MonitoringOptions.SectionName}:Enabled", true))
     {
         builder.Services.AddHostedService<MetricsCollectorWorker>();
@@ -147,6 +151,7 @@ try
 
     app.MapControllerRoute(name: "default", pattern: "{controller=Dashboard}/{action=Index}/{id?}");
     app.MapHub<MonitoringHub>(MonitoringHub.Path);
+    app.MapHub<ContainerTerminalHub>(ContainerTerminalHub.Path);
 
     await app.RunAsync();
 }

@@ -18,5 +18,20 @@ services:
       retries: 10
       start_period: 30s
 
+  # Yalnızca yerel test: docker compose --profile test up -d ssh-docker-test
+  ssh-docker-test:
+    build: ./docker/ssh-docker-test
+    container_name: sm-ssh-docker-test
+    privileged: true
+    profiles: ["test"]
+    environment:
+      SSH_TEST_PASSWORD: "${SSH_TEST_PASSWORD:?SSH_TEST_PASSWORD .env dosyasinda tanimlanmali}"
+      DOCKER_TLS_CERTDIR: ""
+    ports:
+      - "127.0.0.1:${SSH_TEST_PORT:-2223}:22"
+    volumes:
+      - sm-dind-data:/var/lib/docker
+
 volumes:
   server-manager-db-data:
+  sm-dind-data:

@@ -1,0 +1,15 @@
+.user-name {
+  @apply font-medium text-slate-900 dark:text-slate-100;
+}
+
+.user-email {
+  @apply text-xs text-slate-500;
+}
+
+.user-last-login {
+  @apply whitespace-nowrap text-xs text-slate-500;
+}
+
+.user-actions {
+  @apply flex justify-end gap-1;
+}

@@ -1,0 +1,7 @@
+.user-form {
+  @apply max-w-2xl;
+}
+
+.user-form-grid {
+  @apply grid grid-cols-1 gap-5 sm:grid-cols-2;
+}

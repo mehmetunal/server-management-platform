@@ -8,10 +8,10 @@
     string KeepHint(bool exists) => isEdit && exists ? "Kayıtlı değer var. Değiştirmek istemiyorsanız boş bırakın." : string.Empty;
 }
 
-<div asp-validation-summary="All" class="validation-summary-errors"></div>
+<p class="alert-error mb-6" data-form-error hidden></p>
 
-<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
-    <div class="space-y-6 xl:col-span-2">
+<div class="server-form-grid">
+    <div class="server-form-main">
         <section class="panel">
             <div class="panel-header"><h2 class="panel-title">Genel bilgiler</h2></div>
             <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -66,7 +66,7 @@
         </section>
     </div>
 
-    <div class="space-y-6">
+    <div class="server-form-side">
         <section class="panel">
             <div class="panel-header"><h2 class="panel-title">SSH bağlantısı</h2></div>
             <div class="panel-body space-y-5">
@@ -110,11 +110,11 @@
                     <span asp-validation-for="Passphrase" class="field-validation-error"></span>
                 </div>
 
-                <label class="flex items-start gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
-                    <input asp-for="UseSudo" type="checkbox" class="form-check mt-0.5" data-use-sudo />
+                <label class="check-card">
+                    <input asp-for="UseSudo" type="checkbox" class="form-check" data-use-sudo />
                     <span>
-                        <span class="block text-sm font-medium text-slate-800 dark:text-slate-200">Sudo kullanıcı</span>
-                        <span class="block text-xs text-slate-500">Root yerine sudo yetkili normal kullanıcı önerilir.</span>
+                        <span class="check-card-title">Sudo kullanıcı</span>
+                        <span class="check-card-text">Root yerine sudo yetkili normal kullanıcı önerilir.</span>
                     </span>
                 </label>
 
@@ -125,11 +125,11 @@
                     <span asp-validation-for="SudoPassword" class="field-validation-error"></span>
                 </div>
 
-                <label class="flex items-start gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
-                    <input asp-for="MonitoringEnabled" type="checkbox" class="form-check mt-0.5" />
+                <label class="check-card">
+                    <input asp-for="MonitoringEnabled" type="checkbox" class="form-check" />
                     <span>
-                        <span class="block text-sm font-medium text-slate-800 dark:text-slate-200">Otomatik izleme</span>
-                        <span class="block text-xs text-slate-500">CPU, RAM, disk ve ağ metrikleri SSH üzerinden düzenli toplanır. Host key doğrulandıktan sonra başlar.</span>
+                        <span class="check-card-title">Otomatik izleme</span>
+                        <span class="check-card-text">CPU, RAM, disk ve ağ metrikleri SSH üzerinden düzenli toplanır. Host key doğrulandıktan sonra başlar.</span>
                     </span>
                 </label>
             </div>

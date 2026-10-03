@@ -1,0 +1,45 @@
+// Önce Sass, ardından Tailwind ile derlenir: npm run build:css (scripts/build-styles.mjs).
+// Sayfaya özgü stiller Styles/pages/<sayfa>.scss dosyalarındadır.
+
+@use "base/base";
+@use "layout/shell";
+@use "layout/sidebar";
+@use "components/utilities";
+@use "components/buttons";
+@use "components/forms";
+@use "components/panels";
+@use "components/tables";
+@use "components/badges";
+@use "components/alerts";
+@use "components/modal";
+@use "components/tabs";
+@use "components/dropdown";
+@use "components/pager";
+@use "components/indicators";
+@use "vendor/sweetalert2";
+@use "vendor/toastr";
+
+@import "tailwindcss/index.css";
+
+@source "../Views/**/*.cshtml";
+@source "../wwwroot/js/**/*.js";
+@source not "../wwwroot/lib";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+  --color-brand-950: #1e1b4b;
+
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}

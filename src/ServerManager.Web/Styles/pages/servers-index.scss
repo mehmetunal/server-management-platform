@@ -1,0 +1,19 @@
+.server-filters {
+  @apply lg:grid-cols-5;
+}
+
+.server-filter-actions {
+  @apply flex gap-2 sm:col-span-2 lg:col-span-5;
+}
+
+.server-name {
+  @apply whitespace-nowrap font-medium text-slate-900 hover:text-brand-600 dark:text-slate-100 dark:hover:text-brand-400;
+}
+
+.server-resources {
+  @apply min-w-[12rem];
+}
+
+.server-tags {
+  @apply flex max-w-[12rem] flex-wrap gap-1;
+}

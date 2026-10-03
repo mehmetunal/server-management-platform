@@ -2,14 +2,22 @@
   "name": "server-manager-web",
   "private": true,
   "scripts": {
-    "build:css": "tailwindcss -i ./Styles/input.css -o ./wwwroot/css/site.css --minify",
-    "build:css:watch": "tailwindcss -i ./Styles/input.css -o ./wwwroot/css/site.css --watch",
-    "build:vendor": "mkdir -p wwwroot/lib/chart.js wwwroot/lib/signalr && cp node_modules/chart.js/dist/chart.umd.min.js wwwroot/lib/chart.js/ && cp node_modules/chart.js/LICENSE.md wwwroot/lib/chart.js/ && cp node_modules/@microsoft/signalr/dist/browser/signalr.min.js wwwroot/lib/signalr/"
+    "build": "npm run build:vendor && npm run build:css",
+    "build:css": "node scripts/build-styles.mjs",
+    "build:css:watch": "node scripts/build-styles.mjs --watch",
+    "build:vendor": "node scripts/copy-vendor.mjs"
   },
   "devDependencies": {
     "@microsoft/signalr": "^10.0.11",
-    "@tailwindcss/cli": "^4.1.0",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
     "chart.js": "^4.5.1",
-    "tailwindcss": "^4.1.0"
+    "jquery": "^3.7.1",
+    "postcss": "^8.5.28",
+    "sass": "^1.105.1",
+    "sweetalert2": "^11.26.25",
+    "tailwindcss": "^4.1.0",
+    "toastr": "^2.1.4"
   }
 }

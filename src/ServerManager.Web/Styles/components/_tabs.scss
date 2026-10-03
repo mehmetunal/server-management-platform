@@ -1,0 +1,23 @@
+@layer components {
+  .tab-list {
+    @apply flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800;
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+
+    &:hover {
+      scrollbar-color: var(--color-slate-400) transparent;
+    }
+  }
+
+  .tab {
+    @apply -mb-px whitespace-nowrap border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-slate-500 dark:text-slate-400;
+
+    &.is-active {
+      @apply border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300;
+    }
+
+    &.is-disabled {
+      @apply cursor-not-allowed opacity-50;
+    }
+  }
+}

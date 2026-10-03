@@ -2328,11 +2328,14 @@ Phase 1 (Foundation) kapsamındaki özellikler: Identity ile giriş/çıkış, r
 
 Phase 2 (Monitoring) kapsamındaki özellikler: agentless SSH ile CPU, RAM, swap, disk, inode, network, load, uptime ve process metrikleri; otomatik sunucu durumu (Healthy / Warning / Critical / Offline); sağlık kontrolleri; saatlik özetleme ve saklama süresi politikası; SignalR ile canlı güncelleme; Chart.js grafikleri (1 saat – 30 gün).
 
+Phase 3 (Docker) kapsamındaki özellikler: SSH üzerinden Docker CLI ile genel bakış, container listesi (canlı CPU/RAM), container detayı (inspect, port, mount, network, env, label), start/stop/restart/pause/unpause/kill/remove/rename, loglar (arama, stderr filtresi, canlı takip, indirme), xterm.js ile container terminali, image (pull, sil, prune), volume (oluştur, sil, prune) ve network (oluştur, sil) yönetimi. Sudo yetkili kullanıcılar desteklenir.
+
 ### Teknoloji
 
 | Katman | Teknoloji |
 | --- | --- |
-| Web | ASP.NET Core MVC (.NET 10), Tailwind CSS v4 |
+| Web | ASP.NET Core MVC (.NET 10), Tailwind CSS v4 + Sass, ES module JavaScript |
+| Arayüz bileşenleri | SweetAlert2 (onay/uyarı), toastr (bildirim), xterm.js (terminal) |
 | Kimlik | ASP.NET Core Identity (Guid anahtarlı), izin claim'leri |
 | Veri | MSSQL, EF Core (yalnızca sorgu), FluentMigrator (tüm şema) |
 | Doğrulama | FluentValidation |
@@ -2346,7 +2349,7 @@ Mimari: `Domain` → `Application` (servisler, DTO, validator, arayüzler) → `
 ### Gereksinimler
 
 - .NET SDK 10.0
-- Node.js 20+ (yalnızca Tailwind CSS derlemesi için)
+- Node.js 20+ (yalnızca stil derlemesi ve vendor dosyalarının kopyalanması için)
 - Docker (yerel MSSQL için)
 
 ### 1. Veritabanını başlatma
@@ -2382,23 +2385,34 @@ dotnet user-secrets set "Seed:AdminFullName" "Sistem Yöneticisi"
 
 > **Önemli:** `Security:MasterKey` kaybolur veya değişirse kayıtlı sunucu kimlik bilgileri çözülemez. Anahtarı güvenli bir yerde yedekleyin.
 
-### 3. CSS derleme
+### 3. Frontend derleme
 
 ```bash
 cd src/ServerManager.Web
 npm install
-npm run build:css            # tek seferlik, minify
+npm run build                # vendor kopyalama + stil derleme
+npm run build:css            # yalnızca stiller (Sass → Tailwind → minify)
 npm run build:css:watch      # geliştirme sırasında izleme modu
+npm run build:vendor         # jQuery, toastr, SweetAlert2, Chart.js, SignalR, xterm.js → wwwroot/lib
 ```
 
-Derlenmiş `wwwroot/css/site.css` repoya dahildir; sadece `Styles/input.css` veya view'larda sınıf değişikliği yapıldığında yeniden derlenmelidir.
+Derlenmiş `wwwroot/css` ve `wwwroot/lib` dosyaları repoya dahildir; SCSS, view veya JS'te sınıf değişikliği yapıldığında ya da paket sürümü güncellendiğinde yeniden derlenmelidir. Kütüphaneler CDN yerine yerelden sunulur (CSP `script-src 'self'`).
 
-Chart.js ve SignalR istemcisi CDN yerine `wwwroot/lib` altından sunulur (CSP `script-src 'self'`). Dosyalar repoya dahildir; paket sürümü güncellendiğinde yeniden kopyalanır:
+Frontend yapısı:
 
-```bash
-npm install
-npm run build:vendor         # chart.umd.min.js ve signalr.min.js → wwwroot/lib
-```
+| Yol | İçerik |
+| --- | --- |
+| `Styles/site.scss` | Ortak stiller: `base`, `layout`, `components`, `vendor` (SweetAlert2/toastr temaları) partial'ları ve Tailwind teması |
+| `Styles/pages/<sayfa>.scss` | Yalnızca o sayfaya ait stiller → `wwwroot/css/pages/<sayfa>.css` |
+| `wwwroot/js/core` | `http` (fetch + antiforgery), `dialog` (SweetAlert2), `notify` (toastr), `forms`, `dom`, `format`, `navigation`, `regions` |
+| `wwwroot/js/components` | `ajax-actions`, `ajax-list`, `modal`, `remote-panels`, `tabs` |
+| `wwwroot/js/features` | Monitoring, sunucu ve Docker modülleri |
+| `wwwroot/js/pages/<sayfa>.js` | Sayfanın giriş modülü |
+
+- View'da `ViewData["Page"] = "<sayfa>"` atanınca layout `css/pages/<sayfa>.css` ve `js/pages/<sayfa>.js` dosyalarını ekler.
+- JavaScript yalnızca ES module'dür; layout'taki import map her modülü sürüm parametreli adrese eşler (önbellek bozma).
+- Veri çekme, ekleme, düzenleme, silme ve uyarıların tamamı AJAX ile yapılır; sayfa yenilenmez. Listeler partial view + `pushState` ile filtrelenir, formlar JSON (`isSuccess`, `message`, `data`, `errors`) döner.
+- Onaylar SweetAlert2 ile (tehlikeli işlemlerde ad yazarak), bildirimler toastr ile gösterilir.
 
 ### 4. Çalıştırma
 
@@ -2422,10 +2436,10 @@ Testler veritabanına veya gerçek sunuculara bağlanmaz. `global.json` içinde 
 | Rol | İzinler |
 | --- | --- |
 | SuperAdmin | Tümü |
-| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, audit log |
-| Operator | Dashboard, sunucu görüntüleme, bağlantı testi |
-| Developer | Dashboard, sunucu görüntüleme |
-| Viewer | Dashboard, sunucu görüntüleme |
+| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker izinleri, audit log |
+| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal |
+| Developer | Dashboard, sunucu görüntüleme, Docker görüntüleme/yeniden başlatma |
+| Viewer | Dashboard, sunucu görüntüleme, Docker görüntüleme |
 
 İzinler `AspNetRoleClaims` tablosunda `permission` claim'i olarak tutulur. Seeder yalnızca eksik izinleri ekler; elle eklenmiş izinleri kaldırmaz.
 
@@ -2464,6 +2478,50 @@ Saklama politikası (`MetricsMaintenanceWorker`):
 - Silme 5000 satırlık partilerle yapılır; her çalışmanın özeti (özetlenen saat ve silinen kayıt sayıları) loglanır.
 
 Canlı güncelleme `/hubs/monitoring` SignalR hub'ı üzerinden yapılır; sunucu detay sayfası yalnızca kendi sunucusunun, liste ve dashboard tüm sunucuların güncellemelerini alır. Hub `server.view` izni gerektirir.
+
+### Docker
+
+Docker yönetimi agentless'tır: panel sunucuya SSH ile bağlanıp `docker` CLI komutlarını çalıştırır (Docker API'si dışarı açılmaz, sunucuya ek yazılım kurulmaz). Sunucunun host key fingerprint'i doğrulanmış olmalıdır. Sunucuda "Sudo kullanıcı" işaretliyse (SSH kullanıcısı `docker` grubunda değilse gerekir) komutlar `sudo -S -p '' -- docker …` ile çalıştırılır (parola tanımlı değilse `sudo -n`); sudo parolası şifreli saklanır, komut satırına yazılmaz, stdin'den gönderilir.
+
+| İzin | Kapsam |
+| --- | --- |
+| `docker.view` | Genel bakış, container/image/volume/network listeleri, inspect, loglar |
+| `docker.start` | Container başlatma / devam ettirme |
+| `docker.stop` | Durdurma / duraklatma / kill |
+| `docker.restart` | Yeniden başlatma |
+| `docker.delete` | Container, image, volume, network silme ve prune |
+| `docker.manage` | Image pull, volume/network oluşturma, container yeniden adlandırma |
+| `docker.terminal` | Container terminali |
+
+| Anahtar (`Docker:`) | Varsayılan | Açıklama |
+| --- | --- | --- |
+| `CommandTimeoutSeconds` | `60` | Docker komutu zaman aşımı |
+| `PullTimeoutSeconds` | `600` | Image pull zaman aşımı |
+| `DefaultLogTail` / `MaxLogTail` | `200` / `5000` | Log satır sayısı varsayılanı ve üst sınırı |
+| `TerminalIdleTimeoutMinutes` | `30` | Boşta kalan terminal oturumunun kapatılma süresi |
+| `MaxTerminalSessionsPerUser` | `3` | Kullanıcı başına eş zamanlı terminal oturumu |
+
+Güvenlik kuralları:
+
+- Container, image, volume ve network adları whitelist regex'iyle doğrulanır; tüm argümanlar shell quoting ile komuta eklenir.
+- Stop, restart, kill, silme ve prune işlemleri onay ister; silme işlemlerinde kaynak adı yazılarak onaylanır. Her işlem audit log'a yazılır.
+- Network oluştururken verilen subnet sunucunun kendi ağlarıyla veya panelin bağlandığı adresle çakışıyorsa işlem reddedilir (aksi halde yeni bridge SSH erişimini kesebilir).
+- Docker aksiyonları kullanıcı başına dakikada 30 istekle sınırlandırılır.
+- Terminal `/hubs/terminal` SignalR hub'ı üzerinden çalışır; oturum açılışı ve kapanışı audit log'a yazılır, girilen komutlar ve çıktı loglanmaz.
+
+#### Yerel Docker test sunucusu
+
+Geliştirmede gerçek sunucular yerine izole bir Docker-in-Docker container'ı kullanılır. Host Docker soketine bağlanmaz; içindeki container'lar host'tan tamamen ayrıdır.
+
+```bash
+# .env: SSH_TEST_PASSWORD ve (isteğe bağlı) SSH_TEST_PORT=2223
+docker compose --profile test up -d --build ssh-docker-test
+```
+
+- Adres: `127.0.0.1:2223` (yalnızca localhost).
+- `deploy` kullanıcısı `docker` grubundadır (sudo gerekmez).
+- `ops` kullanıcısı yalnızca `sudo docker` çalıştırabilir (sudo akışını test etmek için; panelde "Sudo kullanıcı" işaretlenir ve sudo parolası olarak aynı parola girilir).
+- Parola yalnızca git'e eklenmeyen `.env` dosyasındadır.
 
 ### Güvenlik notları
 

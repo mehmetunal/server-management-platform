@@ -1,0 +1,90 @@
+@model DockerPanelModel<DockerOverviewDto>
+@{
+    var overview = Model.Data;
+    var cards = new[]
+    {
+        ("Toplam container", overview.ContainersTotal.ToString(), "cube", "text-slate-900 dark:text-slate-100", "Containers"),
+        ("Çalışan", overview.ContainersRunning.ToString(), "play", "text-emerald-600 dark:text-emerald-400", "Containers"),
+        ("Durmuş", overview.ContainersStopped.ToString(), "stop", "text-slate-600 dark:text-slate-300", "Containers"),
+        ("Hatalı çıkan", overview.ContainersFailed.ToString(), "warning", overview.ContainersFailed > 0 ? "text-red-600 dark:text-red-400" : "text-slate-600 dark:text-slate-300", "Containers"),
+        ("Sağlıksız", overview.ContainersUnhealthy.ToString(), "shield", overview.ContainersUnhealthy > 0 ? "text-amber-600 dark:text-amber-400" : "text-slate-600 dark:text-slate-300", "Containers"),
+        ("Image", overview.Images.ToString(), "archive", "text-slate-900 dark:text-slate-100", "Images"),
+        ("Volume", overview.Volumes.ToString(), "database", "text-slate-900 dark:text-slate-100", "Volumes"),
+        ("Network", overview.Networks.ToString(), "globe", "text-slate-900 dark:text-slate-100", "Networks")
+    };
+}
+
+<div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+    @foreach (var (label, value, icon, valueClass, action) in cards)
+    {
+        <a asp-action="@action" asp-route-id="@Model.ServerId" class="stat-card transition hover:ring-2 hover:ring-brand-500/30">
+            <div class="flex items-center justify-between">
+                <span class="stat-label">@label</span>
+                <span class="text-slate-400">@Icons.Render(icon, "h-5 w-5")</span>
+            </div>
+            <span class="stat-value @valueClass">@value</span>
+        </a>
+    }
+</div>
+
+@if (overview.ContainersPaused > 0 || overview.ContainersRestarting > 0)
+{
+    <p class="alert-warning mt-4">
+        @if (overview.ContainersRestarting > 0)
+        {
+            <span>@overview.ContainersRestarting container sürekli yeniden başlıyor. </span>
+        }
+        @if (overview.ContainersPaused > 0)
+        {
+            <span>@overview.ContainersPaused container duraklatılmış.</span>
+        }
+    </p>
+}
+
+<div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Docker Engine</h2></div>
+        <dl class="panel-body space-y-3 text-sm">
+            <div class="flex justify-between gap-4"><dt class="text-slate-500">Sürüm</dt><dd class="font-mono">@(overview.EngineVersion ?? "—")</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-slate-500">İşletim sistemi</dt><dd class="truncate text-right">@(overview.OperatingSystem ?? "—")</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-slate-500">Kernel</dt><dd class="truncate font-mono">@(overview.KernelVersion ?? "—")</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-slate-500">Storage driver</dt><dd class="font-mono">@(overview.StorageDriver ?? "—")</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-slate-500">Root dizini</dt><dd class="truncate font-mono">@(overview.DockerRootDir ?? "—")</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-slate-500">CPU</dt><dd>@overview.CpuCount</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-slate-500">Bellek</dt><dd>@MetricDisplay.Bytes(overview.MemoryTotalBytes)</dd></div>
+        </dl>
+    </section>
+
+    <section class="panel xl:col-span-2">
+        <div class="panel-header"><h2 class="panel-title">Disk kullanımı</h2></div>
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Tür</th>
+                        <th class="text-right">Toplam</th>
+                        <th class="text-right">Aktif</th>
+                        <th class="text-right">Boyut</th>
+                        <th class="text-right">Geri kazanılabilir</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (overview.DiskUsage.Count == 0)
+                    {
+                        <tr><td colspan="5" class="text-center text-slate-500">Disk kullanım bilgisi alınamadı.</td></tr>
+                    }
+                    @foreach (var usage in overview.DiskUsage)
+                    {
+                        <tr>
+                            <td>@DockerDisplay.DiskUsageTypeText(usage.Type)</td>
+                            <td class="text-right tabular-nums">@usage.TotalCount</td>
+                            <td class="text-right tabular-nums">@usage.ActiveCount</td>
+                            <td class="text-right tabular-nums">@MetricDisplay.Bytes(usage.SizeBytes)</td>
+                            <td class="text-right tabular-nums">@MetricDisplay.Bytes(usage.ReclaimableBytes)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>

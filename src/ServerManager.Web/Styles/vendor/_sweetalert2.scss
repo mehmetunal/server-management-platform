@@ -1,0 +1,50 @@
+@use "sweetalert2/dist/sweetalert2.min";
+
+// core/dialog.js SweetAlert2'yi buttonsStyling: false ve aşağıdaki customClass adlarıyla açar.
+.swal2-container {
+  z-index: 80;
+}
+
+.swal2-popup.swal-popup {
+  @apply w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-0 pb-1 text-slate-800 shadow-xl dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200;
+}
+
+.swal2-icon {
+  @apply mt-6 mb-0 scale-75;
+}
+
+.swal2-title.swal-title {
+  @apply px-6 pt-5 text-base font-semibold text-slate-900 dark:text-slate-100;
+}
+
+.swal2-html-container.swal-text {
+  @apply mx-6 mt-2 mb-0 text-left text-sm text-slate-500 dark:text-slate-400;
+}
+
+.swal-check {
+  @apply mt-4 flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-300;
+}
+
+.swal2-input-label.swal-input-label {
+  @apply mx-6 mt-4 mb-0 justify-start text-left text-sm font-medium text-slate-700 dark:text-slate-300;
+}
+
+.swal2-input.swal-input {
+  @apply mx-6 mt-2 mb-0 h-auto w-[calc(100%-3rem)] shadow-none;
+}
+
+.swal2-validation-message.swal-validation {
+  @apply mx-6 mt-4 justify-start rounded-xl bg-red-50 px-4 py-3 text-left text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300;
+
+  &::before {
+    @apply hidden;
+  }
+}
+
+.swal2-actions.swal-actions {
+  @apply mt-6 w-full flex-row-reverse justify-start gap-3 border-t border-slate-200 px-6 py-4 dark:border-slate-800;
+}
+
+.swal2-loader {
+  @apply border-brand-600 border-x-transparent;
+}

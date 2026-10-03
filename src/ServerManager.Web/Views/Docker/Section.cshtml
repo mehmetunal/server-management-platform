@@ -1,0 +1,173 @@
+@model DockerPageViewModel
+@{
+    var serverId = Model.ServerId;
+    var canManage = User.HasPermission(Permissions.DockerManage);
+    var canDelete = User.HasPermission(Permissions.DockerDelete);
+    var (title, panelAction) = Model.Section switch
+    {
+        DockerPageViewModel.ContainersSection => ("Container'lar", "ContainersPanel"),
+        DockerPageViewModel.ImagesSection => ("Image'lar", "ImagesPanel"),
+        DockerPageViewModel.VolumesSection => ("Volume'lar", "VolumesPanel"),
+        DockerPageViewModel.NetworksSection => ("Network'ler", "NetworksPanel"),
+        _ => ("Docker genel bakış", "OverviewPanel")
+    };
+    ViewData["Title"] = $"{Model.ServerName} · {title}";
+    ViewData["Page"] = "docker-section";
+}
+
+<partial name="_ServerHeader" model="Model.Page" />
+<partial name="_DockerNav" model="Model" />
+
+<div class="docker-toolbar">
+    <div class="docker-toolbar-title">
+        <h2 class="docker-heading">@title</h2>
+        <span class="text-xs text-slate-400" data-panel-updated></span>
+    </div>
+    <div class="docker-toolbar-actions">
+        @if (Model.Section == DockerPageViewModel.ContainersSection)
+        {
+            <div class="search-field">
+                <span class="search-field-icon">@Icons.Render("search", "h-4 w-4")</span>
+                <input type="search" class="form-control docker-search" placeholder="Container ara…" data-table-filter aria-label="Container ara" />
+            </div>
+            <label class="check-inline"><input type="checkbox" class="form-check" data-hide-stopped /> Yalnızca çalışanlar</label>
+        }
+        @if (Model.Section == DockerPageViewModel.ImagesSection)
+        {
+            @if (canDelete)
+            {
+                <button type="button" class="btn-secondary" data-ajax-action
+                        data-url="@Url.Action("PruneImages", new { id = serverId })"
+                        data-confirm-title="Kullanılmayan image'ları temizle"
+                        data-confirm-message="Etiketsiz (dangling) image'lar kalıcı olarak silinir. İşaretlerseniz hiçbir container'ın kullanmadığı tüm image'lar silinir."
+                        data-confirm-name="@Model.ServerName"
+                        data-confirm-check="Kullanılmayan tüm image'ları sil (docker image prune -a)"
+                        data-check-field="all"
+                        data-confirm-label="Temizle">
+                    @Icons.Render("trash", "h-4 w-4") Temizle
+                </button>
+            }
+            @if (canManage)
+            {
+                <button type="button" class="btn-primary" data-modal-open="pull-image-modal">@Icons.Render("download", "h-4 w-4") Image çek</button>
+            }
+        }
+        @if (Model.Section == DockerPageViewModel.VolumesSection && canManage)
+        {
+            <button type="button" class="btn-primary" data-modal-open="create-volume-modal">@Icons.Render("plus", "h-4 w-4") Volume oluştur</button>
+        }
+        @if (Model.Section == DockerPageViewModel.NetworksSection && canManage)
+        {
+            <button type="button" class="btn-primary" data-modal-open="create-network-modal">@Icons.Render("plus", "h-4 w-4") Network oluştur</button>
+        }
+        <button type="button" class="btn-secondary" data-panel-refresh>
+            <span class="spinner" data-spinner hidden></span>
+            @Icons.Render("refresh", "h-4 w-4") Yenile
+        </button>
+    </div>
+</div>
+
+<div data-remote-panel data-url="@Url.Action(panelAction, new { id = serverId })"
+     data-stats-url="@(Model.Section == DockerPageViewModel.ContainersSection ? Url.Action("ContainerStats", new { id = serverId }) : null)">
+    <section class="panel">
+        <div class="empty-state">
+            <span class="spinner h-6 w-6"></span>
+            <p>Docker bilgileri sunucudan alınıyor…</p>
+        </div>
+    </section>
+</div>
+
+@if (Model.Section == DockerPageViewModel.ImagesSection && canManage)
+{
+    <div id="pull-image-modal" class="modal-backdrop" data-modal hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pull-image-title">
+            <form data-ajax-form action="@Url.Action("PullImage", new { id = serverId })" novalidate>
+                <div class="modal-body">
+                    <h2 id="pull-image-title" class="modal-title">Image çek</h2>
+                    <div>
+                        <label for="pull-reference" class="form-label">Image</label>
+                        <input id="pull-reference" name="Reference" class="form-control form-control-mono" placeholder="nginx:alpine" autocomplete="off" spellcheck="false" required maxlength="255" />
+                        <p class="form-hint">Örnek: <span class="font-mono">nginx:1.27</span>, <span class="font-mono">ghcr.io/org/app:latest</span>. Etiket yazılmazsa <span class="font-mono">latest</span> çekilir. Büyük image'lar birkaç dakika sürebilir.</p>
+                    </div>
+                    <p class="alert-error" data-form-error hidden></p>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" data-modal-close>Vazgeç</button>
+                    <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span>@Icons.Render("download", "h-4 w-4") Çek</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@if (Model.Section == DockerPageViewModel.VolumesSection && canManage)
+{
+    <div id="create-volume-modal" class="modal-backdrop" data-modal hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="create-volume-title">
+            <form data-ajax-form action="@Url.Action("CreateVolume", new { id = serverId })" novalidate>
+                <div class="modal-body">
+                    <h2 id="create-volume-title" class="modal-title">Volume oluştur</h2>
+                    <div>
+                        <label for="volume-name" class="form-label">Volume adı</label>
+                        <input id="volume-name" name="Name" class="form-control form-control-mono" placeholder="app-data" autocomplete="off" spellcheck="false" required maxlength="255" />
+                        <p class="form-hint">Harf, rakam, nokta, alt çizgi ve tire kullanılabilir. Driver: local.</p>
+                    </div>
+                    <p class="alert-error" data-form-error hidden></p>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" data-modal-close>Vazgeç</button>
+                    <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span>@Icons.Render("plus", "h-4 w-4") Oluştur</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@if (Model.Section == DockerPageViewModel.NetworksSection && canManage)
+{
+    <div id="create-network-modal" class="modal-backdrop" data-modal hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="create-network-title">
+            <form data-ajax-form action="@Url.Action("CreateNetwork", new { id = serverId })" novalidate>
+                <div class="modal-body">
+                    <h2 id="create-network-title" class="modal-title">Network oluştur</h2>
+                    <div>
+                        <label for="network-name" class="form-label">Network adı</label>
+                        <input id="network-name" name="Name" class="form-control form-control-mono" placeholder="app-net" autocomplete="off" spellcheck="false" required maxlength="255" />
+                    </div>
+                    <div>
+                        <label for="network-driver" class="form-label">Driver</label>
+                        <select id="network-driver" name="Driver" class="form-control">
+                            @foreach (var driver in DockerNames.NetworkDrivers)
+                            {
+                                <option value="@driver">@driver</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <label for="network-subnet" class="form-label">Subnet <span class="text-slate-400">(opsiyonel)</span></label>
+                            <input id="network-subnet" name="Subnet" class="form-control form-control-mono" placeholder="172.30.0.0/16" autocomplete="off" spellcheck="false" />
+                        </div>
+                        <div>
+                            <label for="network-gateway" class="form-label">Gateway <span class="text-slate-400">(opsiyonel)</span></label>
+                            <input id="network-gateway" name="Gateway" class="form-control form-control-mono" placeholder="172.30.0.1" autocomplete="off" spellcheck="false" />
+                        </div>
+                    </div>
+                    <label class="check-inline">
+                        <input type="checkbox" name="Internal" value="true" class="form-check" />
+                        Internal (dış ağa çıkışı kapalı)
+                    </label>
+                    <p class="alert-error" data-form-error hidden></p>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" data-modal-close>Vazgeç</button>
+                    <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span>@Icons.Render("plus", "h-4 w-4") Oluştur</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/lib/signalr/signalr.min.js"></script>
+}

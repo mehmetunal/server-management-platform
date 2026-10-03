@@ -9,10 +9,11 @@
     <meta name="robots" content="noindex, nofollow" />
     <title>@(string.IsNullOrEmpty(title) ? "Server Manager" : $"{title} · Server Manager")</title>
     <partial name="_ThemeScript" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <partial name="_PageStyles" />
 </head>
 <body>
-    <div class="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-900 to-brand-950 px-4 py-12">
+    @Html.AntiForgeryToken()
+    <div class="auth-shell">
         <div class="w-full max-w-md">
             <div class="mb-8 flex flex-col items-center gap-3 text-center">
                 <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-600 text-white shadow-lg shadow-brand-900/50">
@@ -26,7 +27,8 @@
             @RenderBody()
         </div>
     </div>
-    <script src="~/js/site.js" asp-append-version="true"></script>
+    <partial name="_VendorScripts" />
     @await RenderSectionAsync("Scripts", required: false)
+    <partial name="_PageModules" />
 </body>
 </html>

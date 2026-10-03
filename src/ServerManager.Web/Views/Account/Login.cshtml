@@ -2,28 +2,29 @@
 @{
     Layout = "_AuthLayout";
     ViewData["Title"] = "Giriş";
+    ViewData["Page"] = "login";
 }
-<div class="rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl backdrop-blur sm:p-8">
-    <h2 class="text-lg font-semibold text-white">Oturum aç</h2>
-    <p class="mt-1 text-sm text-slate-400">Devam etmek için hesabınızla giriş yapın.</p>
+<div class="login-card">
+    <h2 class="login-title">Oturum aç</h2>
+    <p class="login-lead">Devam etmek için hesabınızla giriş yapın.</p>
 
-    <form asp-action="Login" method="post" class="mt-6 space-y-5" data-loading novalidate>
-        <div asp-validation-summary="ModelOnly" class="validation-summary-errors"></div>
+    <form asp-action="Login" method="post" class="login-form" data-login-form novalidate>
+        <p class="alert-error" data-form-error hidden></p>
         <input type="hidden" asp-for="ReturnUrl" />
 
         <div>
-            <label asp-for="Email" class="form-label text-slate-300">E-posta</label>
+            <label asp-for="Email" class="form-label login-label">E-posta</label>
             <input asp-for="Email" type="email" class="form-control" autocomplete="username" autofocus placeholder="ornek@firma.com" />
             <span asp-validation-for="Email" class="field-validation-error"></span>
         </div>
 
         <div>
-            <label asp-for="Password" class="form-label text-slate-300">Parola</label>
+            <label asp-for="Password" class="form-label login-label">Parola</label>
             <input asp-for="Password" type="password" class="form-control" autocomplete="current-password" />
             <span asp-validation-for="Password" class="field-validation-error"></span>
         </div>
 
-        <label class="flex items-center gap-2 text-sm text-slate-300">
+        <label class="check-inline login-label">
             <input asp-for="RememberMe" type="checkbox" class="form-check" />
             Beni hatırla
         </label>
@@ -34,4 +35,4 @@
         </button>
     </form>
 </div>
-<p class="mt-6 text-center text-xs text-slate-500">Tüm giriş denemeleri audit log'a kaydedilir.</p>
+<p class="login-footnote">Tüm giriş denemeleri audit log'a kaydedilir.</p>

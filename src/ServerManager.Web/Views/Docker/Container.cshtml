@@ -1,0 +1,135 @@
+@model DockerPageViewModel
+@{
+    var serverId = Model.ServerId;
+    var containerName = Model.Container!;
+    var canTerminal = User.HasPermission(Permissions.DockerTerminal);
+    ViewData["Title"] = $"{containerName} · {Model.ServerName}";
+    ViewData["Page"] = "docker-container";
+}
+
+@section Styles {
+    @if (canTerminal)
+    {
+        <link rel="stylesheet" href="~/lib/xterm/xterm.css" />
+    }
+}
+
+<partial name="_ServerHeader" model="Model.Page" />
+<partial name="_DockerNav" model="Model" />
+
+<div class="docker-toolbar">
+    <div class="container-breadcrumb">
+        <a asp-action="Containers" asp-route-id="@serverId" class="container-breadcrumb-link">Container'lar</a>
+        <span class="container-breadcrumb-separator">/</span>
+        <h2 class="container-title">@containerName</h2>
+    </div>
+    <button type="button" class="btn-secondary" data-panel-refresh>
+        <span class="spinner" data-spinner hidden></span>
+        @Icons.Render("refresh", "h-4 w-4") Yenile
+    </button>
+</div>
+
+<nav class="tab-list mb-6" aria-label="Container sekmeleri" data-tabs>
+    <button type="button" class="tab is-active" data-tab="info">Genel</button>
+    <button type="button" class="tab" data-tab="logs">Loglar</button>
+    @if (canTerminal)
+    {
+        <button type="button" class="tab" data-tab="terminal">Terminal</button>
+    }
+</nav>
+
+<div data-tab-panel="info">
+    <div data-remote-panel data-url="@Url.Action("ContainerPanel", new { id = serverId, name = containerName })">
+        <section class="panel">
+            <div class="empty-state">
+                <span class="spinner h-6 w-6"></span>
+                <p>Container bilgileri alınıyor…</p>
+            </div>
+        </section>
+    </div>
+</div>
+
+<div data-tab-panel="logs" hidden>
+    <section class="panel" data-logs data-url="@Url.Action("ContainerLogs", new { id = serverId, container = containerName })" data-container="@containerName">
+        <div class="log-toolbar">
+            <label class="log-tail">
+                <span class="text-slate-500">Son</span>
+                <select class="form-control log-tail-select" data-logs-tail aria-label="Satır sayısı">
+                    <option value="100">100</option>
+                    <option value="200" selected>200</option>
+                    <option value="500">500</option>
+                    <option value="1000">1000</option>
+                    <option value="5000">5000</option>
+                </select>
+                <span class="text-slate-500">satır</span>
+            </label>
+            <div class="search-field">
+                <span class="search-field-icon">@Icons.Render("search", "h-4 w-4")</span>
+                <input type="search" class="form-control log-search" placeholder="Loglarda ara…" data-logs-search aria-label="Loglarda ara" />
+            </div>
+            <label class="check-inline"><input type="checkbox" class="form-check" data-logs-errors /> Yalnızca stderr</label>
+            <label class="check-inline"><input type="checkbox" class="form-check" data-logs-wrap checked /> Satır kaydır</label>
+            <label class="check-inline"><input type="checkbox" class="form-check" data-logs-follow /> Canlı takip</label>
+            <div class="log-toolbar-end">
+                <span class="text-xs text-slate-400" data-logs-status></span>
+                <button type="button" class="btn-secondary btn-sm" data-logs-reload>@Icons.Render("refresh", "h-4 w-4") Yenile</button>
+                <button type="button" class="btn-secondary btn-sm" data-logs-download>@Icons.Render("download", "h-4 w-4") İndir</button>
+            </div>
+        </div>
+        <div class="log-output" data-logs-output>
+            <p class="log-empty">Loglar yükleniyor…</p>
+        </div>
+    </section>
+</div>
+
+@if (canTerminal)
+{
+    <div data-tab-panel="terminal" hidden>
+        <section class="panel overflow-hidden" data-terminal data-hub-url="@Url.Content("~" + ContainerTerminalHub.Path)" data-server-id="@serverId" data-container="@containerName">
+            <div class="log-toolbar">
+                <span class="badge-neutral" data-terminal-status><span class="badge-dot"></span><span data-terminal-status-text>Bağlı değil</span></span>
+                <p class="text-xs text-slate-500">Container içinde <span class="font-mono">bash</span> (yoksa <span class="font-mono">sh</span>) açılır. Oturum açılışı ve kapanışı audit log'a yazılır.</p>
+                <div class="log-toolbar-end">
+                    <button type="button" class="btn-primary btn-sm" data-terminal-connect>@Icons.Render("terminal", "h-4 w-4") Bağlan</button>
+                    <button type="button" class="btn-secondary btn-sm" data-terminal-disconnect hidden>@Icons.Render("x", "h-4 w-4") Bağlantıyı kes</button>
+                </div>
+            </div>
+            <div class="terminal-screen" data-terminal-screen></div>
+        </section>
+    </div>
+}
+
+@if (User.HasPermission(Permissions.DockerManage))
+{
+    <div id="rename-container-modal" class="modal-backdrop" data-modal hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="rename-container-title">
+            <form data-rename-form action="@Url.Action("RenameContainer", new { id = serverId })"
+                  data-container-url="@Url.Action("Container", new { id = serverId })" novalidate>
+                <input type="hidden" name="Container" value="@containerName" />
+                <div class="modal-body">
+                    <h2 id="rename-container-title" class="modal-title">Container'ı yeniden adlandır</h2>
+                    <div>
+                        <label for="rename-new-name" class="form-label">Yeni ad</label>
+                        <input id="rename-new-name" name="NewName" class="form-control form-control-mono" value="@containerName" autocomplete="off" spellcheck="false" required maxlength="255" />
+                        <span class="field-validation-valid" data-valmsg-for="NewName"></span>
+                        <p class="form-hint">Compose ile yönetilen container'larda yeniden adlandırma, compose'un container'ı tanımamasına yol açabilir.</p>
+                    </div>
+                    <p class="alert-error" data-form-error hidden></p>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" data-modal-close>Vazgeç</button>
+                    <button type="submit" class="btn-primary"><span class="spinner" data-spinner hidden></span>@Icons.Render("pencil", "h-4 w-4") Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/lib/signalr/signalr.min.js"></script>
+    @if (canTerminal)
+    {
+        <script src="~/lib/xterm/xterm.js"></script>
+        <script src="~/lib/xterm/addon-fit.js"></script>
+    }
+}

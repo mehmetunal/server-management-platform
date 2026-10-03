@@ -1,0 +1,74 @@
+@model DockerPanelModel<IReadOnlyList<DockerContainerDto>>
+@{
+    var containers = Model.Data;
+}
+
+@if (containers.Count == 0)
+{
+    <section class="panel">
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("cube", "h-6 w-6")</span>
+            <p class="font-medium text-slate-700 dark:text-slate-200">Bu sunucuda container yok</p>
+            <p>Container oluşturulduğunda burada listelenecek.</p>
+        </div>
+    </section>
+}
+else
+{
+    <section class="panel">
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th lang="en">Container</th>
+                        <th>Durum</th>
+                        <th class="hidden xl:table-cell">Image</th>
+                        <th class="hidden 2xl:table-cell">Port</th>
+                        <th class="text-right">CPU</th>
+                        <th class="text-right">RAM</th>
+                        <th class="text-right">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var container in containers)
+                    {
+                        var health = DockerDisplay.IsRunning(container) ? DockerDisplay.HealthText(container.Health) : null;
+                        <tr data-container-row data-state="@container.State" data-search="@($"{container.Name} {container.Image} {container.ComposeProject}".ToLowerInvariant())">
+                            <td class="min-w-[10rem]">
+                                <a asp-action="Container" asp-route-id="@Model.ServerId" asp-route-name="@container.Name" class="font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">@container.Name</a>
+                                <div class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                    <span class="font-mono">@container.ShortId</span>
+                                    @if (!string.IsNullOrEmpty(container.ComposeProject))
+                                    {
+                                        <span class="tag">@container.ComposeProject</span>
+                                    }
+                                </div>
+                            </td>
+                            <td class="whitespace-nowrap">
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <span class="@DockerDisplay.StateBadgeClass(container)"><span class="badge-dot"></span>@DockerDisplay.StateText(container.State)</span>
+                                    @if (health is not null)
+                                    {
+                                        <span class="@DockerDisplay.HealthBadgeClass(container.Health)">@health</span>
+                                    }
+                                </div>
+                                <p class="mt-1 text-xs text-slate-500">@container.Status@(container.RestartCount > 0 ? $" · {container.RestartCount} yeniden başlatma" : "")</p>
+                            </td>
+                            <td class="hidden max-w-[16rem] truncate font-mono text-xs xl:table-cell" title="@container.Image">@container.Image</td>
+                            <td class="hidden max-w-[14rem] truncate font-mono text-xs text-slate-500 2xl:table-cell" title="@container.Ports">@(string.IsNullOrEmpty(container.Ports) ? "—" : container.Ports)</td>
+                            <td class="text-right tabular-nums" data-stat-cpu="@container.Name">@(DockerDisplay.IsRunning(container) ? "…" : "—")</td>
+                            <td class="whitespace-nowrap text-right tabular-nums" data-stat-memory="@container.Name">@(DockerDisplay.IsRunning(container) ? "…" : "—")</td>
+                            <td>
+                                <div class="flex justify-end gap-1">
+                                    <partial name="_ContainerActions" model="new DockerPanelModel<DockerContainerDto> { ServerId = Model.ServerId, Data = container }" view-data='new ViewDataDictionary(ViewData) { ["Compact"] = true }' />
+                                    <a asp-action="Container" asp-route-id="@Model.ServerId" asp-route-name="@container.Name" class="btn-ghost btn-sm px-2" title="Detay">@Icons.Render("chevron-right", "h-4 w-4")</a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="hidden border-t border-slate-200 px-5 py-3 text-sm text-slate-500 dark:border-slate-800" data-filter-empty>Aramayla eşleşen container yok.</p>
+    </section>
+}

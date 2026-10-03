@@ -1,0 +1,82 @@
+@model ServerIndexViewModel
+@{
+    var canCreate = User.HasPermission(Permissions.ServerCreate);
+    var hasFilter = !string.IsNullOrWhiteSpace(Model.Filter.Search) || Model.Filter.Status.HasValue || Model.Filter.Environment.HasValue || !string.IsNullOrWhiteSpace(Model.Filter.Tag);
+}
+
+@if (Model.Servers.Items.Count == 0)
+{
+    <div class="empty-state">
+        <span class="empty-state-icon">@Icons.Render("server", "h-6 w-6")</span>
+        @if (hasFilter)
+        {
+            <p class="empty-state-title">Filtreye uyan sunucu bulunamadı</p>
+            <p>Arama kriterlerini değiştirmeyi deneyin.</p>
+        }
+        else
+        {
+            <p class="empty-state-title">Henüz sunucu eklenmedi</p>
+            <p>SSH bilgileriyle ilk sunucunuzu ekleyin; bağlantıyı panelden test edebilirsiniz.</p>
+            @if (canCreate)
+            {
+                <a asp-action="Create" class="btn-primary btn-sm mt-3">@Icons.Render("plus", "h-4 w-4") Sunucu ekle</a>
+            }
+        }
+    </div>
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Sunucu</th>
+                    <th>Adres</th>
+                    <th>Ortam</th>
+                    <th>Durum</th>
+                    <th>Kaynaklar</th>
+                    <th class="hidden xl:table-cell">Etiketler</th>
+                    <th>Son test</th>
+                    <th class="text-right">İşlem</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var server in Model.Servers.Items)
+                {
+                    var resources = Model.Resources.GetValueOrDefault(server.Id);
+                    <tr data-live-server-row="@server.Id">
+                        <td>
+                            <a asp-action="Details" asp-route-id="@server.Id" class="server-name">@server.Name</a>
+                            <p class="text-xs text-slate-500">@(server.OperatingSystem ?? server.Hostname)</p>
+                        </td>
+                        <td class="font-mono text-xs">@server.IpAddress:@server.SshPort</td>
+                        <td><span class="@ServerDisplay.EnvironmentBadgeClass(server.Environment)">@ServerDisplay.EnvironmentText(server.Environment)</span></td>
+                        <td><span class="@ServerDisplay.StatusBadgeClass(server.Status)" data-live-status><span class="badge-dot"></span><span data-live-status-text>@ServerDisplay.StatusText(server.Status)</span></span></td>
+                        <td class="server-resources">
+                            <div class="space-y-1">
+                                @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("CPU", "cpu", resources?.CpuUsagePercent, Model.Thresholds.CpuWarningPercent, Model.Thresholds.CpuCriticalPercent, Compact: true))
+                                @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("RAM", "memory", resources?.MemoryUsagePercent, Model.Thresholds.MemoryWarningPercent, Model.Thresholds.MemoryCriticalPercent, Compact: true))
+                                @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("Disk", "disk", resources?.DiskUsagePercent, Model.Thresholds.DiskWarningPercent, Model.Thresholds.DiskCriticalPercent, Compact: true))
+                            </div>
+                        </td>
+                        <td class="hidden xl:table-cell">
+                            <div class="server-tags">
+                                @foreach (var tag in server.Tags)
+                                {
+                                    <a asp-action="Index" asp-route-tag="@tag" class="tag" data-list-link>@tag</a>
+                                }
+                            </div>
+                        </td>
+                        <td class="whitespace-nowrap text-xs text-slate-500" title="@DateDisplay.Format(server.LastConnectionTestAt)">
+                            @DateDisplay.Relative(server.LastConnectionTestAt)
+                        </td>
+                        <td class="text-right">
+                            <a asp-action="Details" asp-route-id="@server.Id" class="btn-ghost btn-sm" title="Detay">@Icons.Render("eye", "h-4 w-4")</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <partial name="_Pager" model="Model.ToPager()" />
+}

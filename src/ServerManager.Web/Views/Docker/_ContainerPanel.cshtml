@@ -1,0 +1,193 @@
+@model DockerPanelModel<DockerContainerDetailsDto>
+@{
+    var details = Model.Data;
+    var container = details.Container;
+    var health = DockerDisplay.IsRunning(container) ? DockerDisplay.HealthText(container.Health) : null;
+}
+
+<section class="panel mb-6" data-container-state="@container.State">
+    <div class="flex flex-wrap items-start justify-between gap-4 p-5">
+        <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="@DockerDisplay.StateBadgeClass(container)"><span class="badge-dot"></span>@DockerDisplay.StateText(container.State)</span>
+                @if (health is not null)
+                {
+                    <span class="@DockerDisplay.HealthBadgeClass(container.Health)">@health</span>
+                }
+                @if (!string.IsNullOrEmpty(container.ComposeProject))
+                {
+                    <span class="tag">compose: @container.ComposeProject</span>
+                }
+            </div>
+            @if (!string.IsNullOrEmpty(container.Status) && !string.Equals(container.Status, container.State, StringComparison.OrdinalIgnoreCase))
+            {
+                <p class="mt-2 text-sm text-slate-500">@container.Status</p>
+            }
+            <p class="mt-1 break-all font-mono text-xs text-slate-400">@container.Id</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <partial name="_ContainerActions" model="new DockerPanelModel<DockerContainerDto> { ServerId = Model.ServerId, Data = container }" />
+            @if (User.HasPermission(Permissions.DockerManage))
+            {
+                <button type="button" class="btn-secondary btn-sm" data-modal-open="rename-container-modal">@Icons.Render("pencil", "h-4 w-4") Yeniden adlandır</button>
+            }
+        </div>
+    </div>
+    @if (!string.IsNullOrEmpty(details.Error) || details.OomKilled)
+    {
+        <div class="border-t border-slate-200 px-5 py-3 dark:border-slate-800">
+            @if (details.OomKilled)
+            {
+                <p class="text-sm text-red-600 dark:text-red-400">Container bellek yetersizliği nedeniyle sonlandırıldı (OOM killed).</p>
+            }
+            @if (!string.IsNullOrEmpty(details.Error))
+            {
+                <p class="text-sm text-red-600 dark:text-red-400">Hata: @details.Error</p>
+            }
+        </div>
+    }
+</section>
+
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    <section class="panel xl:col-span-2">
+        <div class="panel-header"><h2 class="panel-title">Yapılandırma</h2></div>
+        <dl class="panel-body detail-list">
+            <div class="sm:col-span-2"><dt class="detail-term">Image</dt><dd class="detail-value break-all font-mono">@container.Image</dd></div>
+            <div class="sm:col-span-2"><dt class="detail-term">Komut</dt><dd class="detail-value break-all font-mono text-xs">@(details.Command ?? "—")</dd></div>
+            <div class="sm:col-span-2"><dt class="detail-term">Entrypoint</dt><dd class="detail-value break-all font-mono text-xs">@(details.Entrypoint ?? "—")</dd></div>
+            <div><dt class="detail-term">Çalışma dizini</dt><dd class="detail-value font-mono">@(details.WorkingDir ?? "—")</dd></div>
+            <div><dt class="detail-term">Kullanıcı</dt><dd class="detail-value font-mono">@(details.User ?? "root (varsayılan)")</dd></div>
+            <div><dt class="detail-term">Hostname</dt><dd class="detail-value font-mono">@(details.Hostname ?? "—")</dd></div>
+            <div><dt class="detail-term">Platform</dt><dd class="detail-value font-mono">@(details.Platform ?? "—")</dd></div>
+            <div><dt class="detail-term">Restart policy</dt><dd class="detail-value font-mono">@(details.RestartPolicy ?? "no")</dd></div>
+            <div><dt class="detail-term">Yeniden başlatma sayısı</dt><dd class="detail-value">@container.RestartCount</dd></div>
+        </dl>
+    </section>
+
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Zaman çizelgesi</h2></div>
+        <dl class="panel-body space-y-3 text-sm">
+            <div class="flex justify-between gap-4"><dt class="text-slate-500">Oluşturulma</dt><dd>@DateDisplay.Format(container.CreatedAt)</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-slate-500">Son başlama</dt><dd>@DateDisplay.Format(container.StartedAt)</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-slate-500">Son durma</dt><dd>@DateDisplay.Format(details.FinishedAt)</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-slate-500">Çıkış kodu</dt><dd class="font-mono">@(container.ExitCode?.ToString() ?? "—")</dd></div>
+        </dl>
+    </section>
+</div>
+
+<div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Port yönlendirmeleri</h2></div>
+        @if (details.PortBindings.Count == 0)
+        {
+            <p class="panel-body text-sm text-slate-500">Yayınlanmış port yok.</p>
+        }
+        else
+        {
+            <ul class="panel-body space-y-1 font-mono text-sm">
+                @foreach (var port in details.PortBindings)
+                {
+                    <li>@port</li>
+                }
+            </ul>
+        }
+    </section>
+
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Network'ler</h2></div>
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead><tr><th>Network</th><th>IP</th><th>Gateway</th><th class="hidden md:table-cell">Diğer adlar</th></tr></thead>
+                <tbody>
+                    @if (details.NetworkDetails.Count == 0)
+                    {
+                        <tr><td colspan="4" class="text-center text-slate-500">Bağlı network yok.</td></tr>
+                    }
+                    @foreach (var network in details.NetworkDetails)
+                    {
+                        <tr>
+                            <td class="font-mono">@network.Name</td>
+                            <td class="font-mono text-xs">@(network.IpAddress ?? "—")</td>
+                            <td class="font-mono text-xs">@(network.Gateway ?? "—")</td>
+                            <td class="hidden font-mono text-xs text-slate-500 md:table-cell">@(network.Aliases.Count == 0 ? "—" : string.Join(", ", network.Aliases))</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<section class="panel mt-6">
+    <div class="panel-header"><h2 class="panel-title">Bağlı dizinler ve volume'lar</h2></div>
+    <div class="overflow-x-auto">
+        <table class="data-table">
+            <thead><tr><th>Tür</th><th>Kaynak</th><th>Hedef</th><th>Erişim</th></tr></thead>
+            <tbody>
+                @if (details.Mounts.Count == 0)
+                {
+                    <tr><td colspan="4" class="text-center text-slate-500">Bağlı volume yok.</td></tr>
+                }
+                @foreach (var mount in details.Mounts)
+                {
+                    <tr>
+                        <td><span class="badge-neutral">@mount.Type</span></td>
+                        <td class="break-all font-mono text-xs">@(mount.Name ?? mount.Source)</td>
+                        <td class="break-all font-mono text-xs">@mount.Destination</td>
+                        <td>@(mount.ReadWrite ? "Okuma/yazma" : "Salt okunur")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+    <section class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title">Ortam değişkenleri</h2>
+            <span class="text-xs text-slate-400">Değerler güvenlik nedeniyle gösterilmez</span>
+        </div>
+        @if (details.EnvironmentKeys.Count == 0)
+        {
+            <p class="panel-body text-sm text-slate-500">Tanımlı ortam değişkeni yok.</p>
+        }
+        else
+        {
+            <div class="panel-body flex flex-wrap gap-1.5">
+                @foreach (var key in details.EnvironmentKeys)
+                {
+                    <span class="tag font-mono">@key</span>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Label'lar</h2></div>
+        @if (details.Labels.Count == 0)
+        {
+            <p class="panel-body text-sm text-slate-500">Label yok.</p>
+        }
+        else
+        {
+            <dl class="max-h-72 divide-y divide-slate-100 overflow-y-auto text-xs dark:divide-slate-800">
+                @foreach (var label in details.Labels.OrderBy(l => l.Key, StringComparer.Ordinal))
+                {
+                    <div class="px-5 py-2">
+                        <dt class="break-all font-mono text-slate-500">@label.Key</dt>
+                        <dd class="break-all font-mono text-slate-800 dark:text-slate-200">@label.Value</dd>
+                    </div>
+                }
+            </dl>
+        }
+    </section>
+</div>
+
+<details class="panel mt-6">
+    <summary class="panel-header cursor-pointer select-none">
+        <h2 class="panel-title">Inspect (JSON)</h2>
+        <span class="text-xs text-slate-400">Ortam değişkeni değerleri maskelenmiştir</span>
+    </summary>
+    <pre class="max-h-[32rem] overflow-auto bg-slate-950 p-5 font-mono text-xs leading-relaxed text-slate-200">@details.InspectJson</pre>
+</details>

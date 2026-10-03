@@ -1,0 +1,45 @@
+@layer components {
+  .app-shell {
+    @apply min-h-screen w-full;
+  }
+
+  .app-overlay {
+    @apply pointer-events-none fixed inset-0 z-40 bg-black/50 opacity-0 transition lg:hidden;
+
+    &.is-open {
+      @apply pointer-events-auto opacity-100;
+    }
+  }
+
+  .app-main {
+    @apply flex min-h-screen w-full flex-col lg:pl-64;
+  }
+
+  .app-topbar {
+    @apply sticky top-0 z-30 flex h-16 w-full items-center gap-3 border-b border-slate-200 bg-white/90 px-4 backdrop-blur sm:px-6 dark:border-slate-800 dark:bg-slate-900/90;
+  }
+
+  .app-content {
+    @apply w-full flex-1 p-4 sm:p-6 lg:p-8;
+  }
+
+  .page-header {
+    @apply mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .page-title {
+    @apply text-xl font-semibold sm:text-2xl;
+  }
+
+  .page-lead {
+    @apply mt-1 text-sm text-slate-500 dark:text-slate-400;
+  }
+
+  .back-link {
+    @apply mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300;
+  }
+
+  .auth-shell {
+    @apply flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-900 to-brand-950 px-4 py-12;
+  }
+}

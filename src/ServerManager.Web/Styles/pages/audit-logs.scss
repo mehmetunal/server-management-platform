@@ -1,0 +1,23 @@
+.audit-filters {
+  @apply lg:grid-cols-6;
+}
+
+.audit-filter-actions {
+  @apply flex gap-2 sm:col-span-2 lg:col-span-6;
+}
+
+.audit-time {
+  @apply whitespace-nowrap text-xs;
+}
+
+.audit-action-code {
+  @apply font-mono text-xs text-slate-400;
+}
+
+.audit-target-link {
+  @apply text-brand-600 hover:underline dark:text-brand-400;
+}
+
+.audit-details {
+  @apply max-w-xs truncate text-xs text-slate-500;
+}

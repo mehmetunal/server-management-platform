@@ -1,0 +1,46 @@
+@use "toastr/build/toastr.min";
+
+#toast-container {
+  &.toast-top-right {
+    @apply top-20 right-4;
+  }
+
+  > div {
+    @apply w-80 rounded-xl text-sm opacity-95 shadow-lg;
+    padding: 0.875rem 1rem 0.875rem 3rem;
+    background-position: 1rem center;
+
+    &:hover {
+      @apply opacity-100 shadow-xl;
+    }
+  }
+
+  > .toast-success {
+    @apply bg-emerald-600;
+  }
+
+  > .toast-error {
+    @apply bg-red-600;
+  }
+
+  > .toast-warning {
+    @apply bg-amber-600;
+  }
+
+  > .toast-info {
+    @apply bg-sky-600;
+  }
+
+  .toast-title {
+    @apply font-semibold;
+  }
+
+  .toast-close-button {
+    @apply top-0 right-0 opacity-80 hover:opacity-100;
+    text-shadow: none;
+  }
+
+  .toast-progress {
+    @apply h-1 bg-white/60 opacity-100;
+  }
+}

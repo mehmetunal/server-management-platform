@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using ServerManager.Application.Authorization;
-using ServerManager.Application.Common;
 using ServerManager.Application.DTOs.Users;
 using ServerManager.Application.Interfaces.Services;
 using ServerManager.Web.Authorization;
@@ -22,7 +21,7 @@ public class UsersController : Controller
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
         var users = await _userManagementService.GetUsersAsync(cancellationToken);
-        return View(users);
+        return Request.IsAjax() ? PartialView("_UserList", users) : View(users);
     }
 
     [HttpGet]
@@ -31,15 +30,14 @@ public class UsersController : Controller
     [HttpPost]
     public async Task<IActionResult> Create(CreateUserDto dto, CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid)
+            return this.ApiInvalidModel();
+
         var result = await _userManagementService.CreateAsync(dto, cancellationToken);
         if (!result.IsSuccess)
-        {
-            ModelState.AddServiceErrors(result);
-            return View(dto);
-        }
+            return this.ApiFailure(result, "Kullanıcı oluşturulamadı.");
 
-        TempData["Success"] = result.Message;
-        return RedirectToAction(nameof(Index));
+        return this.ApiSuccess(result.Message, Url.Action(nameof(Index)));
     }
 
     [HttpGet]
@@ -52,29 +50,23 @@ public class UsersController : Controller
     [HttpPost]
     public async Task<IActionResult> Edit(Guid id, UpdateUserDto dto, CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid)
+            return this.ApiInvalidModel();
+
         dto.Id = id;
         var result = await _userManagementService.UpdateAsync(dto, cancellationToken);
-        if (result.ErrorType == ServiceErrorType.NotFound)
-            return NotFound();
-
         if (!result.IsSuccess)
-        {
-            ModelState.AddServiceErrors(result);
-            return View(dto);
-        }
+            return this.ApiFailure(result, "Kullanıcı güncellenemedi.");
 
-        TempData["Success"] = result.Message;
-        return RedirectToAction(nameof(Index));
+        return this.ApiSuccess(result.Message, Url.Action(nameof(Index)));
     }
 
     [HttpPost]
     public async Task<IActionResult> ToggleLock(Guid id, bool locked, CancellationToken cancellationToken)
     {
         var result = await _userManagementService.SetLockAsync(id, locked, cancellationToken);
-        if (result.ErrorType == ServiceErrorType.NotFound)
-            return NotFound();
-
-        TempData[result.IsSuccess ? "Success" : "Error"] = result.Message;
-        return RedirectToAction(nameof(Index));
+        return result.IsSuccess
+            ? this.ApiSuccess(result.Message)
+            : this.ApiFailure(result, "Kullanıcının kilit durumu değiştirilemedi.");
     }
 }

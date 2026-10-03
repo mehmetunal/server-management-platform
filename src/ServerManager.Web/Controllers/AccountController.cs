@@ -32,25 +32,24 @@ public class AccountController : Controller
     [EnableRateLimiting(RateLimitPolicies.Login)]
     public async Task<IActionResult> Login(LoginDto dto, CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid)
+            return this.ApiInvalidModel();
+
         var result = await _accountService.SignInAsync(dto, cancellationToken);
         if (!result.IsSuccess)
-        {
-            ModelState.AddServiceErrors(result);
-            dto.Password = string.Empty;
-            return View(dto);
-        }
+            return this.ApiFailure(result, "Giriş yapılamadı.");
 
-        if (!string.IsNullOrEmpty(dto.ReturnUrl) && Url.IsLocalUrl(dto.ReturnUrl))
-            return LocalRedirect(dto.ReturnUrl);
-
-        return RedirectToAction("Index", "Dashboard");
+        var target = !string.IsNullOrEmpty(dto.ReturnUrl) && Url.IsLocalUrl(dto.ReturnUrl)
+            ? dto.ReturnUrl
+            : Url.Action("Index", "Dashboard");
+        return this.ApiSuccess(result.Message, target);
     }
 
     [HttpPost]
     public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
         await _accountService.SignOutAsync(cancellationToken);
-        return RedirectToAction(nameof(Login));
+        return this.ApiSuccess("Oturum kapatıldı.", Url.Action(nameof(Login)));
     }
 
     [HttpGet]

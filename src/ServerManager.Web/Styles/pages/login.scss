@@ -1,0 +1,23 @@
+.login-card {
+  @apply rounded-2xl border border-slate-800 bg-slate-900/80 p-6 shadow-2xl backdrop-blur sm:p-8;
+}
+
+.login-title {
+  @apply text-lg font-semibold text-white;
+}
+
+.login-lead {
+  @apply mt-1 text-sm text-slate-400;
+}
+
+.login-form {
+  @apply mt-6 space-y-5;
+}
+
+.login-label {
+  @apply text-slate-300;
+}
+
+.login-footnote {
+  @apply mt-6 text-center text-xs text-slate-500;
+}

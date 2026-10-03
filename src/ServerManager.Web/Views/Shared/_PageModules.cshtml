@@ -1,0 +1,8 @@
+@{
+    var page = ViewData["Page"] as string;
+}
+<script type="module" src="~/js/site.js" asp-append-version="true"></script>
+@if (!string.IsNullOrEmpty(page))
+{
+    <script type="module" src="@Url.Content($"~/js/pages/{page}.js")" asp-append-version="true"></script>
+}

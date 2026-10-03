@@ -4,12 +4,13 @@
     var monitoring = Model.Monitoring;
     var snapshot = monitoring.Snapshot;
     ViewData["Title"] = server.Name;
+    ViewData["Page"] = "server-details";
 }
 
 <partial name="_ServerHeader" model="Model" />
 
-<div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
-    <div class="space-y-6 xl:col-span-2">
+<div class="server-details-grid" data-region="server-details">
+    <div class="server-details-main">
         <section class="panel">
             <div class="panel-header"><h2 class="panel-title">Sunucu bilgileri</h2></div>
             <dl class="panel-body detail-list">
@@ -44,13 +45,13 @@
         <section class="panel">
             <div class="panel-header">
                 <h2 class="panel-title">Sistem</h2>
-                <a asp-action="Metrics" asp-route-id="@server.Id" class="text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Metrikler ve grafikler</a>
+                <a asp-action="Metrics" asp-route-id="@server.Id" class="panel-link">Metrikler ve grafikler</a>
             </div>
             @if (snapshot is null)
             {
                 <div class="empty-state">
                     <span class="empty-state-icon">@Icons.Render("chart", "h-6 w-6")</span>
-                    <p class="font-medium text-slate-700 dark:text-slate-200">Henüz metrik toplanmadı</p>
+                    <p class="empty-state-title">Henüz metrik toplanmadı</p>
                     <p>@(monitoring.HasTrustedHostKey ? "İlk ölçüm birkaç saniye içinde gelecek." : "Önce \"Bağlantıyı Test Et\" ile host key'i doğrulayın.")</p>
                 </div>
             }
@@ -68,7 +69,7 @@
         </section>
     </div>
 
-    <div class="space-y-6">
+    <div class="server-details-side">
         <section class="panel">
             <div class="panel-header"><h2 class="panel-title">Bağlantı ve izleme</h2></div>
             <dl class="panel-body space-y-4">
@@ -144,5 +145,4 @@
 
 @section Scripts {
     <script src="~/lib/signalr/signalr.min.js"></script>
-    <script src="~/js/monitoring.js" asp-append-version="true"></script>
 }

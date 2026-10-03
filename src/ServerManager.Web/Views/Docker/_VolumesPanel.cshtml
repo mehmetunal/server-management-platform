@@ -1,0 +1,91 @@
+@model DockerPanelModel<IReadOnlyList<DockerVolumeDto>>
+@{
+    var volumes = Model.Data;
+    var canDelete = User.HasPermission(Permissions.DockerDelete);
+}
+
+@if (volumes.Count == 0)
+{
+    <section class="panel">
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("database", "h-6 w-6")</span>
+            <p class="font-medium text-slate-700 dark:text-slate-200">Bu sunucuda volume yok</p>
+        </div>
+    </section>
+}
+else
+{
+    <section class="panel">
+        <div class="overflow-x-auto">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Volume</th>
+                        <th lang="en">Driver</th>
+                        <th class="hidden lg:table-cell" lang="en">Mountpoint</th>
+                        <th class="text-right">Boyut</th>
+                        <th>Kullanan <span lang="en">container</span>'lar</th>
+                        @if (canDelete)
+                        {
+                            <th class="text-right">İşlemler</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var volume in volumes)
+                    {
+                        var inUse = volume.Containers.Count > 0;
+                        <tr>
+                            <td class="max-w-[18rem]">
+                                <span class="break-all font-mono text-sm" title="@volume.Name">@(volume.Name.Length > 40 ? volume.Name[..12] + "…" : volume.Name)</span>
+                                @if (!string.IsNullOrEmpty(volume.ComposeProject))
+                                {
+                                    <span class="tag ml-1">@volume.ComposeProject</span>
+                                }
+                            </td>
+                            <td class="font-mono text-xs">@volume.Driver</td>
+                            <td class="hidden max-w-[20rem] truncate font-mono text-xs text-slate-500 lg:table-cell" title="@volume.Mountpoint">@volume.Mountpoint</td>
+                            <td class="text-right tabular-nums">@(volume.SizeBytes.HasValue ? MetricDisplay.Bytes(volume.SizeBytes) : "—")</td>
+                            <td>
+                                @if (!inUse)
+                                {
+                                    <span class="badge-warning">Kullanılmıyor</span>
+                                }
+                                else
+                                {
+                                    <div class="flex flex-wrap gap-1">
+                                        @foreach (var name in volume.Containers)
+                                        {
+                                            <a asp-action="Container" asp-route-id="@Model.ServerId" asp-route-name="@name" class="tag font-mono">@name</a>
+                                        }
+                                    </div>
+                                }
+                            </td>
+                            @if (canDelete)
+                            {
+                                <td class="text-right">
+                                    @if (inUse)
+                                    {
+                                        <span class="text-xs text-slate-400" title="Kullanımdaki volume silinemez">—</span>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn-ghost-danger btn-sm px-2" title="Sil"
+                                                data-ajax-action data-url="@Url.Action("RemoveVolume", new { id = Model.ServerId })"
+                                                data-field-name="@volume.Name"
+                                                data-confirm-title="Volume'ı sil"
+                                                data-confirm-message="@volume.Name volume'ı ve içindeki TÜM VERİ kalıcı olarak silinecek. Bu işlem geri alınamaz."
+                                                data-confirm-name="@volume.Name"
+                                                data-confirm-label="Volume'ı sil">
+                                            @Icons.Render("trash", "h-4 w-4")
+                                        </button>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+}

@@ -1,6 +1,7 @@
 @model DashboardSummaryDto
 @{
     ViewData["Title"] = "Dashboard";
+    ViewData["Page"] = "dashboard";
     var canCreate = User.HasPermission(Permissions.ServerCreate);
     var canAudit = User.HasPermission(Permissions.AuditView);
 }
@@ -16,7 +17,7 @@
     }
 </div>
 
-<div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+<div class="dashboard-stats">
     <div class="stat-card">
         <span class="stat-label">Toplam sunucu</span>
         <span class="stat-value" data-live-dashboard="totalServers">@Model.TotalServers</span>
@@ -35,7 +36,7 @@
     </div>
 </div>
 
-<div class="mt-4 flex flex-wrap gap-2">
+<div class="dashboard-badges">
     <span class="badge-success"><span class="badge-dot"></span> Healthy · @Model.HealthyServers</span>
     <span class="badge-warning"><span class="badge-dot"></span> Warning · @Model.WarningServers</span>
     <span class="badge-danger"><span class="badge-dot"></span> Critical · @Model.CriticalServers</span>
@@ -49,7 +50,7 @@
     var hasResources = resources.ReportingServers > 0;
     var reportingText = hasResources ? $"{resources.ReportingServers} sunucunun ortalaması" : "Henüz metrik gelmedi";
 }
-<div class="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+<div class="dashboard-stats mt-6">
     <div class="stat-card">
         <span class="stat-label flex items-center gap-2">@Icons.Render("chart", "h-4 w-4") CPU kullanımı</span>
         <span class="stat-value" data-live-dashboard="cpuText">@MetricDisplay.Percent(resources.AverageCpuUsagePercent)</span>
@@ -78,24 +79,24 @@
         <span class="text-xs text-slate-400">%</span>
     </div>
     <div class="panel-body">
-        <div class="relative h-64">
+        <div class="dashboard-chart">
             <canvas data-metric-chart="fleet" aria-label="Ortalama kaynak kullanımı grafiği" role="img"></canvas>
-            <p class="absolute inset-0 flex items-center justify-center text-sm text-slate-400" data-chart-empty hidden>Henüz metrik verisi yok.</p>
+            <p class="dashboard-chart-empty" data-chart-empty hidden>Henüz metrik verisi yok.</p>
         </div>
     </div>
 </section>
 
-<div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
+<div class="dashboard-lists">
     <section class="panel">
         <div class="panel-header">
             <h2 class="panel-title">Son eklenen sunucular</h2>
-            <a asp-controller="Servers" asp-action="Index" class="text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Tümü</a>
+            <a asp-controller="Servers" asp-action="Index" class="panel-link">Tümü</a>
         </div>
         @if (Model.RecentServers.Count == 0)
         {
             <div class="empty-state">
                 <span class="empty-state-icon">@Icons.Render("server", "h-6 w-6")</span>
-                <p class="font-medium text-slate-700 dark:text-slate-200">Henüz sunucu eklenmedi</p>
+                <p class="empty-state-title">Henüz sunucu eklenmedi</p>
                 <p>İlk sunucunuzu ekleyerek başlayın.</p>
                 @if (canCreate)
                 {
@@ -128,7 +129,7 @@
             <h2 class="panel-title">Son sistem olayları</h2>
             @if (canAudit)
             {
-                <a asp-controller="AuditLogs" asp-action="Index" class="text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">Tümü</a>
+                <a asp-controller="AuditLogs" asp-action="Index" class="panel-link">Tümü</a>
             }
         </div>
         @if (Model.RecentEvents.Count == 0)
@@ -167,5 +168,4 @@
 @section Scripts {
     <script src="~/lib/chart.js/chart.umd.min.js"></script>
     <script src="~/lib/signalr/signalr.min.js"></script>
-    <script src="~/js/monitoring.js" asp-append-version="true"></script>
 }

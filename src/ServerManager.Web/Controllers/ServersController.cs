@@ -10,29 +10,28 @@ using ServerManager.Web.Authorization;
 using ServerManager.Web.Extensions;
 using ServerManager.Web.Models;
 using ServerManager.Web.RateLimiting;
+using ServerManager.Web.Services;
 
 namespace ServerManager.Web.Controllers;
 
 [HasPermission(Permissions.ServerView)]
 public class ServersController : Controller
 {
-    private static readonly string[] SecretFieldNames =
-    [
-        nameof(ServerFormDto.Password),
-        nameof(ServerFormDto.PrivateKey),
-        nameof(ServerFormDto.Passphrase),
-        nameof(ServerFormDto.SudoPassword)
-    ];
-
     private readonly IServerService _serverService;
     private readonly IMonitoringService _monitoringService;
     private readonly MonitoringOptions _monitoringOptions;
+    private readonly ServerPageBuilder _pageBuilder;
 
-    public ServersController(IServerService serverService, IMonitoringService monitoringService, IOptions<MonitoringOptions> monitoringOptions)
+    public ServersController(
+        IServerService serverService,
+        IMonitoringService monitoringService,
+        IOptions<MonitoringOptions> monitoringOptions,
+        ServerPageBuilder pageBuilder)
     {
         _serverService = serverService;
         _monitoringService = monitoringService;
         _monitoringOptions = monitoringOptions.Value;
+        _pageBuilder = pageBuilder;
     }
 
     [HttpGet]
@@ -42,27 +41,28 @@ public class ServersController : Controller
         var tags = await _serverService.GetTagNamesAsync(cancellationToken);
         var resources = await _monitoringService.GetLatestSummariesAsync(servers.Items.Select(s => s.Id).ToList(), cancellationToken);
 
-        return View(new ServerIndexViewModel
+        var model = new ServerIndexViewModel
         {
             Servers = servers,
             Filter = filter,
             Tags = tags,
             Resources = resources,
             Thresholds = _monitoringOptions
-        });
+        };
+        return Request.IsAjax() ? PartialView("_ServerList", model) : View(model);
     }
 
     [HttpGet]
     public async Task<IActionResult> Details(Guid id, CancellationToken cancellationToken)
     {
-        var model = await BuildPageAsync(id, ServerPageViewModel.OverviewTab, MetricRange.OneHour, cancellationToken);
+        var model = await _pageBuilder.BuildAsync(id, ServerPageViewModel.OverviewTab, MetricRange.OneHour, cancellationToken);
         return model is null ? NotFound() : View(model);
     }
 
     [HttpGet]
     public async Task<IActionResult> Metrics(Guid id, string? range, CancellationToken cancellationToken)
     {
-        var model = await BuildPageAsync(id, ServerPageViewModel.MetricsTab, MetricRanges.Parse(range), cancellationToken);
+        var model = await _pageBuilder.BuildAsync(id, ServerPageViewModel.MetricsTab, MetricRanges.Parse(range), cancellationToken);
         return model is null ? NotFound() : View(model);
     }
 
@@ -111,16 +111,14 @@ public class ServersController : Controller
     [HasPermission(Permissions.ServerCreate)]
     public async Task<IActionResult> Create(CreateServerDto dto, CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid)
+            return this.ApiInvalidModel();
+
         var result = await _serverService.CreateAsync(dto, cancellationToken);
         if (!result.IsSuccess)
-        {
-            ModelState.AddServiceErrors(result);
-            ClearSecrets(dto);
-            return View(dto);
-        }
+            return this.ApiFailure(result, "Sunucu eklenemedi.");
 
-        TempData["Success"] = result.Message;
-        return RedirectToAction(nameof(Details), new { id = result.Data });
+        return this.ApiSuccess(result.Message, Url.Action(nameof(Details), new { id = result.Data }));
     }
 
     [HttpGet]
@@ -135,21 +133,15 @@ public class ServersController : Controller
     [HasPermission(Permissions.ServerEdit)]
     public async Task<IActionResult> Edit(Guid id, UpdateServerDto dto, CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid)
+            return this.ApiInvalidModel();
+
         dto.Id = id;
         var result = await _serverService.UpdateAsync(dto, cancellationToken);
-        if (result.ErrorType == ServiceErrorType.NotFound)
-            return NotFound();
-
         if (!result.IsSuccess)
-        {
-            ModelState.AddServiceErrors(result);
-            ClearSecrets(dto);
-            await RestoreSecretFlagsAsync(dto, cancellationToken);
-            return View(dto);
-        }
+            return this.ApiFailure(result, "Sunucu güncellenemedi.");
 
-        TempData["Success"] = result.Message;
-        return RedirectToAction(nameof(Details), new { id });
+        return this.ApiSuccess(result.Message, Url.Action(nameof(Details), new { id }));
     }
 
     [HttpPost]
@@ -157,17 +149,10 @@ public class ServersController : Controller
     public async Task<IActionResult> Delete(Guid id, string? confirmationName, CancellationToken cancellationToken)
     {
         var result = await _serverService.DeleteAsync(id, confirmationName, cancellationToken);
-        if (result.ErrorType == ServiceErrorType.NotFound)
-            return NotFound();
-
         if (!result.IsSuccess)
-        {
-            TempData["Error"] = result.Errors.FirstOrDefault()?.Message ?? result.Message;
-            return RedirectToAction(nameof(Details), new { id });
-        }
+            return this.ApiFailure(result, "Sunucu silinemedi.");
 
-        TempData["Success"] = result.Message;
-        return RedirectToAction(nameof(Index));
+        return this.ApiSuccess(result.Message, Url.Action(nameof(Index)));
     }
 
     [HttpPost]
@@ -183,50 +168,5 @@ public class ServersController : Controller
             return BadRequest(ApiResponse<ConnectionTestResultDto>.Fail(result.Message ?? "Bağlantı testi yapılamadı.", StatusCodes.Status400BadRequest));
 
         return Ok(ApiResponse<ConnectionTestResultDto>.Success(result.Data, result.Data!.Message));
-    }
-
-    private async Task<ServerPageViewModel?> BuildPageAsync(Guid id, string activeTab, MetricRange range, CancellationToken cancellationToken)
-    {
-        var details = await _serverService.GetDetailsAsync(id, cancellationToken);
-        if (!details.IsSuccess)
-            return null;
-
-        var monitoring = await _monitoringService.GetOverviewAsync(id, cancellationToken);
-        if (!monitoring.IsSuccess)
-            return null;
-
-        return new ServerPageViewModel
-        {
-            Server = details.Data!,
-            Monitoring = monitoring.Data!,
-            Thresholds = _monitoringOptions,
-            ActiveTab = activeTab,
-            Range = range
-        };
-    }
-
-    private void ClearSecrets(ServerFormDto dto)
-    {
-        dto.ClearSecrets();
-        foreach (var name in SecretFieldNames)
-        {
-            if (ModelState.TryGetValue(name, out var entry))
-            {
-                entry.RawValue = null;
-                entry.AttemptedValue = null;
-            }
-        }
-    }
-
-    private async Task RestoreSecretFlagsAsync(UpdateServerDto dto, CancellationToken cancellationToken)
-    {
-        var current = await _serverService.GetForEditAsync(dto.Id, cancellationToken);
-        if (current.Data is null)
-            return;
-
-        dto.HasPassword = current.Data.HasPassword;
-        dto.HasPrivateKey = current.Data.HasPrivateKey;
-        dto.HasPassphrase = current.Data.HasPassphrase;
-        dto.HasSudoPassword = current.Data.HasSudoPassword;
     }
 }
