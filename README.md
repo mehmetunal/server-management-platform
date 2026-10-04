@@ -2465,8 +2465,8 @@ Testler veritabanına veya gerçek sunuculara bağlanmaz. `global.json` içinde 
 | Rol | İzinler |
 | --- | --- |
 | SuperAdmin | Tümü (eklenti yönetimi `plugin.manage` yalnızca SuperAdmin'dedir) |
-| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker, terminal, dosya ve deployment izinleri, sistem bilgisi görüntüleme/yönetim, alarm görüntüleme/üstlenme/yönetim, yedekleme, güvenlik merkezi, audit log görüntüleme/dışa aktarma |
-| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal, sunucu terminali, sistem bilgisi görüntüleme/yönetim, dosya görüntüleme/oluşturma/düzenleme/yükleme/indirme, deployment görüntüleme/çalıştırma, alarm görüntüleme/üstlenme, yedek görüntüleme/çalıştırma, güvenlik görüntüleme/tarama |
+| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker, terminal, dosya ve deployment izinleri, sistem bilgisi görüntüleme/yönetim, alarm görüntüleme/üstlenme/yönetim, yedekleme, güvenlik merkezi, audit log görüntüleme/dışa aktarma, toplu komut görüntüleme/çalıştırma, şablon yönetimi, bulut sağlayıcı görüntüleme/yönetim/sunucu oluşturma, ayarlar |
+| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal, sunucu terminali, sistem bilgisi görüntüleme/yönetim, dosya görüntüleme/oluşturma/düzenleme/yükleme/indirme, deployment görüntüleme/çalıştırma, alarm görüntüleme/üstlenme, yedek görüntüleme/çalıştırma, güvenlik görüntüleme/tarama, toplu komut geçmişi görüntüleme, bulut sağlayıcı görüntüleme |
 | Developer | Dashboard, sunucu görüntüleme, sistem bilgisi görüntüleme, Docker görüntüleme/yeniden başlatma, dosya görüntüleme/indirme, deployment görüntüleme/çalıştırma, alarm görüntüleme |
 | Viewer | Dashboard, sunucu görüntüleme, Docker görüntüleme, deployment görüntüleme, alarm görüntüleme |
 
@@ -2965,6 +2965,38 @@ Sunucu sayfasındaki **Services**, **Processes**, **Logs**, **Network** ve **Sto
 Servis kontrolü ve process sonlandırma audit log'a yazılır (`system.service_control`, `system.process_signal`). Bu işlemler kullanıcı başına dakikada 20 istekle sınırlıdır.
 
 **Backups**, **Alerts** ve **Activity** sekmeleri ilgili modülün listesini yalnızca bu sunucuya süzerek gösterir: sunucunun yedekleme işleri ve yedek geçmişi (`backup.view`), sunucuya ait alarmlar (`alert.view`) ve sunucu üzerinde yapılan işlemlerin audit kayıtları (`audit.view`). Sekmeler yalnızca ilgili izni olan kullanıcılara görünür.
+
+### Sunucu grupları, maliyet ve sunucu seçici
+
+**Gruplar** sayfası (`/ServerGroups`) sunucuları proje, müşteri veya rol bazında toplar. Bir sunucu en fazla bir gruptadır; grup silinirse sunucular silinmez, yalnızca gruptan çıkarılır (grup kaydı da yumuşak silinir). Görüntüleme `server.view`, ekleme/düzenleme/silme `server.edit` izni ister ve her değişiklik audit log'a yazılır (`server_group.create/update/delete`).
+
+- Sunucu formunda grup, **aylık maliyet** (0–1.000.000) ve para birimi (USD, EUR, TRY, GBP) seçilir. Maliyet girilip para birimi seçilmezse USD kabul edilir.
+- Sunucu listesi gruba göre süzülebilir; grup kartlarında sunucu sayısı, erişilebilir sunucu sayısı ve para birimine göre toplam aylık maliyet görünür.
+- Menüdeki **Docker, İmajlar, Volume'lar, Ağlar, Terminal, Dosyalar, Servisler, Process'ler, Loglar** ve **Metrikler** bağlantıları önce sunucu seçiciyi açar; seçilen sunucunun ilgili sekmesine gider. Seçici, kullanıcının o özellik için izni yoksa menüde görünmez.
+
+### Toplu komut ve şablonlar
+
+**Toplu komut** sayfası (`/CommandRuns`) bir komutu veya çok satırlı betiği seçilen sunucularda aynı anda çalıştırır. Komut her sunucuda `sh -c '<betik>' 2>&1` olarak, en fazla 5 sunucuda paralel çalışır; stdout ve stderr yazıldığı sırayla birleştirilir.
+
+| İzin | Kapsam | Varsayılan roller |
+| --- | --- | --- |
+| `command.view` | Komut geçmişini ve çıktıları görüntüleme, şablon listesini görme | SuperAdmin, Admin, Operator |
+| `command.run` | Sunucularda toplu komut çalıştırma | SuperAdmin, Admin |
+| `template.manage` | Betik ve cloud-init şablonu ekleme/düzenleme/silme | SuperAdmin, Admin |
+
+- Hedefler tek tek veya grup düğmesiyle seçilir (en fazla 100 sunucu). Zaman aşımı 5–900 saniye, komut en fazla 8000 karakterdir.
+- Çalıştırmadan önce onay penceresi komutu ve sunucuları gösterir; 5 veya daha fazla sunucuda sunucu sayısının yazılması istenir.
+- **sudo ile çalıştır** yalnızca sudo kullanımı açık sunuculara uygulanır; diğer sunucularda komut yetkisiz çalıştırılmaz, "başarısız" olarak işaretlenir.
+- Her sunucunun durumu (başarılı, başarısız, zaman aşımı, kesildi), çıkış kodu, süresi ve çıktısının son 32.000 karakteri saklanır. Ayrıntı sayfası çalışma sürerken kendiliğinden yenilenir.
+- Komut HTTP isteğinden bağımsız arka planda çalışır. Uygulama kapanırsa süren komutlar "kesildi" olarak kapanır; açılışta önceki çalışmadan yarım kalan kayıtlar da "kesildi" olarak işaretlenir. Komut geçmişi silinmez.
+- Her çalıştırma audit log'a `command.run` olarak (sunucular, sudo bilgisi ve komut metniyle) yazılır.
+
+**Şablonlar** (`/ServerTemplates`) iki türdür:
+
+- **Kabuk betiği:** Toplu komut formunda seçildiğinde içeriği komut alanına kopyalanır ("sudo gerektirir" işaretliyse sudo kutusu da işaretlenir); çalıştırmadan önce düzenlenebilir. Şablon listesindeki çalıştır düğmesi formu bu şablonla açar.
+- **cloud-init:** Bulut sağlayıcıda yeni sunucu oluşturulurken user-data olarak verilir; içerik `#cloud-config` veya `#!` ile başlamalıdır.
+
+Şablon içeriği şifrelenmeden saklanır; parola veya API anahtarı yazılmamalıdır. Silinen şablon yumuşak silinir; o şablonla çalıştırılmış komutların geçmişi korunur.
 
 ### Eklentiler
 
