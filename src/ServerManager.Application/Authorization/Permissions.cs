@@ -49,6 +49,10 @@ public static class Permissions
     public const string UserManage = "user.manage";
 
     public const string AuditView = "audit.view";
+    public const string AuditExport = "audit.export";
+
+    public const string SecurityView = "security.view";
+    public const string SecurityScan = "security.scan";
 
     public static readonly IReadOnlyList<string> All =
     [
@@ -86,7 +90,10 @@ public static class Permissions
         BackupRestore,
         PluginManage,
         UserManage,
-        AuditView
+        AuditView,
+        AuditExport,
+        SecurityView,
+        SecurityScan
     ];
 
     public static readonly IReadOnlyDictionary<string, string> DisplayNames = new Dictionary<string, string>
@@ -125,6 +132,9 @@ public static class Permissions
         [BackupRestore] = "Yedeği geri yükleme ve şifresi çözülmüş yedeği indirme",
         [PluginManage] = "Eklenti kurma, etkinleştirme ve devre dışı bırakma",
         [UserManage] = "Kullanıcı yönetimi",
-        [AuditView] = "Audit log görüntüleme"
+        [AuditView] = "Audit log görüntüleme",
+        [AuditExport] = "Audit log'u CSV olarak dışa aktarma ve bütünlüğünü doğrulama",
+        [SecurityView] = "Güvenlik merkezi ve sunucu güvenlik taramalarını görüntüleme",
+        [SecurityScan] = "Sunucuda güvenlik taraması başlatma (yalnızca okuma yapar)"
     };
 }

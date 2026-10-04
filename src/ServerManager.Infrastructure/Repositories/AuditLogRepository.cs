@@ -18,35 +18,7 @@ public class AuditLogRepository : Repository<AuditLog>, IAuditLogRepository
         var page = Paging.NormalizePage(filter.Page);
         var pageSize = Paging.NormalizePageSize(filter.PageSize);
 
-        var query = _dbSet.AsNoTracking();
-
-        if (!string.IsNullOrWhiteSpace(filter.Search))
-        {
-            var search = filter.Search.Trim();
-            query = query.Where(a =>
-                (a.UserName != null && a.UserName.Contains(search))
-                || (a.TargetName != null && a.TargetName.Contains(search))
-                || (a.IpAddress != null && a.IpAddress.Contains(search))
-                || (a.Details != null && a.Details.Contains(search)));
-        }
-
-        if (!string.IsNullOrWhiteSpace(filter.Action))
-            query = query.Where(a => a.Action == filter.Action);
-
-        if (filter.IsSuccess.HasValue)
-            query = query.Where(a => a.IsSuccess == filter.IsSuccess.Value);
-
-        if (filter.From.HasValue)
-        {
-            var from = AppTimeZone.ToUtc(filter.From.Value.Date);
-            query = query.Where(a => a.CreatedAt >= from);
-        }
-
-        if (filter.To.HasValue)
-        {
-            var toExclusive = AppTimeZone.ToUtc(filter.To.Value.Date.AddDays(1));
-            query = query.Where(a => a.CreatedAt < toExclusive);
-        }
+        var query = ApplyFilter(_dbSet.AsNoTracking(), filter);
 
         var totalCount = await query.CountAsync(cancellationToken);
         var items = await query
@@ -66,4 +38,132 @@ public class AuditLogRepository : Repository<AuditLog>, IAuditLogRepository
             .ThenByDescending(a => a.Id)
             .Take(count)
             .ToListAsync(cancellationToken);
+
+    public Task<AuditLog?> GetDetailsAsync(long id, CancellationToken cancellationToken = default) =>
+        _dbSet.AsNoTracking().FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+
+    public async Task<(IReadOnlyList<AuditLog> Items, int TotalCount)> ExportAsync(
+        AuditLogFilterDto filter, int maxRows, CancellationToken cancellationToken = default)
+    {
+        var query = ApplyFilter(_dbSet.AsNoTracking(), filter);
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderByDescending(a => a.CreatedAt)
+            .ThenByDescending(a => a.Id)
+            .Take(maxRows)
+            .ToListAsync(cancellationToken);
+        return (items, totalCount);
+    }
+
+    public async Task<AuditStatsDto> GetStatsAsync(
+        DateTime sinceUtc, string failedLoginAction, int topActionCount, CancellationToken cancellationToken = default)
+    {
+        var query = _dbSet.AsNoTracking().Where(a => a.CreatedAt >= sinceUtc);
+
+        var totals = await query
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                Total = g.Count(),
+                Failed = g.Count(a => !a.IsSuccess),
+                FailedLogins = g.Count(a => a.Action == failedLoginAction)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var activeUsers = await query
+            .Where(a => a.UserId != null)
+            .Select(a => a.UserId)
+            .Distinct()
+            .CountAsync(cancellationToken);
+
+        var topActions = await query
+            .GroupBy(a => a.Action)
+            .Select(g => new { Action = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .ThenBy(x => x.Action)
+            .Take(topActionCount)
+            .ToListAsync(cancellationToken);
+
+        return new AuditStatsDto
+        {
+            SinceUtc = sinceUtc,
+            TotalCount = totals?.Total ?? 0,
+            FailedCount = totals?.Failed ?? 0,
+            FailedLoginCount = totals?.FailedLogins ?? 0,
+            ActiveUserCount = activeUsers,
+            TopActions = topActions.Select(x => new AuditActionCount(x.Action, x.Count)).ToList()
+        };
+    }
+
+    public async Task<IReadOnlyList<string>> GetEntityTypesAsync(CancellationToken cancellationToken = default) =>
+        await _dbSet
+            .AsNoTracking()
+            .Where(a => a.EntityType != null)
+            .Select(a => a.EntityType!)
+            .Distinct()
+            .OrderBy(t => t)
+            .ToListAsync(cancellationToken);
+
+    public Task<string?> GetLastChainHashAsync(CancellationToken cancellationToken = default) =>
+        _dbSet
+            .AsNoTracking()
+            .OrderByDescending(a => a.Id)
+            .Select(a => a.ChainHash)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<AuditLog>> GetChainBatchAsync(long afterId, int take, CancellationToken cancellationToken = default) =>
+        await _dbSet
+            .AsNoTracking()
+            .Where(a => a.Id > afterId)
+            .OrderBy(a => a.Id)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+    private static IQueryable<AuditLog> ApplyFilter(IQueryable<AuditLog> query, AuditLogFilterDto filter)
+    {
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var search = filter.Search.Trim();
+            query = query.Where(a =>
+                (a.UserName != null && a.UserName.Contains(search))
+                || (a.TargetName != null && a.TargetName.Contains(search))
+                || (a.IpAddress != null && a.IpAddress.Contains(search))
+                || (a.Details != null && a.Details.Contains(search)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Action))
+            query = query.Where(a => a.Action == filter.Action);
+
+        if (filter.IsSuccess.HasValue)
+            query = query.Where(a => a.IsSuccess == filter.IsSuccess.Value);
+
+        if (!string.IsNullOrWhiteSpace(filter.User))
+        {
+            var user = filter.User.Trim();
+            query = query.Where(a => a.UserName != null && a.UserName.Contains(user));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Ip))
+        {
+            var ip = filter.Ip.Trim();
+            query = query.Where(a => a.IpAddress != null && a.IpAddress.StartsWith(ip));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.EntityType))
+            query = query.Where(a => a.EntityType == filter.EntityType);
+
+        if (filter.From.HasValue)
+        {
+            var from = AppTimeZone.ToUtc(filter.From.Value.Date);
+            query = query.Where(a => a.CreatedAt >= from);
+        }
+
+        if (filter.To.HasValue)
+        {
+            var toExclusive = AppTimeZone.ToUtc(filter.To.Value.Date.AddDays(1));
+            query = query.Where(a => a.CreatedAt < toExclusive);
+        }
+
+        return query;
+    }
 }

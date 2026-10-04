@@ -28,6 +28,7 @@ public static class AlertRuleKinds
         AlertRuleKind.SslCertificateExpiry => "SSL sertifikası bitiyor",
         AlertRuleKind.DeploymentFailed => "Deployment başarısız",
         AlertRuleKind.BackupFailed => "Yedekleme başarısız",
+        AlertRuleKind.SecurityFinding => "Kritik güvenlik bulgusu",
         _ => kind.ToString()
     };
 
@@ -42,6 +43,7 @@ public static class AlertRuleKinds
             AlertRuleKind.ServerOffline or AlertRuleKind.UptimeCheckDown =>
                 durationMinutes > 0 ? $"{durationMinutes} dk boyunca" : "İlk hatada",
             AlertRuleKind.BackupFailed => "Son yedekleme başarısız olduğunda",
+            AlertRuleKind.SecurityFinding => "Son güvenlik taramasında kritik bulgu olduğunda",
             _ => "Son deployment başarısız olduğunda"
         };
     }

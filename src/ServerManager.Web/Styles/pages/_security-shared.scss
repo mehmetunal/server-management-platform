@@ -1,0 +1,19 @@
+.score-good {
+  @apply text-emerald-600 dark:text-emerald-400;
+}
+
+.score-fair {
+  @apply text-amber-600 dark:text-amber-400;
+}
+
+.score-poor {
+  @apply text-red-600 dark:text-red-400;
+}
+
+.score-unknown {
+  @apply text-slate-400 dark:text-slate-500;
+}
+
+.score-pill {
+  @apply inline-flex min-w-10 items-center justify-center rounded-full bg-slate-100 px-2 py-0.5 text-sm font-semibold tabular-nums dark:bg-slate-800;
+}

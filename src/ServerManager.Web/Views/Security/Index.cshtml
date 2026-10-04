@@ -1,0 +1,128 @@
+@model SecurityOverviewDto
+@{
+    ViewData["Title"] = "Güvenlik";
+    ViewData["Page"] = "security-index";
+    var canScan = User.HasPermission(Permissions.SecurityScan);
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Güvenlik merkezi</h1>
+        <p class="page-lead">Sunucuların SSH ayarları, açık portları, güvenlik duvarı, bekleyen güncellemeleri ve kullanıcı hesapları salt okunur komutlarla denetlenir. Bulgular için düzeltme komutu önerilir; panel hiçbir değişikliği kendiliğinden uygulamaz.</p>
+    </div>
+</div>
+
+<div data-region="security-overview">
+    <div class="security-stats">
+        <div class="stat-card">
+            <span class="stat-label">Ortalama puan</span>
+            <span class="stat-value @SecurityDisplay.ScoreClass(Model.AverageScore)">@SecurityDisplay.ScoreText(Model.AverageScore)<span class="stat-suffix">/100</span></span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Taranan sunucu</span>
+            <span class="stat-value">@Model.ScannedCount <span class="stat-suffix">/ @Model.Servers.Count</span></span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Kritik bulgu</span>
+            <span class="stat-value text-red-600 dark:text-red-400">@Model.CriticalTotal</span>
+            <span class="stat-hint">@Model.ServersWithCritical sunucuda</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Uyarı</span>
+            <span class="stat-value text-amber-600 dark:text-amber-400">@Model.WarningTotal</span>
+        </div>
+    </div>
+
+    <p class="security-schedule">
+        @Icons.Render("clock", "h-4 w-4")
+        @if (Model.ScanIntervalHours > 0)
+        {
+            <span>Host key'i doğrulanmış sunucular her @Model.ScanIntervalHours saatte bir otomatik taranır. Kritik bulgular "Kritik güvenlik bulgusu" alarm kuralıyla bildirilir.</span>
+        }
+        else
+        {
+            <span>Otomatik tarama kapalı (SecurityScan:ScanIntervalHours = 0). Sunucuları elle tarayabilirsiniz.</span>
+        }
+    </p>
+
+    <section class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title">Sunucular</h2>
+        </div>
+        @if (Model.Servers.Count == 0)
+        {
+            <div class="empty-state">
+                <span class="empty-state-icon">@Icons.Render("server", "h-6 w-6")</span>
+                <p>Henüz sunucu eklenmedi.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Sunucu</th>
+                            <th>Puan</th>
+                            <th>Kritik</th>
+                            <th>Uyarı</th>
+                            <th>Son tarama</th>
+                            <th><span class="sr-only">İşlemler</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Servers)
+                        {
+                            var scan = item.LatestScan;
+                            var completed = scan is { Status: SecurityScanStatus.Completed };
+                            <tr>
+                                <td>
+                                    <a asp-controller="ServerSecurity" asp-action="Index" asp-route-id="@item.ServerId" class="security-server-name" title="Sunucunun güvenlik raporunu aç">@item.ServerName</a>
+                                    <p class="security-server-host">@item.Host</p>
+                                </td>
+                                <td>
+                                    <span class="score-pill @SecurityDisplay.ScoreClass(completed ? scan!.Score : null)">@SecurityDisplay.ScoreText(completed ? scan!.Score : null)</span>
+                                </td>
+                                <td class="tabular-nums">@(completed ? scan!.CriticalCount.ToString() : "—")</td>
+                                <td class="tabular-nums">@(completed ? scan!.WarningCount.ToString() : "—")</td>
+                                <td class="whitespace-nowrap">
+                                    @if (scan is null)
+                                    {
+                                        <span class="text-xs text-slate-500">Taranmadı</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="@SecurityDisplay.ScanStatusBadgeClass(scan.Status)" title="@scan.FailureReason"><span class="badge-dot"></span>@SecurityDisplay.ScanStatusText(scan.Status)</span>
+                                        <span class="ml-1 text-xs text-slate-500" title="@DateDisplay.Format(scan.StartedAt)">@DateDisplay.Relative(scan.StartedAt)</span>
+                                        @if (completed && !scan.IsPrivileged)
+                                        {
+                                            <span class="badge-neutral ml-1" title="Tarama root yetkisi olmadan çalıştı; bazı kontroller tespit edilemedi">Kısıtlı</span>
+                                        }
+                                    }
+                                </td>
+                                <td class="text-right whitespace-nowrap">
+                                    @if (canScan)
+                                    {
+                                        @if (item.HostKeyVerified)
+                                        {
+                                            <button type="button" class="btn-secondary btn-sm" title="Sunucuyu şimdi tara (salt okunur)" data-security-scan data-url="@Url.Action("Scan", "Security", new { id = item.ServerId })">
+                                                <span class="spinner" data-spinner hidden></span>
+                                                @Icons.Render("shield", "h-4 w-4")
+                                                <span data-label>Tara</span>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-xs text-slate-500" title="Taramadan önce sunucu sayfasından bağlantı testi yapıp host key'i doğrulayın">Host key doğrulanmadı</span>
+                                        }
+                                    }
+                                    <a asp-controller="ServerSecurity" asp-action="Index" asp-route-id="@item.ServerId" class="btn-ghost btn-sm" title="Bulguları ve tarama geçmişini görüntüle">@Icons.Render("eye", "h-4 w-4") Rapor</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>

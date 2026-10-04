@@ -6,5 +6,6 @@ public enum RetentionTarget
     HourlyMetrics = 2,
     HealthChecks = 3,
     UptimeResults = 4,
-    NotificationDeliveries = 5
+    NotificationDeliveries = 5,
+    SecurityScans = 6
 }

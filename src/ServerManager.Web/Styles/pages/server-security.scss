@@ -1,0 +1,101 @@
+@use "security-shared";
+
+.security-summary {
+  @apply flex flex-col gap-5 p-5 sm:flex-row sm:items-center;
+}
+
+.score-ring {
+  @apply flex h-24 w-24 shrink-0 flex-col items-center justify-center rounded-full border-4 border-current;
+}
+
+.score-value {
+  @apply text-3xl font-bold leading-none tabular-nums;
+}
+
+.score-max {
+  @apply text-xs font-medium text-slate-400;
+}
+
+.security-summary-body {
+  @apply min-w-0 flex-1 space-y-2;
+}
+
+.security-summary-text {
+  @apply flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300;
+}
+
+.security-summary-hint {
+  @apply text-xs text-slate-500 dark:text-slate-400;
+}
+
+.security-layout {
+  @apply grid grid-cols-1 items-start gap-6 xl:grid-cols-3;
+}
+
+.security-findings {
+  @apply space-y-6 xl:col-span-2;
+}
+
+.security-facts {
+  @apply space-y-6;
+}
+
+.finding-list {
+  @apply divide-y divide-slate-100 dark:divide-slate-800;
+}
+
+.finding {
+  @apply space-y-1.5 px-5 py-4;
+}
+
+.finding-head {
+  @apply flex flex-wrap items-center gap-2;
+
+  > span:first-child {
+    @apply inline-flex items-center gap-1;
+  }
+}
+
+.finding-title {
+  @apply font-medium text-slate-900 dark:text-slate-100;
+}
+
+.finding-detail {
+  @apply text-sm text-slate-600 dark:text-slate-300;
+}
+
+.finding-recommendation {
+  @apply text-sm text-slate-500 dark:text-slate-400;
+}
+
+.fix-command {
+  @apply flex items-start gap-2 rounded-lg bg-slate-900 px-3 py-2 dark:bg-slate-950;
+
+  code {
+    @apply min-w-0 flex-1 break-all font-mono text-xs leading-5 text-emerald-300;
+  }
+
+  button {
+    @apply text-slate-300 hover:text-white;
+  }
+}
+
+.firewall-list {
+  @apply space-y-3;
+}
+
+.firewall-head {
+  @apply flex items-center justify-between gap-2;
+}
+
+.firewall-rules {
+  @apply mt-1 text-xs;
+
+  summary {
+    @apply cursor-pointer text-brand-600 dark:text-brand-400;
+  }
+
+  pre {
+    @apply mt-2 max-h-64 overflow-auto rounded-lg bg-slate-100 p-2 font-mono text-[11px] leading-4 dark:bg-slate-800;
+  }
+}

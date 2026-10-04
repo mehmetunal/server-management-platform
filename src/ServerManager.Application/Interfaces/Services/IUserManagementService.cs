@@ -14,4 +14,7 @@ public interface IUserManagementService
     Task<ServiceResult> UpdateAsync(UpdateUserDto dto, CancellationToken cancellationToken = default);
 
     Task<ServiceResult> SetLockAsync(Guid id, bool locked, CancellationToken cancellationToken = default);
+
+    /// <summary>Telefonunu kaybeden kullanıcı için: iki adımlı doğrulama kapatılır, anahtar ve kurtarma kodları geçersiz olur, oturumları kapanır.</summary>
+    Task<ServiceResult> ResetTwoFactorAsync(Guid id, CancellationToken cancellationToken = default);
 }

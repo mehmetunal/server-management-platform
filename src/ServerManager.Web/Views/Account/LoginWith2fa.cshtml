@@ -1,0 +1,40 @@
+@model TwoFactorLoginDto
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "İki adımlı doğrulama";
+    ViewData["Page"] = "login-2fa";
+}
+<div class="login-card">
+    <h2 class="login-title">İki adımlı doğrulama</h2>
+    <p class="login-lead" data-mode-lead="code">Doğrulama uygulamanızın (Google Authenticator, Microsoft Authenticator, 1Password vb.) gösterdiği 6 haneli kodu girin.</p>
+    <p class="login-lead" data-mode-lead="recovery" hidden>Telefonunuza erişemiyorsanız kurtarma kodlarınızdan birini girin. Her kod yalnızca bir kez kullanılabilir.</p>
+
+    <form asp-action="LoginWith2fa" method="post" class="login-form" data-two-factor-form novalidate autocomplete="off">
+        <p class="alert-error" data-form-error hidden></p>
+        <input type="hidden" asp-for="ReturnUrl" />
+        <input type="hidden" asp-for="RememberMe" />
+        <input type="hidden" asp-for="UseRecoveryCode" value="false" data-recovery-flag />
+
+        <div>
+            <label asp-for="Code" class="form-label login-label" data-code-label>Doğrulama kodu</label>
+            <input asp-for="Code" class="form-control two-factor-code" inputmode="numeric" autocomplete="one-time-code" autofocus maxlength="32" placeholder="123456" data-code-input />
+            <span asp-validation-for="Code" class="field-validation-error"></span>
+        </div>
+
+        <label class="check-inline login-label" data-mode-only="code">
+            <input asp-for="RememberMachine" type="checkbox" class="form-check" />
+            Bu tarayıcıda 30 gün boyunca sorma
+        </label>
+
+        <button type="submit" class="btn-primary w-full" title="Kodu doğrulayıp panele giriş yapın">
+            <span class="spinner" data-spinner hidden></span>
+            Doğrula
+        </button>
+    </form>
+
+    <div class="two-factor-links">
+        <button type="button" class="link-button" data-toggle-mode title="Doğrulama kodu yerine kurtarma kodu kullan">Kurtarma kodu kullan</button>
+        <a asp-action="Login" asp-route-returnUrl="@Model.ReturnUrl" class="link-button" title="E-posta ve parola ekranına dön">Girişe dön</a>
+    </div>
+</div>
+<p class="login-footnote">Kodunuzu ve kurtarma kodlarınızı kaybettiyseniz yöneticiniz iki adımlı doğrulamanızı sıfırlayabilir.</p>

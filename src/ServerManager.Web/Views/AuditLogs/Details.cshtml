@@ -1,0 +1,76 @@
+@model AuditLogDto
+@inject AuditActionCatalog AuditCatalog
+@{
+    ViewData["Title"] = $"Audit kaydı #{Model.Id}";
+    ViewData["Page"] = "audit-log-details";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Audit log listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Audit Log</a>
+        <h1 class="page-title">@AuditCatalog.DisplayName(Model.Action)</h1>
+        <p class="page-lead">Kayıt #@Model.Id · @DateDisplay.Format(Model.CreatedAt, "dd.MM.yyyy HH:mm:ss"). Audit kayıtları düzenlenemez ve silinemez.</p>
+    </div>
+    <span class="@(Model.IsSuccess ? "badge-success" : "badge-danger")">@(Model.IsSuccess ? "Başarılı" : "Başarısız")</span>
+</div>
+
+<div class="audit-details-grid">
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">İşlem</h2></div>
+        <dl class="panel-body detail-list">
+            <div><dt class="detail-term">İşlem</dt><dd class="detail-value">@AuditCatalog.DisplayName(Model.Action) <span class="audit-action-code">@Model.Action</span></dd></div>
+            <div><dt class="detail-term">Hedef türü</dt><dd class="detail-value">@AuditEntityTypes.DisplayName(Model.EntityType)</dd></div>
+            <div>
+                <dt class="detail-term">Hedef</dt>
+                <dd class="detail-value">
+                    @if (Model.EntityType == AuditEntityTypes.Server && Guid.TryParse(Model.EntityId, out var serverId))
+                    {
+                        <a asp-controller="Servers" asp-action="Details" asp-route-id="@serverId" class="audit-target-link" title="Sunucu sayfasını aç">@(Model.TargetName ?? Model.EntityId)</a>
+                    }
+                    else
+                    {
+                        @(Model.TargetName ?? "—")
+                    }
+                </dd>
+            </div>
+            <div><dt class="detail-term">Hedef Id</dt><dd class="detail-value font-mono text-xs">@(Model.EntityId ?? "—")</dd></div>
+            <div class="audit-detail-wide"><dt class="detail-term">Detay</dt><dd class="detail-value audit-details-full">@(Model.Details ?? "—")</dd></div>
+        </dl>
+    </section>
+
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Kim ve nereden</h2></div>
+        <dl class="panel-body detail-list">
+            <div><dt class="detail-term">Kullanıcı</dt><dd class="detail-value">@(Model.UserName ?? "—")</dd></div>
+            <div><dt class="detail-term">Kullanıcı Id</dt><dd class="detail-value font-mono text-xs">@(Model.UserId ?? "—")</dd></div>
+            <div>
+                <dt class="detail-term">IP</dt>
+                <dd class="detail-value font-mono text-xs">
+                    @if (Model.IpAddress is not null)
+                    {
+                        <a asp-action="Index" asp-route-ip="@Model.IpAddress" class="audit-target-link" title="Bu IP'den yapılan tüm işlemleri göster">@Model.IpAddress</a>
+                    }
+                    else
+                    {
+                        @("—")
+                    }
+                </dd>
+            </div>
+            <div class="audit-detail-wide"><dt class="detail-term">Tarayıcı</dt><dd class="detail-value audit-details-full text-xs">@(Model.UserAgent ?? "—")</dd></div>
+            <div class="audit-detail-wide">
+                <dt class="detail-term">Zincir imzası</dt>
+                <dd class="detail-value">
+                    @if (Model.ChainHash is not null)
+                    {
+                        <span class="audit-chain-hash">@Model.ChainHash</span>
+                        <button type="button" class="btn-ghost btn-sm mt-1" title="İmzayı panoya kopyala" data-copy-hash="@Model.ChainHash">@Icons.Render("copy", "h-4 w-4") Kopyala</button>
+                    }
+                    else
+                    {
+                        <span class="text-slate-500">İmzasız (zincir özelliğinden önce yazılmış kayıt)</span>
+                    }
+                </dd>
+            </div>
+        </dl>
+    </section>
+</div>

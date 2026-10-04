@@ -43,6 +43,7 @@ try
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
 
+    builder.Services.Configure<TwoFactorOptions>(builder.Configuration.GetSection(TwoFactorOptions.SectionName));
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
     builder.Services.AddScoped<ServerPageBuilder>();
@@ -59,6 +60,7 @@ try
         options.LocalRootPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, options.LocalRootPath)));
     builder.Services.AddSingleton<BackupManager>();
     builder.Services.AddHostedService<BackupLifecycleWorker>();
+    builder.Services.AddHostedService<SecurityScanWorker>();
     if (builder.Configuration.GetValue($"{BackupOptions.SectionName}:Enabled", true))
         builder.Services.AddHostedService<BackupSchedulerWorker>();
     if (builder.Configuration.GetValue($"{MonitoringOptions.SectionName}:Enabled", true))
@@ -181,6 +183,7 @@ try
     app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
+    app.UseMiddleware<TwoFactorEnforcementMiddleware>();
 
     app.MapControllerRoute(name: "default", pattern: "{controller=Dashboard}/{action=Index}/{id?}");
     app.MapHub<MonitoringHub>(MonitoringHub.Path);

@@ -176,7 +176,7 @@ public class ServerMetricRepository : IServerMetricRepository
 
     public Task<int> DeleteExpiredAsync(RetentionTarget target, DateTime cutoffUtc, int keepLatestPerServer, CancellationToken cancellationToken = default)
     {
-        if (target is RetentionTarget.UptimeResults or RetentionTarget.NotificationDeliveries)
+        if (target is RetentionTarget.UptimeResults or RetentionTarget.NotificationDeliveries or RetentionTarget.SecurityScans)
             throw new InvalidOperationException($"{target} bu depodan silinemez. Silme işlemi durduruldu.");
 
         return RetentionDeleter.DeleteExpiredAsync(_context, target, cutoffUtc, keepLatestPerServer, cancellationToken);

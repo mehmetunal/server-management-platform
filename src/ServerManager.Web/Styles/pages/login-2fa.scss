@@ -1,0 +1,13 @@
+@use "login";
+
+.two-factor-code {
+  @apply font-mono text-lg tracking-[0.3em];
+}
+
+.two-factor-links {
+  @apply mt-5 flex items-center justify-between gap-3 text-sm;
+}
+
+.link-button {
+  @apply text-brand-400 hover:text-brand-300 hover:underline;
+}

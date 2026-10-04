@@ -9,5 +9,6 @@ public enum AlertRuleKind
     UptimeCheckDown = 5,
     SslCertificateExpiry = 6,
     DeploymentFailed = 7,
-    BackupFailed = 8
+    BackupFailed = 8,
+    SecurityFinding = 9
 }

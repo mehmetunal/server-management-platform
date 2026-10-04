@@ -11,6 +11,10 @@ public sealed class AuditLogIndexViewModel
 
     public required AuditLogFilterDto Filter { get; init; }
 
+    public AuditStatsDto? Stats { get; init; }
+
+    public IReadOnlyList<string> EntityTypes { get; init; } = [];
+
     public PagerModel ToPager() => new()
     {
         Page = Logs.Page,
@@ -21,6 +25,9 @@ public sealed class AuditLogIndexViewModel
             ["search"] = Filter.Search,
             [ActionQueryKey] = Filter.Action,
             ["isSuccess"] = Filter.IsSuccess?.ToString().ToLowerInvariant(),
+            ["user"] = Filter.User,
+            ["ip"] = Filter.Ip,
+            ["entityType"] = Filter.EntityType,
             ["from"] = Filter.From?.ToString("yyyy-MM-dd"),
             ["to"] = Filter.To?.ToString("yyyy-MM-dd")
         }

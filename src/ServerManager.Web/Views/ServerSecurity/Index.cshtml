@@ -1,0 +1,280 @@
+@model ServerSecurityViewModel
+@{
+    var server = Model.Page.Server;
+    var report = Model.Report;
+    var data = report.Report;
+    var scan = report.CompletedScan;
+    ViewData["Title"] = $"{server.Name} · Security";
+    ViewData["Page"] = "server-security";
+    var canScan = User.HasPermission(Permissions.SecurityScan);
+    var categories = data?.Findings
+        .GroupBy(f => f.Category)
+        .OrderBy(g => g.Min(f => SecurityDisplay.StatusRank(f.Status)))
+        .ToList() ?? [];
+}
+
+<partial name="_ServerHeader" model="Model.Page" />
+
+<div data-region="server-security">
+    <section class="panel mb-6">
+        <div class="security-summary">
+            <div class="score-ring @SecurityDisplay.ScoreClass(scan?.Score)" title="100'den her kritik bulgu için @SecurityAnalyzer.CriticalPenalty, her uyarı için @SecurityAnalyzer.WarningPenalty puan düşülür">
+                <span class="score-value">@SecurityDisplay.ScoreText(scan?.Score)</span>
+                <span class="score-max">/100</span>
+            </div>
+            <div class="security-summary-body">
+                <h2 class="panel-title">Güvenlik puanı</h2>
+                @if (scan is null)
+                {
+                    <p class="security-summary-text">Bu sunucu henüz taranmadı.</p>
+                }
+                else
+                {
+                    <p class="security-summary-text">
+                        <span class="badge-danger">@scan.CriticalCount kritik</span>
+                        <span class="badge-warning">@scan.WarningCount uyarı</span>
+                        <span title="@DateDisplay.Format(scan.StartedAt)">Son tarama @DateDisplay.Relative(scan.StartedAt) · @SecurityDisplay.TriggerText(scan.Trigger)@(scan.UserName is null ? "" : $" · {scan.UserName}")</span>
+                    </p>
+                    <p class="security-summary-hint">Puan: 100'den her kritik bulgu için @SecurityAnalyzer.CriticalPenalty, her uyarı için @SecurityAnalyzer.WarningPenalty puan düşülür. "Bilgi" ve "Tespit edilemedi" puanı etkilemez.</p>
+                }
+            </div>
+            @if (canScan && report.HostKeyVerified)
+            {
+                <button type="button" class="btn-primary" title="Sunucuyu şimdi tara; yalnızca okuma yapan komutlar çalıştırılır" data-security-scan data-url="@Url.Action("Scan", "Security", new { id = server.Id })" disabled="@report.IsRunning">
+                    <span class="spinner" data-spinner hidden="@(!report.IsRunning)"></span>
+                    @Icons.Render("shield", "h-4 w-4")
+                    <span data-label>@(report.IsRunning ? "Taranıyor…" : "Şimdi tara")</span>
+                </button>
+            }
+        </div>
+    </section>
+
+    @if (!report.HostKeyVerified)
+    {
+        <p class="alert-warning mb-6">Tarama için önce "Bağlantıyı Test Et" ile sunucunun host key'ini doğrulayın.</p>
+    }
+    @if (report.LatestFailure is { } failure)
+    {
+        <p class="alert-error mb-6">Son tarama başarısız (@DateDisplay.Format(failure.StartedAt)): @failure.FailureReason</p>
+    }
+    @if (scan is { IsPrivileged: false })
+    {
+        <p class="alert-info mb-6">
+            Tarama root yetkisi olmadan çalıştı; /etc/shadow, sshd -T, güvenlik duvarı kuralları ve SSH logları gibi kontroller "Tespit edilemedi" olarak işaretlendi.
+            @(report.UseSudo
+                ? "Sunucuda sudo açık ancak bu kullanıcıya tarama betiği için izin verilmiyor (sudo yalnızca belirli komutlarla sınırlı olabilir)."
+                : "Tam sonuç için sunucu ayarlarında \"sudo kullan\" seçeneğini açın.")
+        </p>
+    }
+
+    @if (data is null)
+    {
+        @if (scan is null)
+        {
+            <section class="panel">
+                <div class="empty-state">
+                    <span class="empty-state-icon">@Icons.Render("shield", "h-6 w-6")</span>
+                    <p>Henüz tamamlanmış tarama yok. "Şimdi tara" ile ilk taramayı başlatın.</p>
+                </div>
+            </section>
+        }
+        else
+        {
+            <p class="alert-warning mb-6">Son taramanın raporu okunamadı. Yeni bir tarama yapın.</p>
+        }
+    }
+    else
+    {
+        var facts = data.Facts;
+        <div class="security-layout">
+            <div class="security-findings">
+                @foreach (var category in categories)
+                {
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h2 class="panel-title">@category.Key</h2>
+                        </div>
+                        <ul class="finding-list">
+                            @foreach (var finding in category.OrderBy(f => SecurityDisplay.StatusRank(f.Status)))
+                            {
+                                <li class="finding">
+                                    <div class="finding-head">
+                                        <span class="@SecurityDisplay.StatusBadgeClass(finding.Status)">@Icons.Render(SecurityDisplay.StatusIcon(finding.Status), "h-3.5 w-3.5") @SecurityDisplay.StatusText(finding.Status)</span>
+                                        <span class="finding-title">@finding.Title</span>
+                                    </div>
+                                    <p class="finding-detail">@finding.Detail</p>
+                                    @if (!string.IsNullOrEmpty(finding.Recommendation))
+                                    {
+                                        <p class="finding-recommendation"><strong>Öneri:</strong> @finding.Recommendation</p>
+                                    }
+                                    @if (!string.IsNullOrEmpty(finding.FixCommand))
+                                    {
+                                        <div class="fix-command">
+                                            <code>@finding.FixCommand</code>
+                                            <button type="button" class="btn-ghost btn-sm" title="Önerilen komutu panoya kopyala; sunucuda kendiniz çalıştırın" data-copy-text="@finding.FixCommand">@Icons.Render("copy", "h-4 w-4")</button>
+                                        </div>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    </section>
+                }
+            </div>
+
+            <div class="security-facts">
+                <section class="panel">
+                    <div class="panel-header"><h2 class="panel-title">Sistem</h2></div>
+                    <dl class="detail-list panel-body">
+                        <div><dt class="detail-term">İşletim sistemi</dt><dd class="detail-value">@(facts.OperatingSystem ?? "—")</dd></div>
+                        <div><dt class="detail-term">Çekirdek</dt><dd class="detail-value font-mono">@(facts.Kernel ?? "—")</dd></div>
+                        <div><dt class="detail-term">Tarama yetkisi</dt><dd class="detail-value">@(facts.IsRoot ? "root" : "Kısıtlı kullanıcı")</dd></div>
+                        <div><dt class="detail-term">SSH ayar kaynağı</dt><dd class="detail-value">@(facts.Ssh.Source ?? "Okunamadı")</dd></div>
+                        <div><dt class="detail-term">Paket yöneticisi</dt><dd class="detail-value">@(facts.Updates.Manager ?? "—")</dd></div>
+                        <div><dt class="detail-term">Docker</dt><dd class="detail-value">@(facts.Docker.Installed ? "Kurulu" : "Yok")</dd></div>
+                    </dl>
+                </section>
+
+                @if (facts.Ssh.Settings.Count > 0)
+                {
+                    <section class="panel">
+                        <div class="panel-header"><h2 class="panel-title">SSH ayarları</h2></div>
+                        <dl class="detail-list panel-body">
+                            @foreach (var setting in facts.Ssh.Settings.OrderBy(s => s.Key))
+                            {
+                                <div><dt class="detail-term font-mono">@setting.Key</dt><dd class="detail-value font-mono">@setting.Value</dd></div>
+                            }
+                        </dl>
+                    </section>
+                }
+
+                <section class="panel">
+                    <div class="panel-header"><h2 class="panel-title">Güvenlik duvarı</h2></div>
+                    <div class="panel-body">
+                        @if (facts.Firewall.Tools.Count == 0)
+                        {
+                            <p class="text-sm text-slate-500">Kurulu güvenlik duvarı aracı bulunamadı.</p>
+                        }
+                        else
+                        {
+                            <ul class="firewall-list">
+                                @foreach (var tool in facts.Firewall.Tools)
+                                {
+                                    <li>
+                                        <div class="firewall-head">
+                                            <span class="font-medium">@tool.Name</span>
+                                            <span class="@(tool.Active switch { true => "badge-success", false => "badge-neutral", _ => "badge-neutral" })">@SecurityDisplay.BoolText(tool.Active, "Etkin", "Etkin değil")</span>
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(tool.Detail))
+                                        {
+                                            <p class="text-xs text-slate-500">@tool.Detail</p>
+                                        }
+                                        @if (tool.Rules.Count > 0)
+                                        {
+                                            <details class="firewall-rules">
+                                                <summary title="Kuralları göster">@tool.Rules.Count kural</summary>
+                                                <pre>@string.Join("\n", tool.Rules)</pre>
+                                            </details>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <section class="panel mt-6">
+            <div class="panel-header">
+                <h2 class="panel-title">Dinlenen portlar</h2>
+            </div>
+            @if (!facts.PortsAvailable)
+            {
+                <p class="panel-note">ss veya netstat bulunamadığı için portlar listelenemedi.</p>
+            }
+            else if (facts.Ports.Count == 0)
+            {
+                <div class="empty-state"><p>Dinlenen port bulunamadı.</p></div>
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Port</th>
+                                <th>Protokol</th>
+                                <th>Adres</th>
+                                <th>Erişim</th>
+                                <th>Servis</th>
+                                <th>Process</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var port in facts.Ports.OrderBy(p => p.Port).ThenBy(p => p.Protocol))
+                            {
+                                var risk = PortCatalog.Find(port.Port)?.Risk;
+                                <tr>
+                                    <td class="font-mono tabular-nums">@port.Port</td>
+                                    <td class="uppercase text-xs">@port.Protocol</td>
+                                    <td class="font-mono text-xs">@port.Address</td>
+                                    <td><span class="@SecurityDisplay.ExposureBadgeClass(port.Exposure)">@SecurityDisplay.ExposureText(port.Exposure)</span></td>
+                                    <td>
+                                        @PortCatalog.ServiceName(port.Port, null)
+                                        @if (risk is { } level && port.IsReachableFromNetwork)
+                                        {
+                                            <span class="@SecurityDisplay.StatusBadgeClass(level) ml-1">Riskli</span>
+                                        }
+                                    </td>
+                                    <td class="font-mono text-xs">@(port.Process ?? "—")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    }
+
+    <section class="panel mt-6">
+        <div class="panel-header">
+            <h2 class="panel-title">Tarama geçmişi</h2>
+        </div>
+        @if (report.History.Count == 0)
+        {
+            <div class="empty-state"><p>Tarama geçmişi yok.</p></div>
+        }
+        else
+        {
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Başlangıç</th>
+                            <th>Durum</th>
+                            <th>Puan</th>
+                            <th>Kritik</th>
+                            <th>Uyarı</th>
+                            <th>Tetikleyen</th>
+                            <th>Not</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in report.History)
+                        {
+                            <tr>
+                                <td class="whitespace-nowrap text-sm" title="@DateDisplay.Format(item.StartedAt)">@DateDisplay.Relative(item.StartedAt)</td>
+                                <td><span class="@SecurityDisplay.ScanStatusBadgeClass(item.Status)"><span class="badge-dot"></span>@SecurityDisplay.ScanStatusText(item.Status)</span></td>
+                                <td><span class="score-pill @SecurityDisplay.ScoreClass(item.Score)">@SecurityDisplay.ScoreText(item.Score)</span></td>
+                                <td class="tabular-nums">@(item.Status == SecurityScanStatus.Completed ? item.CriticalCount.ToString() : "—")</td>
+                                <td class="tabular-nums">@(item.Status == SecurityScanStatus.Completed ? item.WarningCount.ToString() : "—")</td>
+                                <td class="text-sm">@SecurityDisplay.TriggerText(item.Trigger)@(item.UserName is null ? "" : $" · {item.UserName}")</td>
+                                <td class="max-w-md text-xs text-slate-500">@(item.FailureReason ?? (item.Status == SecurityScanStatus.Completed && !item.IsPrivileged ? "Kısıtlı yetkiyle tarandı" : ""))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>

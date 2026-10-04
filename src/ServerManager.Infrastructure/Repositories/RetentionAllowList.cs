@@ -4,16 +4,16 @@ using ServerManager.Application.Monitoring;
 namespace ServerManager.Infrastructure.Repositories;
 
 /// <summary>
-/// Otomatik silme yalnızca geçici izleme tablolarında çalışabilir; kullanıcı ve sunucu verisi asla silinmez.
+/// Otomatik silme yalnızca geçici izleme ve tarama tablolarında çalışabilir; kullanıcı ve sunucu verisi asla silinmez.
 /// </summary>
 internal static class RetentionAllowList
 {
     private static readonly Regex AllowedTablePattern = new(
-        "^(ServerMetrics|ServerMetricsHourly|ServerHealthChecks|UptimeCheckResults|NotificationDeliveries)$",
+        "^(ServerMetrics|ServerMetricsHourly|ServerHealthChecks|UptimeCheckResults|NotificationDeliveries|SecurityScans)$",
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     private static readonly Regex AllowedColumnPattern = new(
-        "^(CollectedAt|HourStart|CheckedAt|SentAt)$",
+        "^(CollectedAt|HourStart|CheckedAt|SentAt|StartedAt)$",
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     private static readonly Regex AllowedPartitionPattern = new(
@@ -27,7 +27,8 @@ internal static class RetentionAllowList
             [RetentionTarget.HourlyMetrics] = ("ServerMetricsHourly", "HourStart", "ServerId"),
             [RetentionTarget.HealthChecks] = ("ServerHealthChecks", "CheckedAt", "ServerId"),
             [RetentionTarget.UptimeResults] = ("UptimeCheckResults", "CheckedAt", "CheckId"),
-            [RetentionTarget.NotificationDeliveries] = ("NotificationDeliveries", "SentAt", "ChannelId")
+            [RetentionTarget.NotificationDeliveries] = ("NotificationDeliveries", "SentAt", "ChannelId"),
+            [RetentionTarget.SecurityScans] = ("SecurityScans", "StartedAt", "ServerId")
         };
 
     public static (string Table, string TimeColumn, string PartitionColumn) Resolve(RetentionTarget target)

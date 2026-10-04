@@ -21,6 +21,7 @@ using ServerManager.Application.Interfaces.Files;
 using ServerManager.Application.Interfaces.Monitoring;
 using ServerManager.Application.Interfaces.Repositories;
 using ServerManager.Application.Monitoring;
+using ServerManager.Application.Security;
 using ServerManager.Application.Interfaces.Security;
 using ServerManager.Application.Interfaces.Services;
 using ServerManager.Application.Interfaces.Ssh;
@@ -62,6 +63,7 @@ public static class DependencyInjection
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddErrorDescriber<TurkishIdentityErrorDescriber>()
+            .AddClaimsPrincipalFactory<AppUserClaimsPrincipalFactory>()
             .AddDefaultTokenProviders();
 
         services.AddFluentMigratorCore()
@@ -85,6 +87,7 @@ public static class DependencyInjection
         services.Configure<DeploymentOptions>(configuration.GetSection(DeploymentOptions.SectionName));
         services.Configure<AlertingOptions>(configuration.GetSection(AlertingOptions.SectionName));
         services.Configure<BackupOptions>(configuration.GetSection(BackupOptions.SectionName));
+        services.Configure<SecurityScanOptions>(configuration.GetSection(SecurityScanOptions.SectionName));
 
         services.AddHttpClient(UptimeProbe.HttpClientName, UptimeProbe.ConfigureClient)
             .ConfigurePrimaryHttpMessageHandler(UptimeProbe.CreateHandler);
@@ -92,6 +95,7 @@ public static class DependencyInjection
         services.AddSingleton<ISslCertificateProbe, TlsCertificateProbe>();
 
         services.AddSingleton<ISecretProtector, AesGcmSecretProtector>();
+        services.AddSingleton<IAuditChainSigner, HmacAuditChainSigner>();
         services.AddSingleton<ISshConnectionTester, SshNetConnectionTester>();
         services.AddSingleton<IMetricsCollector, SshMetricsCollector>();
         services.AddSingleton<IRemoteCommandRunner, SshRemoteCommandRunner>();
@@ -101,6 +105,7 @@ public static class DependencyInjection
         services.AddSingleton<IDeploymentProvider, SshDeploymentProvider>();
         services.AddSingleton<IBackupSourceRunner, SshBackupSourceRunner>();
         services.AddSingleton<IBackupStorageProvider, LocalBackupStorageProvider>();
+        services.AddSingleton<ISecurityScanner, SshSecurityScanner>();
         services.AddSingleton<IPluginMigrator>(provider =>
             new FluentPluginMigrator(connectionString, provider.GetRequiredService<ILoggerFactory>()));
 
@@ -114,6 +119,7 @@ public static class DependencyInjection
         services.AddScoped<IUptimeRepository, UptimeRepository>();
         services.AddScoped<ISslCertificateRepository, SslCertificateRepository>();
         services.AddScoped<IBackupRepository, BackupRepository>();
+        services.AddScoped<ISecurityScanRepository, SecurityScanRepository>();
 
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<IUserManagementService, UserManagementService>();

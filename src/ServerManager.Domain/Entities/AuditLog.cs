@@ -25,4 +25,7 @@ public class AuditLog
     public bool IsSuccess { get; set; } = true;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>Önceki kaydın zinciri + bu kaydın alanları üzerinden HMAC-SHA256 (hex). Kayıt değiştirilir veya silinirse zincir kırılır.</summary>
+    public string? ChainHash { get; set; }
 }

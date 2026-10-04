@@ -4,31 +4,88 @@
     ViewData["Title"] = "Audit Log";
     ViewData["Page"] = "audit-logs";
     var filter = Model.Filter;
+    var stats = Model.Stats;
+    var canExport = User.HasPermission(Permissions.AuditExport);
 }
 
 <div class="page-header">
     <div>
         <h1 class="page-title">Audit Log</h1>
-        <p class="page-lead">Panelde kimin, ne zaman, hangi kritik işlemi yaptığının kaydı</p>
+        <p class="page-lead">Panelde kimin, ne zaman, hangi kritik işlemi yaptığının kaydı. Her kayıt bir öncekine bağlı HMAC zinciriyle imzalanır; kayıt değiştirilir, silinir veya araya eklenirse doğrulama bunu gösterir.</p>
     </div>
+    @if (canExport)
+    {
+        <div class="audit-header-actions">
+            <button type="button" class="btn-secondary" title="Tüm kayıtların imza zincirini baştan sona kontrol et" data-audit-verify data-url="@Url.Action("Verify")">
+                @Icons.Render("shield", "h-4 w-4") Bütünlüğü doğrula
+            </button>
+            <a href="@Url.Action("Export")" class="btn-primary" title="Seçili filtreye uyan kayıtları CSV olarak indir (en fazla @ServerManager.Application.Services.AuditLogService.MaxExportRows.ToString("N0") kayıt)" data-audit-export>
+                @Icons.Render("download", "h-4 w-4") CSV indir
+            </a>
+        </div>
+    }
 </div>
+
+@if (stats is not null)
+{
+    <div class="audit-stats">
+        <div class="stat-card">
+            <span class="stat-label">Son 24 saat</span>
+            <span class="stat-value">@stats.TotalCount</span>
+            <span class="stat-hint">kayıt</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Başarısız işlem</span>
+            <span class="stat-value @(stats.FailedCount > 0 ? "text-red-600 dark:text-red-400" : "")">@stats.FailedCount</span>
+            <span class="stat-hint">son 24 saat</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Başarısız giriş</span>
+            <span class="stat-value @(stats.FailedLoginCount > 0 ? "text-amber-600 dark:text-amber-400" : "")">@stats.FailedLoginCount</span>
+            <span class="stat-hint">son 24 saat</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Aktif kullanıcı</span>
+            <span class="stat-value">@stats.ActiveUserCount</span>
+            <span class="stat-hint">son 24 saatte işlem yapan</span>
+        </div>
+    </div>
+
+    @if (stats.TopActions.Count > 0)
+    {
+        <p class="audit-top-actions">
+            <span class="audit-top-actions-label">En sık işlemler:</span>
+            @foreach (var item in stats.TopActions)
+            {
+                <a asp-action="Index" asp-route-auditAction="@item.Action" class="audit-top-action" title="Yalnızca bu işlemin kayıtlarını göster">
+                    @AuditCatalog.DisplayName(item.Action) <span class="audit-top-action-count">@item.Count</span>
+                </a>
+            }
+        </p>
+    }
+}
 
 <section class="panel">
     <form method="get" asp-action="Index" class="panel-toolbar audit-filters" data-list-filter>
         <div class="search-field lg:col-span-2">
             <span class="search-field-icon">@Icons.Render("search", "h-4 w-4")</span>
-            <input type="search" name="search" value="@filter.Search" class="form-control" placeholder="Kullanıcı, hedef, IP ara…" data-live-search />
+            <input type="search" name="search" value="@filter.Search" class="form-control" placeholder="Kullanıcı, hedef, IP, detay ara…" data-live-search />
         </div>
-        <select name="@AuditLogIndexViewModel.ActionQueryKey" class="form-control" data-auto-submit asp-items="AuditDisplay.ActionOptions(AuditCatalog, filter.Action)">
+        <select name="@AuditLogIndexViewModel.ActionQueryKey" class="form-control" aria-label="İşlem" data-auto-submit asp-items="AuditDisplay.ActionOptions(AuditCatalog, filter.Action)">
             <option value="">Tüm işlemler</option>
         </select>
-        <select name="isSuccess" class="form-control" data-auto-submit>
+        <select name="isSuccess" class="form-control" aria-label="Sonuç" data-auto-submit>
             <option value="">Tüm sonuçlar</option>
             <option value="true" selected="@(filter.IsSuccess == true)">Başarılı</option>
             <option value="false" selected="@(filter.IsSuccess == false)">Başarısız</option>
         </select>
-        <input type="date" name="from" value="@filter.From?.ToString("yyyy-MM-dd")" class="form-control" aria-label="Başlangıç tarihi" data-auto-submit />
-        <input type="date" name="to" value="@filter.To?.ToString("yyyy-MM-dd")" class="form-control" aria-label="Bitiş tarihi" data-auto-submit />
+        <input type="date" name="from" value="@filter.From?.ToString("yyyy-MM-dd")" class="form-control" aria-label="Başlangıç tarihi" title="Başlangıç tarihi" data-auto-submit />
+        <input type="date" name="to" value="@filter.To?.ToString("yyyy-MM-dd")" class="form-control" aria-label="Bitiş tarihi" title="Bitiş tarihi" data-auto-submit />
+        <input type="search" name="user" value="@filter.User" class="form-control lg:col-span-2" placeholder="Kullanıcı adı" aria-label="Kullanıcı" data-live-search />
+        <input type="search" name="ip" value="@filter.Ip" class="form-control" placeholder="IP (başı yeterli)" aria-label="IP adresi" data-live-search />
+        <select name="entityType" class="form-control" aria-label="Hedef türü" data-auto-submit asp-items="AuditDisplay.EntityTypeOptions(Model.EntityTypes, filter.EntityType)">
+            <option value="">Tüm hedef türleri</option>
+        </select>
         <div class="audit-filter-actions">
             <button type="submit" class="btn-secondary btn-sm" title="Kayıtları seçili ölçütlere göre süz">@Icons.Render("search", "h-4 w-4") Filtrele</button>
             <a asp-action="Index" class="btn-ghost btn-sm" data-list-link title="Tüm filtreleri kaldır">Temizle</a>

@@ -39,7 +39,10 @@ public static class DefaultRolePermissions
             Permissions.BackupExecute,
             Permissions.BackupManage,
             Permissions.BackupRestore,
-            Permissions.AuditView
+            Permissions.AuditView,
+            Permissions.AuditExport,
+            Permissions.SecurityView,
+            Permissions.SecurityScan
         ],
         [Roles.Operator] =
         [
@@ -63,7 +66,9 @@ public static class DefaultRolePermissions
             Permissions.AlertView,
             Permissions.AlertAcknowledge,
             Permissions.BackupView,
-            Permissions.BackupExecute
+            Permissions.BackupExecute,
+            Permissions.SecurityView,
+            Permissions.SecurityScan
         ],
         [Roles.Developer] =
         [

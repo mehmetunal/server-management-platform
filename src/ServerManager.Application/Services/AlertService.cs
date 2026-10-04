@@ -173,6 +173,7 @@ public class AlertService : IAlertService
         AlertRuleKind.SslCertificateExpiry => AlertConditionEvaluator.ForSsl(rule, await data.SslAsync(), now),
         AlertRuleKind.DeploymentFailed => AlertConditionEvaluator.ForDeployments(rule, await data.DeploymentsAsync()),
         AlertRuleKind.BackupFailed => AlertConditionEvaluator.ForBackups(rule, await data.BackupsAsync()),
+        AlertRuleKind.SecurityFinding => AlertConditionEvaluator.ForSecurity(rule, await data.SecurityAsync()),
         _ => []
     };
 

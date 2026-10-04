@@ -11,6 +11,7 @@ public class RetentionAllowListTests
     [InlineData(RetentionTarget.HealthChecks, "ServerHealthChecks", "CheckedAt", "ServerId")]
     [InlineData(RetentionTarget.UptimeResults, "UptimeCheckResults", "CheckedAt", "CheckId")]
     [InlineData(RetentionTarget.NotificationDeliveries, "NotificationDeliveries", "SentAt", "ChannelId")]
+    [InlineData(RetentionTarget.SecurityScans, "SecurityScans", "StartedAt", "ServerId")]
     public void Resolves_only_temporary_monitoring_tables(RetentionTarget target, string table, string column, string partition)
     {
         var mapping = RetentionAllowList.Resolve(target);

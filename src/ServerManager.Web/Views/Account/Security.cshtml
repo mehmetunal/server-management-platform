@@ -1,0 +1,125 @@
+@model AccountSecurityViewModel
+@{
+    var security = Model.Security;
+    ViewData["Title"] = "Hesabım";
+    ViewData["Page"] = "account-security";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Hesabım</h1>
+        <p class="page-lead">Parolanızı değiştirin ve hesabınızı iki adımlı doğrulama (TOTP) ile koruyun. Tüm değişiklikler audit log'a yazılır.</p>
+    </div>
+</div>
+
+@if (Model.TwoFactorRequired && !security.TwoFactorEnabled)
+{
+    <p class="alert-warning mb-6">Yöneticiniz iki adımlı doğrulamayı zorunlu kıldı. Paneli kullanmaya devam etmek için aşağıdan kurulumu tamamlayın.</p>
+}
+
+<div class="account-grid">
+    <div class="account-column">
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Hesap bilgileri</h2></div>
+            <dl class="panel-body detail-list">
+                <div><dt class="detail-term">E-posta</dt><dd class="detail-value">@security.Email</dd></div>
+                <div><dt class="detail-term">Ad soyad</dt><dd class="detail-value">@(security.FullName ?? "—")</dd></div>
+                <div><dt class="detail-term">Rol</dt><dd class="detail-value">@string.Join(", ", security.Roles)</dd></div>
+                <div><dt class="detail-term">Son giriş</dt><dd class="detail-value">@DateDisplay.Format(security.LastLoginAt)</dd></div>
+            </dl>
+        </section>
+
+        <form asp-action="ChangePassword" method="post" class="panel" data-change-password-form novalidate autocomplete="off">
+            <div class="panel-header"><h2 class="panel-title">Parola değiştir</h2></div>
+            <div class="panel-body account-form">
+                <p class="alert-error" data-form-error hidden></p>
+                <div>
+                    <label for="CurrentPassword" class="form-label">Mevcut parola *</label>
+                    <input id="CurrentPassword" name="CurrentPassword" type="password" class="form-control" autocomplete="current-password" />
+                    <span class="field-validation-valid" data-valmsg-for="CurrentPassword"></span>
+                </div>
+                <div>
+                    <label for="NewPassword" class="form-label">Yeni parola *</label>
+                    <input id="NewPassword" name="NewPassword" type="password" class="form-control" autocomplete="new-password" />
+                    <p class="form-hint">En az @ServerManager.Application.Validators.Users.UserPasswordRules.MinimumLength karakter; büyük harf, küçük harf ve rakam içermeli.</p>
+                    <span class="field-validation-valid" data-valmsg-for="NewPassword"></span>
+                </div>
+                <div>
+                    <label for="ConfirmPassword" class="form-label">Yeni parola (tekrar) *</label>
+                    <input id="ConfirmPassword" name="ConfirmPassword" type="password" class="form-control" autocomplete="new-password" />
+                    <span class="field-validation-valid" data-valmsg-for="ConfirmPassword"></span>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn-primary" title="Parolayı değiştir; diğer cihazlardaki oturumlar kapanır"><span class="spinner" data-spinner hidden></span> Parolayı değiştir</button>
+            </div>
+        </form>
+    </div>
+
+    <section class="panel" data-region="two-factor">
+        <div class="panel-header">
+            <h2 class="panel-title">İki adımlı doğrulama</h2>
+            <span class="@(security.TwoFactorEnabled ? "badge-success" : "badge-neutral")">@(security.TwoFactorEnabled ? "Açık" : "Kapalı")</span>
+        </div>
+        @if (security.TwoFactorEnabled)
+        {
+            <div class="panel-body space-y-4">
+                <p class="account-text">Girişte parolanızdan sonra doğrulama uygulamanızdaki 6 haneli kod istenir.</p>
+                <dl class="detail-list">
+                    <div>
+                        <dt class="detail-term">Kalan kurtarma kodu</dt>
+                        <dd class="detail-value"><span class="@(security.RecoveryCodesLeft <= 3 ? "badge-warning" : "badge-neutral")">@security.RecoveryCodesLeft</span></dd>
+                    </div>
+                    <div>
+                        <dt class="detail-term">Bu tarayıcı</dt>
+                        <dd class="detail-value">@(security.IsMachineRemembered ? "Hatırlanıyor (kod sorulmuyor)" : "Her girişte kod sorulur")</dd>
+                    </div>
+                </dl>
+                @if (security.RecoveryCodesLeft <= 3)
+                {
+                    <p class="alert-warning">Kurtarma kodlarınız azaldı. Telefonunuzu kaybederseniz giriş yapabilmek için yeni kodlar oluşturun.</p>
+                }
+            </div>
+            <div class="form-actions">
+                @if (security.IsMachineRemembered)
+                {
+                    <button type="button" class="btn-secondary" title="Bu tarayıcıda da her girişte kod sorulsun" data-forget-machine data-url="@Url.Action("ForgetMachine")"><span class="spinner" data-spinner hidden></span> Bu tarayıcıyı unut</button>
+                }
+                <button type="button" class="btn-secondary" title="Yeni 10 kurtarma kodu oluştur; eski kodlar geçersiz olur" data-regenerate-codes data-url="@Url.Action("RegenerateRecoveryCodes")">@Icons.Render("refresh", "h-4 w-4") Kurtarma kodlarını yenile</button>
+                <button type="button" class="btn-ghost-danger" title="İki adımlı doğrulamayı kapat" data-disable-two-factor data-url="@Url.Action("DisableTwoFactor")">Kapat</button>
+            </div>
+        }
+        else
+        {
+            <div class="panel-body space-y-4">
+                <p class="account-text">Parolanız ele geçirilse bile hesabınıza girilemesin. Google Authenticator, Microsoft Authenticator, 1Password, Bitwarden gibi TOTP destekleyen bir uygulama gerekir.</p>
+                <button type="button" class="btn-primary" title="QR kodu ve anahtarı göster" data-setup-start data-url="@Url.Action("AuthenticatorSetup")"><span class="spinner" data-spinner hidden></span> @Icons.Render("shield", "h-4 w-4") Kurulumu başlat</button>
+
+                <div class="account-setup" data-setup-area hidden>
+                    <ol class="account-steps">
+                        <li>Uygulamada yeni hesap ekleyip bu QR kodu okutun.</li>
+                        <li>QR okutamıyorsanız anahtarı elle girin (zaman tabanlı, 6 hane).</li>
+                        <li>Uygulamanın gösterdiği kodu girip doğrulayın.</li>
+                    </ol>
+                    <div class="account-qr-row">
+                        <img class="account-qr" alt="İki adımlı doğrulama QR kodu" data-qr />
+                        <div class="min-w-0">
+                            <p class="detail-term">Anahtar</p>
+                            <code class="account-key" data-shared-key></code>
+                            <button type="button" class="btn-ghost btn-sm mt-2" title="Anahtarı panoya kopyala" data-copy-key>@Icons.Render("copy", "h-4 w-4") Kopyala</button>
+                        </div>
+                    </div>
+                    <form asp-action="EnableAuthenticator" method="post" class="account-verify" data-enable-form novalidate autocomplete="off">
+                        <p class="alert-error" data-form-error hidden></p>
+                        <div>
+                            <label for="Code" class="form-label">Doğrulama kodu *</label>
+                            <input id="Code" name="Code" class="form-control account-code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456" />
+                            <span class="field-validation-valid" data-valmsg-for="Code"></span>
+                        </div>
+                        <button type="submit" class="btn-primary" title="Kodu doğrula ve iki adımlı doğrulamayı aç"><span class="spinner" data-spinner hidden></span> Doğrula ve aç</button>
+                    </form>
+                </div>
+            </div>
+        }
+    </section>
+</div>

@@ -8,6 +8,7 @@ public static class AuditLogMappings
     public static AuditLogDto ToDto(this AuditLog log) => new()
     {
         Id = log.Id,
+        UserId = log.UserId,
         UserName = log.UserName,
         Action = log.Action,
         EntityType = log.EntityType,
@@ -15,7 +16,9 @@ public static class AuditLogMappings
         TargetName = log.TargetName,
         Details = log.Details,
         IpAddress = log.IpAddress,
+        UserAgent = log.UserAgent,
         IsSuccess = log.IsSuccess,
-        CreatedAt = log.CreatedAt
+        CreatedAt = log.CreatedAt,
+        ChainHash = log.ChainHash
     };
 }

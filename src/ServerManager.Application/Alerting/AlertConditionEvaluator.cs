@@ -116,6 +116,19 @@ public static class AlertConditionEvaluator
                     $"{b.JobName}: yedekleme başarısız ({b.ServerName}): {reason}");
             }).ToList();
 
+    public static IReadOnlyList<AlertCondition> ForSecurity(AlertRule rule, IReadOnlyList<AlertSecuritySnapshot> scans) =>
+        scans
+            .Where(s => rule.ServerId is null || s.ServerId == rule.ServerId)
+            .Select(s =>
+            {
+                var key = s.ServerId.ToString();
+                return s.CriticalCount > 0
+                    ? new AlertCondition(key, s.ServerName, s.ServerId, s.ServerName, AlertConditionState.Firing, s.CriticalCount,
+                        $"{s.ServerName}: son güvenlik taramasında {s.CriticalCount} kritik bulgu (puan {s.Score}/100).")
+                    : new AlertCondition(key, s.ServerName, s.ServerId, s.ServerName, AlertConditionState.Ok, 0,
+                        $"{s.ServerName}: son güvenlik taramasında kritik bulgu yok (puan {s.Score}/100).");
+            }).ToList();
+
     private static IEnumerable<AlertServerSnapshot> Scope(AlertRule rule, IReadOnlyList<AlertServerSnapshot> servers) =>
         rule.ServerId is { } serverId ? servers.Where(s => s.Id == serverId) : servers;
 

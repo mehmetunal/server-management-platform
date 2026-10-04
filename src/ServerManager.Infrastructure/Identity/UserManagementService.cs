@@ -237,6 +237,32 @@ public class UserManagementService : IUserManagementService
         return ServiceResult.Success(locked ? "Kullanıcı kilitlendi." : "Kullanıcının kilidi açıldı.");
     }
 
+    public async Task<ServiceResult> ResetTwoFactorAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByIdAsync(id.ToString());
+        if (user is null)
+            return ServiceResult.NotFound(NotFoundMessage);
+
+        if (IsCurrentUser(user))
+            return ServiceResult.Failure("Kendi iki adımlı doğrulamanızı Hesabım sayfasından yönetin.", ServiceErrorType.Forbidden);
+
+        if (!user.TwoFactorEnabled)
+            return ServiceResult.Failure("Bu kullanıcıda iki adımlı doğrulama zaten kapalı.", ServiceErrorType.Conflict);
+
+        await _userManager.SetTwoFactorEnabledAsync(user, false);
+        await _userManager.ResetAuthenticatorKeyAsync(user);
+        await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 0);
+        await _userManager.UpdateSecurityStampAsync(user);
+
+        await _auditLogService.LogAsync(new AuditEntry(
+            AuditActions.UserTwoFactorReset,
+            AuditEntityTypes.User,
+            user.Id.ToString(),
+            user.Email), cancellationToken);
+
+        return ServiceResult.Success("İki adımlı doğrulama sıfırlandı. Kullanıcı sonraki girişte yeniden kurabilir.");
+    }
+
     private bool IsCurrentUser(ApplicationUser user) =>
         string.Equals(_currentUser.UserId, user.Id.ToString(), StringComparison.OrdinalIgnoreCase);
 

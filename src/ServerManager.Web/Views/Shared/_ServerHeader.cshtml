@@ -12,6 +12,7 @@
     var canViewTerminal = User.HasPermission(Permissions.TerminalView);
     var canViewFiles = User.HasPermission(Permissions.FileView);
     var canViewDeployments = User.HasPermission(Permissions.DeploymentView);
+    var canViewSecurity = User.HasPermission(Permissions.SecurityView);
     var pluginTabs = TabRegistry.GetTabs().Where(t => User.HasPermission(t.Permission)).ToList();
     var activePluginTab = pluginTabs.FirstOrDefault(t => t.Key == Model.ActiveTab);
     var tabLead = ViewData["PageLead"] as string ?? Model.ActiveTab switch
@@ -21,10 +22,11 @@
         ServerPageViewModel.TerminalTab => "Tarayıcıdan sunucuya SSH terminali açın; çalıştırılan komutlar kayıt altına alınır.",
         ServerPageViewModel.FilesTab => "Sunucudaki dosyalara SFTP ile göz atın, yükleyin, indirin ve düzenleyin.",
         ServerPageViewModel.DeploymentsTab => "Bu sunucuya Git deposundan dağıtılan projeler ve deployment geçmişi.",
+        ServerPageViewModel.SecurityTab => "SSH ayarları, açık portlar, güvenlik duvarı, güncellemeler ve kullanıcı hesaplarının salt okunur denetimi. Panel hiçbir düzeltmeyi kendiliğinden uygulamaz.",
         _ when activePluginTab is not null => activePluginTab.Lead,
         _ => "Sunucunun bağlantı bilgileri, donanımı ve son izleme verileri."
     };
-    var disabledTabs = new[] { "Services", "Processes", "Logs", "Network", "Storage", "Security", "Backups", "Alerts", "Activity" };
+    var disabledTabs = new[] { "Services", "Processes", "Logs", "Network", "Storage", "Backups", "Alerts", "Activity" };
 }
 
 <div data-region="server-header" data-live-server="@server.Id" data-hub-url="@Url.Content("~" + MonitoringHub.Path)">
@@ -123,6 +125,10 @@
         @if (canViewDeployments)
         {
             <a asp-controller="ServerDeployments" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.DeploymentsTab ? "is-active" : "")" title="Bu sunucuya dağıtılan projeler ve deployment geçmişi">Deployments</a>
+        }
+        @if (canViewSecurity)
+        {
+            <a asp-controller="ServerSecurity" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.SecurityTab ? "is-active" : "")" title="Güvenlik taraması ve bulgular">Security</a>
         }
         @foreach (var tab in pluginTabs)
         {

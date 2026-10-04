@@ -70,4 +70,13 @@ public class UsersController : Controller
             ? this.ApiSuccess(result.Message)
             : this.ApiFailure(result, "Kullanıcının kilit durumu değiştirilemedi.");
     }
+
+    [HttpPost]
+    public async Task<IActionResult> ResetTwoFactor(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _userManagementService.ResetTwoFactorAsync(id, cancellationToken);
+        return result.IsSuccess
+            ? this.ApiSuccess(result.Message)
+            : this.ApiFailure(result, "İki adımlı doğrulama sıfırlanamadı.");
+    }
 }

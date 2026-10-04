@@ -43,6 +43,7 @@ public static class AlertingDisplay
         AlertRuleKind.SslCertificateExpiry => "lock",
         AlertRuleKind.DeploymentFailed => "rocket",
         AlertRuleKind.BackupFailed => "archive",
+        AlertRuleKind.SecurityFinding => "shield",
         _ => "bell"
     };
 

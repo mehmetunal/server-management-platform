@@ -5,6 +5,11 @@ public static class AuditActions
     public const string Login = "auth.login";
     public const string LoginFailed = "auth.login_failed";
     public const string Logout = "auth.logout";
+    public const string RecoveryCodeUsed = "auth.recovery_code_used";
+    public const string PasswordChange = "account.password_change";
+    public const string TwoFactorEnable = "account.2fa_enable";
+    public const string TwoFactorDisable = "account.2fa_disable";
+    public const string RecoveryCodesRegenerate = "account.recovery_codes_regenerate";
 
     public const string ServerCreate = "server.create";
     public const string ServerUpdate = "server.update";
@@ -90,12 +95,22 @@ public static class AuditActions
     public const string UserUpdate = "user.update";
     public const string UserLock = "user.lock";
     public const string UserUnlock = "user.unlock";
+    public const string UserTwoFactorReset = "user.2fa_reset";
+
+    public const string SecurityScan = "security.scan";
+    public const string AuditExport = "audit.export";
+    public const string AuditVerify = "audit.verify";
 
     public static readonly IReadOnlyDictionary<string, string> DisplayNames = new Dictionary<string, string>
     {
         [Login] = "Giriş",
         [LoginFailed] = "Başarısız giriş",
         [Logout] = "Çıkış",
+        [RecoveryCodeUsed] = "Kurtarma koduyla giriş",
+        [PasswordChange] = "Parola değiştirme",
+        [TwoFactorEnable] = "İki adımlı doğrulama açıldı",
+        [TwoFactorDisable] = "İki adımlı doğrulama kapatıldı",
+        [RecoveryCodesRegenerate] = "Kurtarma kodları yenilendi",
         [ServerCreate] = "Sunucu ekleme",
         [ServerUpdate] = "Sunucu güncelleme",
         [ServerDelete] = "Sunucu silme",
@@ -171,6 +186,10 @@ public static class AuditActions
         [UserCreate] = "Kullanıcı ekleme",
         [UserUpdate] = "Kullanıcı güncelleme",
         [UserLock] = "Kullanıcı kilitleme",
-        [UserUnlock] = "Kullanıcı kilidi açma"
+        [UserUnlock] = "Kullanıcı kilidi açma",
+        [UserTwoFactorReset] = "Kullanıcının iki adımlı doğrulaması sıfırlandı",
+        [SecurityScan] = "Güvenlik taraması",
+        [AuditExport] = "Audit log dışa aktarma",
+        [AuditVerify] = "Audit log bütünlük doğrulaması"
     };
 }

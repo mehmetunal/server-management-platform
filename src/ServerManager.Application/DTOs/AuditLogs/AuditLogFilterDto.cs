@@ -14,6 +14,14 @@ public sealed class AuditLogFilterDto
 
     public DateTime? To { get; set; }
 
+    /// <summary>Kullanıcı adında geçen metin.</summary>
+    public string? User { get; set; }
+
+    /// <summary>IP adresinin başı (ör. 10.0. veya tam adres).</summary>
+    public string? Ip { get; set; }
+
+    public string? EntityType { get; set; }
+
     public int Page { get; set; } = 1;
 
     public int PageSize { get; set; } = Paging.DefaultPageSize;

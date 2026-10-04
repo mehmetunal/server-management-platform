@@ -232,6 +232,19 @@ public class AlertRepository : IAlertRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<AlertSecuritySnapshot>> GetLatestSecurityScansAsync(CancellationToken cancellationToken = default)
+    {
+        var completed = _context.SecurityScans
+            .AsNoTracking()
+            .Where(s => s.Status == SecurityScanStatus.Completed)
+            .Where(s => _context.Servers.Any(server => server.Id == s.ServerId));
+
+        return await completed
+            .Where(s => !completed.Any(other => other.ServerId == s.ServerId && other.StartedAt > s.StartedAt))
+            .Select(s => new AlertSecuritySnapshot(s.ServerId, s.ServerName, s.Id, s.Score, s.CriticalCount, s.WarningCount, s.CompletedAt))
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
         _context.SaveChangesAsync(cancellationToken);
 }

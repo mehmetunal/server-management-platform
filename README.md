@@ -1949,6 +1949,8 @@ görülebilmelidir.
 - 2FA
 - Advanced audit
 
+> Durum: tamamlandı. Ayrıntılar için bkz. [Güvenlik merkezi](#güvenlik-merkezi), [İki adımlı doğrulama](#iki-adımlı-doğrulama-2fa) ve [Audit log](#audit-log).
+
 ## Phase 10 — Advanced
 
 - Agent
@@ -2463,8 +2465,8 @@ Testler veritabanına veya gerçek sunuculara bağlanmaz. `global.json` içinde 
 | Rol | İzinler |
 | --- | --- |
 | SuperAdmin | Tümü (eklenti yönetimi `plugin.manage` yalnızca SuperAdmin'dedir) |
-| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker, terminal, dosya ve deployment izinleri, alarm görüntüleme/üstlenme/yönetim, audit log |
-| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal, sunucu terminali, dosya görüntüleme/oluşturma/düzenleme/yükleme/indirme, deployment görüntüleme/çalıştırma, alarm görüntüleme/üstlenme |
+| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker, terminal, dosya ve deployment izinleri, alarm görüntüleme/üstlenme/yönetim, yedekleme, güvenlik merkezi, audit log görüntüleme/dışa aktarma |
+| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal, sunucu terminali, dosya görüntüleme/oluşturma/düzenleme/yükleme/indirme, deployment görüntüleme/çalıştırma, alarm görüntüleme/üstlenme, yedek görüntüleme/çalıştırma, güvenlik görüntüleme/tarama |
 | Developer | Dashboard, sunucu görüntüleme, Docker görüntüleme/yeniden başlatma, dosya görüntüleme/indirme, deployment görüntüleme/çalıştırma, alarm görüntüleme |
 | Viewer | Dashboard, sunucu görüntüleme, Docker görüntüleme, deployment görüntüleme, alarm görüntüleme |
 
@@ -2881,6 +2883,70 @@ Hiçbir yedek veya geri yükleme komutu sunucuda dosya silmez. Geri yükleme de 
 
 Yerel testte gerçek bucket yerine yerel bir S3 sunucusu (ör. SeaweedFS veya MinIO container'ı) ve test SSH sunucusu kullanın; canlı sunuculardan veya canlı bucket'lardan test yedeği almayın.
 
+### Güvenlik merkezi
+
+Menüde **Güvenlik** sayfası tüm sunucuların son tarama puanını, kritik bulgu ve uyarı sayılarını gösterir; sunucu detayındaki **Güvenlik** sekmesi tek sunucunun raporunu, bulgularını, açık portlarını ve tarama geçmişini listeler. Tarama agentless'tır: SSH ile tek bir salt okunur betik çalıştırılır, sunucuda hiçbir ayar değiştirilmez. Her bulgu için önerilen düzeltme komutu metin olarak gösterilir ve kopyalanabilir; panel bu komutları **çalıştırmaz**.
+
+| İzin | Kapsam | Varsayılan roller |
+| --- | --- | --- |
+| `security.view` | Güvenlik merkezi ve sunucu güvenlik raporlarını görüntüleme | SuperAdmin, Admin, Operator |
+| `security.scan` | Elle tarama başlatma (dakikada en fazla 10) | SuperAdmin, Admin, Operator |
+
+Denetlenenler:
+
+| Kategori | Kontrol | Kaynak |
+| --- | --- | --- |
+| SSH | Root girişi, parola ile giriş, boş parola, `MaxAuthTries`, X11 yönlendirme, başarısız giriş sayısı ve fail2ban | `sshd -T` (yoksa `sshd_config`), `journalctl` / `auth.log` / `secure` |
+| Ağ ve portlar | Dinleyen portlar, adres türü (yalnızca yerel, özel ağ, tüm arayüzler, genel), riskli servisler (veritabanı, Redis, Docker API, Telnet, FTP vb.) | `ss` veya `netstat` |
+| Güvenlik duvarı | ufw, firewalld, nftables, iptables durumu ve kural sayısı | İlgili araçların durum komutları |
+| Docker | TCP üzerinden açık Docker API (TLS'siz ise kritik), soket erişimi, dışarı yayınlanan container portları | `docker info`, `daemon.json`, `docker ps` |
+| Güncellemeler | Bekleyen (güvenlik) güncellemeleri, yeniden başlatma gereksinimi, otomatik güncelleme | apt, dnf/yum, apk |
+| Kullanıcılar | UID 0 hesapları, giriş yapabilen hesaplar, boş parolalı hesaplar, parolasız sudo kuralları | `/etc/passwd`, `/etc/group`, `/etc/shadow` (yetki varsa), sudoers |
+| Disk | Şifreli disk (LUKS) varlığı | `lsblk` |
+
+Puan 100'den başlar; her kritik bulgu 25, her uyarı 10 puan düşürür (en az 0). Özel ağ adresinde dinleyen riskli portlar bir seviye hafif değerlendirilir. Güvenlik duvarı kapalıyken dışarı açık riskli port varsa bulgu kritiktir.
+
+Yetki: sunucuda **sudo kullan** açıksa betik önce `sudo -n` ile çalıştırılır; sudo yalnızca belirli komutlara izin veriyorsa (ör. sadece `docker`) tarama otomatik olarak yetkisiz kullanıcıyla tekrarlanır. Yetkisiz taramada `/etc/shadow`, güvenlik duvarı kuralları gibi bazı bilgiler okunamaz; rapor bu durumda kısıtlı yetkiyle tarandığını belirtir ve okunamayan kontrolleri "Bilinmiyor" olarak işaretler (puanı düşürmez).
+
+Zamanlanmış tarama: `SecurityScanWorker` host key'i doğrulanmış sunucuları `ScanIntervalHours` aralığıyla tarar. Aynı sunucuda aynı anda tek tarama çalışır; uygulama yeniden başlarken yarım kalan taramalar başarısız olarak işaretlenir. **Kritik güvenlik bulgusu** alarm kuralı, son taramada kritik bulgu olan sunucular için alarm açar (bkz. [Alarmlar ve izleme](#alarmlar-ve-izleme)).
+
+`appsettings.json` → `SecurityScan`:
+
+| Ayar | Varsayılan | Açıklama |
+| --- | --- | --- |
+| `ScanIntervalHours` | `24` | Otomatik tarama aralığı; `0` otomatik taramayı kapatır |
+| `RetentionDays` | `180` | Bu süreden eski tarama kayıtları silinir |
+| `KeepLatestPerServer` | `20` | Yaşından bağımsız olarak her sunucu için korunan son tarama sayısı |
+
+Yerel testte yalnızca test SSH container'larını tarayın; canlı sunucularda denemeler için yalnızca kendi sunucularınızı kullanın.
+
+### İki adımlı doğrulama (2FA)
+
+Her kullanıcı sağ üstteki menüden **Hesabım** sayfasında parolasını değiştirebilir ve authenticator uygulamasıyla (Google Authenticator, Microsoft Authenticator, 1Password vb.) TOTP tabanlı iki adımlı doğrulamayı açabilir:
+
+1. **Kurulumu başlat** QR kod ve elle girilebilecek anahtarı gösterir.
+2. Uygulamadaki 6 haneli kod girilince 2FA açılır ve **10 kurtarma kodu** bir kez gösterilir. Her kurtarma kodu tek kullanımlıktır.
+3. Sonraki girişlerde parola sonrası kod istenir. "Bu tarayıcıda 30 gün boyunca sorma" seçilirse o tarayıcıda 2FA adımı 30 gün atlanır; Hesabım sayfasındaki **Bu tarayıcıyı unut** bu izni kaldırır.
+
+2FA'yı kapatmak ve kurtarma kodlarını yenilemek parola onayı ister. Telefonunu kaybeden kullanıcı için yönetici **Kullanıcılar** sayfasından 2FA'yı sıfırlayabilir. Giriş, 2FA, kurtarma kodu kullanımı, açma/kapatma ve sıfırlama işlemleri audit log'a yazılır; kod doğrulama uç noktaları giriş rate limit'ine tabidir.
+
+`appsettings.json` → `TwoFactor:Required` `true` yapılırsa 2FA'sı kapalı kullanıcılar giriş yaptıktan sonra yalnızca Hesabım sayfasını kullanabilir; kurulumu tamamlayınca panel açılır. Varsayılan `false`'tur (mevcut kullanıcılar kilitlenmez).
+
+### Audit log
+
+**Audit Log** sayfası son 24 saatin özetini (kayıt, başarısız işlem, başarısız giriş, aktif kullanıcı, en sık işlemler) ve filtrelenebilir kayıt listesini gösterir. Filtreler: serbest arama, işlem, sonuç, tarih aralığı, kullanıcı adı, IP (başı yeterli) ve hedef türü. Her kaydın ayrıntı sayfasında tarayıcı bilgisi, kullanıcı kimliği ve zincir imzası görünür. Audit kayıtları düzenlenemez ve hiçbir temizlik işiyle silinmez.
+
+| İzin | Kapsam | Varsayılan roller |
+| --- | --- | --- |
+| `audit.view` | Audit log listesi, özet ve ayrıntılar | SuperAdmin, Admin |
+| `audit.export` | CSV dışa aktarma ve bütünlük doğrulaması | SuperAdmin, Admin |
+
+- **CSV dışa aktarma:** Seçili filtreye uyan en yeni 50.000 kayıt Excel uyumlu (UTF-8 BOM, `;` ayraçlı) CSV olarak indirilir. `=`, `+`, `-`, `@` ile başlayan hücreler formül olarak çalışmasın diye başına `'` eklenir. Dışa aktarma işleminin kendisi de filtresiyle birlikte audit log'a yazılır.
+- **Bütünlük zinciri:** Her yeni kayıt, kendi alanları ve bir önceki kaydın imzası üzerinden HMAC-SHA256 ile imzalanır (`ChainHash`). Anahtar, `Security:MasterKey`'den HKDF ile türetilir; ayrı bir gizli değer gerekmez. Bu özellikten önce yazılmış kayıtlar imzasız kalır ve zincirin başında kabul edilir.
+- **Bütünlüğü doğrula:** Tüm kayıtlar Id sırasıyla kontrol edilir. Bir kayıt değiştirilmiş, silinmiş, araya kayıt eklenmiş ya da imzası kaldırılmışsa zincirin kırıldığı ilk kayıt numarası gösterilir. Doğrulama sonucu da audit log'a yazılır.
+
+> Not: `Security:MasterKey` değiştirilirse eski kayıtların imzaları yeni anahtarla doğrulanamaz. Anahtar rotasyonundan önce doğrulamayı çalıştırıp sonucu ve CSV dökümünü saklayın.
+
 ### Eklentiler
 
 Sistem nopCommerce'teki plugin mantığıyla genişler: Dokploy, Dokku ve diğer DevOps araçları host'tan bağımsız birer eklentidir. Her eklenti `Plugins/{SystemName}/` klasöründe `plugin.json` tanımı, derlenmiş assembly'si (controller, derlenmiş Razor view'ları, servisler, migration'lar) ve `Content/` klasörüyle (CSS/JS) durur.
@@ -3101,6 +3167,7 @@ Frontend kuralları host ile aynıdır: yalnızca ES module, inline script/style
 - Tüm sayfalar varsayılan olarak giriş gerektirir; her controller/action izin kontrolüyle korunur.
 - Tüm POST istekleri antiforgery token ile doğrulanır; AJAX istekleri `RequestVerificationToken` başlığını gönderir.
 - Giriş, bağlantı testi ve anlık metrik toplama uç noktaları rate limit ile sınırlandırılır (dakikada 10 istek).
+- İki adımlı doğrulama (TOTP) desteklenir; `TwoFactor:Required` ile zorunlu hale getirilebilir. Audit kayıtları HMAC zinciriyle imzalanır ve panelden doğrulanabilir.
 - 5 başarısız girişte hesap 15 dakika kilitlenir. Pasifleştirilen veya kilitlenen kullanıcının açık oturumu en geç 1 dakika içinde sonlanır.
 - SSH host key fingerprint ilk başarılı bağlantıda kaydedilir; sonraki bağlantılarda farklı bir anahtar gelirse bağlantı reddedilir. Sunucu adresi veya portu değiştirildiğinde fingerprint sıfırlanır.
 - Sunucu silme işlemi sunucu adının birebir yazılmasıyla onaylanır ve soft delete olarak yapılır; audit kayıtları korunur.

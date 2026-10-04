@@ -63,6 +63,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     public DbSet<BackupRun> BackupRuns => Set<BackupRun>();
 
+    public DbSet<SecurityScan> SecurityScans => Set<SecurityScan>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

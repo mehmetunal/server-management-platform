@@ -1,0 +1,7 @@
+.audit-action-code {
+  @apply font-mono text-xs text-slate-400;
+}
+
+.audit-target-link {
+  @apply text-brand-600 hover:underline dark:text-brand-400;
+}

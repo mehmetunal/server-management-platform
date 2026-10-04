@@ -78,6 +78,79 @@ export async function confirmAction({ title, message, code, confirmText = 'Onayl
     return result.isConfirmed ? result.value : null;
 }
 
+/**
+ * Hassas işlemden önce parolayı ister; action({ password }) diyalog açıkken çalışır.
+ * Başarılı olursa action yanıtını, vazgeçilirse null döner.
+ */
+export async function promptPassword({ title, message, confirmText = 'Onayla', danger = false, action }) {
+    const Swal = swal();
+    const result = await Swal.fire({
+        ...BASE_OPTIONS,
+        customClass: { ...BASE_OPTIONS.customClass, confirmButton: danger ? 'btn-danger' : 'btn-primary' },
+        icon: danger ? 'warning' : 'question',
+        titleText: title,
+        text: message,
+        input: 'password',
+        inputLabel: 'Parolanız',
+        inputAttributes: { autocomplete: 'current-password', autocapitalize: 'off', spellcheck: 'false' },
+        inputValidator: value => (value ? undefined : 'Parolanızı girin.'),
+        confirmButtonText: confirmText,
+        showLoaderOnConfirm: true,
+        allowOutsideClick: () => !Swal.isLoading(),
+        preConfirm: async password => {
+            const response = await action({ password });
+            if (!response.isSuccess) {
+                Swal.showValidationMessage(failureMessage(response));
+                return false;
+            }
+            return response;
+        }
+    });
+    return result.isConfirmed ? result.value : null;
+}
+
+/** Tek seferlik gösterilen değerleri (ör. kurtarma kodları) kopyalama düğmesiyle gösterir. */
+export async function showSecretList({ title, message, items }) {
+    const Swal = swal();
+    const content = element('div');
+    if (message) content.appendChild(element('p', '', message));
+    content.appendChild(element('pre', 'swal-code', items.join('\n')));
+    const result = await Swal.fire({
+        ...BASE_OPTIONS,
+        customClass: { ...BASE_OPTIONS.customClass, confirmButton: 'btn-primary', denyButton: 'btn-secondary' },
+        icon: 'info',
+        titleText: title,
+        html: content,
+        showCancelButton: false,
+        showDenyButton: true,
+        denyButtonText: 'Kopyala',
+        confirmButtonText: 'Kaydettim',
+        allowOutsideClick: false,
+        preDeny: async () => {
+            try {
+                await navigator.clipboard.writeText(items.join('\n'));
+                Swal.showValidationMessage('Panoya kopyalandı.');
+            } catch {
+                Swal.showValidationMessage('Kopyalanamadı; kodları elle seçip kopyalayın.');
+            }
+            return false;
+        }
+    });
+    return result.isConfirmed;
+}
+
+export function alertSuccess(title, message) {
+    return swal().fire({
+        ...BASE_OPTIONS,
+        showCancelButton: false,
+        customClass: { ...BASE_OPTIONS.customClass, confirmButton: 'btn-primary' },
+        icon: 'success',
+        titleText: title,
+        text: message,
+        confirmButtonText: 'Tamam'
+    });
+}
+
 export function alertError(title, message) {
     return swal().fire({
         ...BASE_OPTIONS,

@@ -7,6 +7,7 @@
     var canDeployments = User.HasPermission(Permissions.DeploymentView);
     var canAlerts = User.HasPermission(Permissions.AlertView);
     var canBackups = User.HasPermission(Permissions.BackupView);
+    var canSecurity = User.HasPermission(Permissions.SecurityView);
 }
 <aside class="app-sidebar" data-sidebar>
     <div class="flex h-16 shrink-0 items-center gap-3 border-b border-slate-800 px-5">
@@ -70,7 +71,10 @@
         {
             <a asp-controller="BackupJobs" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "BackupJobs", "BackupRuns", "BackupStorages")" title="Dosya, Docker volume ve veritabanı yedekleri; geri yükleme">@Icons.Render("archive") Yedekleme</a>
         }
-        <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("shield") Güvenlik <span class="nav-soon">Yakında</span></span>
+        @if (canSecurity)
+        {
+            <a asp-controller="Security" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "Security")" title="Sunucuların SSH, port, güvenlik duvarı ve güncelleme denetimi">@Icons.Render("shield") Güvenlik</a>
+        }
         @if (canUsers)
         {
             <a asp-controller="Users" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "Users")" title="Panel kullanıcılarını ve rollerini yönet">@Icons.Render("users") Kullanıcılar</a>

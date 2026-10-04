@@ -1,0 +1,17 @@
+@use 'audit-shared';
+
+.audit-details-grid {
+  @apply grid gap-6 lg:grid-cols-2;
+}
+
+.audit-details-full {
+  @apply whitespace-pre-wrap break-words;
+}
+
+.audit-chain-hash {
+  @apply block break-all font-mono text-xs text-slate-500;
+}
+
+.audit-detail-wide {
+  @apply sm:col-span-2;
+}
