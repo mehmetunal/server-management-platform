@@ -1,0 +1,108 @@
+@model CommandRunFormViewModel
+@{
+    ViewData["Title"] = "Komut çalıştır";
+    ViewData["Page"] = "command-run-form";
+    var form = Model.Form;
+    var groupNames = Model.Groups.ToDictionary(g => g.Id);
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Komut geçmişine dön">@Icons.Render("chevron-left", "h-4 w-4") Toplu komut</a>
+        <h1 class="page-title">Komut çalıştır</h1>
+        <p class="page-lead">Komut her sunucuda <code>sh -c</code> ile, en fazla @CommandRunRules.Parallelism sunucuda aynı anda çalışır. Çıktının (stdout + stderr) son @(CommandRunRules.MaxOutputChars / 1000) bin karakteri saklanır.</p>
+    </div>
+</div>
+
+<form asp-action="Create" method="post" data-command-form novalidate autocomplete="off">
+    <p class="alert-error mb-6" data-form-error hidden></p>
+
+    <div class="command-form">
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Komut</h2></div>
+            <div class="panel-body space-y-5">
+                <div>
+                    <label for="TemplateId" class="form-label">Şablon</label>
+                    <select id="TemplateId" name="TemplateId" class="form-control" data-template-select>
+                        <option value="">Şablonsuz (serbest komut)</option>
+                        @foreach (var template in Model.Templates)
+                        {
+                            <option value="@template.Id" selected="@(template.Id == form.TemplateId)" data-content="@template.Content" data-sudo="@template.RequiresSudo.ToString().ToLowerInvariant()">@template.Name</option>
+                        }
+                    </select>
+                    <p class="form-hint">Şablon seçildiğinde içeriği aşağıya kopyalanır; çalıştırmadan önce düzenleyebilirsiniz.</p>
+                    <span class="field-validation-error" data-valmsg-for="TemplateId"></span>
+                </div>
+                <div>
+                    <label for="Command" class="form-label">Komut / betik *</label>
+                    <textarea id="Command" name="Command" class="form-control command-editor" rows="8" maxlength="@CommandRunRules.MaxCommandLength" spellcheck="false" placeholder="uptime&#10;df -h /" data-command-input>@form.Command</textarea>
+                    <span class="field-validation-error" data-valmsg-for="Command"></span>
+                </div>
+                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <div>
+                        <label for="TimeoutSeconds" class="form-label">Zaman aşımı (saniye)</label>
+                        <input id="TimeoutSeconds" name="TimeoutSeconds" type="number" min="@CommandRunRules.MinTimeoutSeconds" max="@CommandRunRules.MaxTimeoutSeconds" value="@form.TimeoutSeconds" class="form-control" />
+                        <span class="field-validation-error" data-valmsg-for="TimeoutSeconds"></span>
+                    </div>
+                    <label class="check-card self-end">
+                        <input type="checkbox" name="UseSudo" value="true" checked="@form.UseSudo" data-sudo-input />
+                        <span>
+                            <span class="check-card-title">sudo ile çalıştır</span>
+                            <span class="block text-xs text-slate-500">Yalnızca sudo kullanımı açık sunucularda çalışır; diğerleri başarısız sayılır.</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <h2 class="panel-title">Hedef sunucular</h2>
+                    <p class="mt-1 text-xs text-slate-500"><span data-selected-count>0</span> sunucu seçili · en fazla @CommandRunRules.MaxServers</p>
+                </div>
+                <input type="search" class="form-control w-56" placeholder="Sunucu ara…" aria-label="Sunucu ara" data-server-search />
+            </div>
+            <div class="panel-body space-y-4">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button type="button" class="btn-secondary btn-sm" data-select-all title="Görünen tüm sunucuları seç">Tümünü seç</button>
+                    <button type="button" class="btn-ghost btn-sm" data-select-none title="Seçimi temizle">Temizle</button>
+                    @foreach (var group in Model.Groups)
+                    {
+                        <button type="button" class="@ServerGroupDisplay.BadgeClass(group.Color) cursor-pointer" data-select-group="@group.Id" title="@group.Name grubundaki sunucuları seçime ekle">+ @group.Name</button>
+                    }
+                </div>
+                @if (Model.Servers.Count == 0)
+                {
+                    <p class="text-sm text-slate-500">Henüz sunucu yok.</p>
+                }
+                else
+                {
+                    <div class="command-server-list">
+                        @foreach (var server in Model.Servers)
+                        {
+                            var group = server.GroupId is { } gid && groupNames.TryGetValue(gid, out var g) ? g : null;
+                            <label class="check-card" data-server-option data-group="@server.GroupId" data-search="@($"{server.Name} {server.IpAddress} {group?.Name}".ToLowerInvariant())">
+                                <input type="checkbox" name="ServerIds" value="@server.Id" checked="@form.ServerIds.Contains(server.Id)" data-server-check />
+                                <span class="min-w-0">
+                                    <span class="check-card-title">@server.Name</span>
+                                    <span class="block font-mono text-xs text-slate-500">@server.IpAddress</span>
+                                    @if (group is not null)
+                                    {
+                                        <span class="@ServerGroupDisplay.BadgeClass(group.Color) mt-1">@group.Name</span>
+                                    }
+                                </span>
+                            </label>
+                        }
+                    </div>
+                }
+                <span class="field-validation-error" data-valmsg-for="ServerIds"></span>
+            </div>
+        </section>
+    </div>
+
+    <div class="form-actions">
+        <a asp-action="Index" class="btn-secondary" title="Çalıştırmadan geri dön">İptal</a>
+        <button type="submit" class="btn-primary" title="Komutu seçili sunucularda çalıştır"><span class="spinner" data-spinner hidden></span> @Icons.Render("play", "h-4 w-4") Çalıştır</button>
+    </div>
+</form>

@@ -12,6 +12,7 @@
     var canTerminal = canServers && User.HasPermission(Permissions.TerminalView);
     var canFiles = canServers && User.HasPermission(Permissions.FileView);
     var canSystem = canServers && User.HasPermission(Permissions.SystemView);
+    var canCommands = User.HasPermission(Permissions.CommandView);
 }
 <aside class="app-sidebar" data-sidebar>
     <div class="flex h-16 shrink-0 items-center gap-3 border-b border-slate-800 px-5">
@@ -87,6 +88,11 @@
         @if (canSystem)
         {
             <a asp-controller="ServerPicker" asp-action="Logs" class="nav-link @NavigationHelper.ActiveActionClass(ViewContext, "ServerPicker", "Logs")" title="Sunucu seçip journal ve /var/log kayıtlarını oku">@Icons.Render("document") Loglar</a>
+        }
+
+        @if (canCommands)
+        {
+            <a asp-controller="CommandRuns" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "CommandRuns", "ServerTemplates")" title="Bir komutu birden çok sunucuda aynı anda çalıştır; betik şablonları">@Icons.Render("bolt") Toplu komut</a>
         }
 
         <partial name="_PluginMenuItems" model="MenuGroups.Operations" />

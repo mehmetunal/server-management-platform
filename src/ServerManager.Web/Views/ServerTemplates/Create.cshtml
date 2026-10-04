@@ -1,0 +1,22 @@
+@model ServerTemplateFormDto
+@{
+    ViewData["Title"] = "Şablon ekle";
+    ViewData["Page"] = "server-template-form";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Şablon listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Sunucu şablonları</a>
+        <h1 class="page-title">Şablon ekle</h1>
+        <p class="page-lead">Yeni bir kabuk betiği veya cloud-init şablonu tanımlayın.</p>
+    </div>
+</div>
+
+<form asp-action="Create" method="post" data-template-form novalidate autocomplete="off">
+    <partial name="_TemplateForm" model="Model" />
+
+    <div class="form-actions">
+        <a asp-action="Index" class="btn-secondary" title="Kaydetmeden listeye dön">İptal</a>
+        <button type="submit" class="btn-primary" title="Şablonu kaydet"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+    </div>
+</form>

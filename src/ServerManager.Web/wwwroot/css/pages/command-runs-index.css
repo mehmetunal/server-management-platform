@@ -1,0 +1,2 @@
+/*! tailwindcss v4.3.3 | MIT License | https://tailwindcss.com */
+.command-snippet{max-width:var(--container-md,28rem);text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-mono,"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);font-size:var(--text-xs,.75rem);line-height:var(--tw-leading,var(--text-xs--line-height,calc(1 / .75)));color:var(--color-slate-800,oklch(27.9% .041 260.031));display:block;overflow:hidden}.command-snippet:where(.dark,.dark *){color:var(--color-slate-200,oklch(92.9% .013 255.508))}

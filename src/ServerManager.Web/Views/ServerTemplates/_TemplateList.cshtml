@@ -1,0 +1,75 @@
+@model IReadOnlyList<ServerTemplateListItemDto>
+@{
+    var canManage = User.HasPermission(Permissions.TemplateManage);
+    var canRun = User.HasPermission(Permissions.CommandRun);
+}
+
+@if (Model.Count == 0)
+{
+    <div class="empty-state">
+        <span class="empty-state-icon">@Icons.Render("clipboard", "h-6 w-6")</span>
+        <p class="empty-state-title">Henüz şablon yok</p>
+        <p>Güncelleme, temizlik veya kurulum betiklerinizi şablon olarak kaydedin.</p>
+        @if (canManage)
+        {
+            <a asp-action="Create" class="btn-primary btn-sm mt-3" title="Yeni şablon oluştur">@Icons.Render("plus", "h-4 w-4") Şablon ekle</a>
+        }
+    </div>
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Ad</th>
+                    <th>Tür</th>
+                    <th>Satır</th>
+                    <th>Son güncelleme</th>
+                    <th class="text-right"><span class="sr-only">İşlem</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var template in Model)
+                {
+                    <tr>
+                        <td class="text-sm">
+                            <span class="font-medium text-slate-900 dark:text-white">@template.Name</span>
+                            @if (!string.IsNullOrEmpty(template.Description))
+                            {
+                                <span class="block text-xs text-slate-500">@template.Description</span>
+                            }
+                        </td>
+                        <td class="text-sm">
+                            <span class="@CommandRunDisplay.KindBadgeClass(template.Kind)">@CommandRunDisplay.KindText(template.Kind)</span>
+                            @if (template.RequiresSudo)
+                            {
+                                <span class="badge-warning ml-1" title="Şablon sudo ile çalıştırılmak üzere işaretli">sudo</span>
+                            }
+                        </td>
+                        <td class="text-sm">@template.LineCount</td>
+                        <td class="whitespace-nowrap text-sm" title="@DateDisplay.Format(template.UpdatedAt ?? template.CreatedAt, "dd.MM.yyyy HH:mm")">
+                            @DateDisplay.Relative(template.UpdatedAt ?? template.CreatedAt)
+                            <span class="block text-xs text-slate-500">@(template.UpdatedBy ?? "—")</span>
+                        </td>
+                        <td class="whitespace-nowrap text-right">
+                            @if (canRun && template.Kind == ServerTemplateKind.Script)
+                            {
+                                <a asp-controller="CommandRuns" asp-action="Create" asp-route-templateId="@template.Id" class="btn-ghost btn-sm" title="Bu şablonu sunucularda çalıştır">@Icons.Render("play", "h-4 w-4")</a>
+                            }
+                            @if (canManage)
+                            {
+                                <a asp-action="Edit" asp-route-id="@template.Id" class="btn-ghost btn-sm" title="Şablonu düzenle">@Icons.Render("pencil", "h-4 w-4")</a>
+                                <button type="button" class="btn-ghost btn-sm text-red-600" title="Şablonu sil"
+                                        data-ajax-action data-url="@Url.Action("Delete", new { id = template.Id })"
+                                        data-confirm-title="Şablon silinsin mi?"
+                                        data-confirm-message="&quot;@template.Name&quot; şablonu silinecek. Bu şablonla çalıştırılmış komutların geçmişi korunur."
+                                        data-confirm-label="Sil">@Icons.Render("trash", "h-4 w-4")</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

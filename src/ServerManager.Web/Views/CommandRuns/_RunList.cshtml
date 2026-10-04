@@ -1,0 +1,54 @@
+@model CommandRunIndexViewModel
+
+@if (Model.Runs.Items.Count == 0)
+{
+    <div class="empty-state">
+        <span class="empty-state-icon">@Icons.Render("terminal", "h-6 w-6")</span>
+        <p>@(Model.HasFilter ? "Aramaya uyan komut bulunamadı." : "Henüz toplu komut çalıştırılmadı.")</p>
+    </div>
+}
+else
+{
+    <div class="table-scroll" data-command-rows data-running="@Model.HasRunning.ToString().ToLowerInvariant()">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Başlangıç</th>
+                    <th>Komut</th>
+                    <th>Durum</th>
+                    <th>Sonuç</th>
+                    <th>Süre</th>
+                    <th>Kullanıcı</th>
+                    <th class="text-right"><span class="sr-only">İşlem</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var run in Model.Runs.Items)
+                {
+                    <tr>
+                        <td class="whitespace-nowrap text-sm" title="@DateDisplay.Format(run.StartedAt, "dd.MM.yyyy HH:mm:ss")">@DateDisplay.Relative(run.StartedAt)</td>
+                        <td class="text-sm">
+                            <code class="command-snippet" title="@run.Command">@CommandRunDisplay.FirstLine(run.Command)</code>
+                            <span class="block text-xs text-slate-500">
+                                @(run.TemplateName is null ? "Serbest komut" : $"Şablon: {run.TemplateName}")@(run.UseSudo ? " · sudo" : string.Empty)
+                            </span>
+                        </td>
+                        <td class="text-sm"><span class="@CommandRunDisplay.StatusBadgeClass(run.Status, run.FailedCount)"><span class="badge-dot"></span>@CommandRunDisplay.StatusText(run.Status)</span></td>
+                        <td class="whitespace-nowrap text-sm">
+                            <span class="text-emerald-600 dark:text-emerald-400" title="Başarılı sunucu sayısı">@run.SucceededCount ✓</span>
+                            <span class="mx-1 text-slate-400">/</span>
+                            <span class="@(run.FailedCount > 0 ? "text-red-600 dark:text-red-400" : "text-slate-500")" title="Başarısız sunucu sayısı">@run.FailedCount ✗</span>
+                            <span class="block text-xs text-slate-500">@run.TargetCount sunucu</span>
+                        </td>
+                        <td class="whitespace-nowrap text-sm">@(run.Status == CommandRunStatus.Running ? "Sürüyor" : DeploymentDisplay.Duration(run.StartedAt, run.CompletedAt))</td>
+                        <td class="text-sm">@(run.UserName ?? "—")</td>
+                        <td class="text-right">
+                            <a asp-action="Details" asp-route-id="@run.Id" class="btn-ghost btn-sm" title="Sunucu bazında çıktıları göster">@Icons.Render("eye", "h-4 w-4")</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <partial name="_Pager" model="Model.ToPager()" />
+}

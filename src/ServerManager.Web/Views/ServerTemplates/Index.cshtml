@@ -1,0 +1,21 @@
+@model IReadOnlyList<ServerTemplateListItemDto>
+@{
+    ViewData["Title"] = "Sunucu şablonları";
+    ViewData["Page"] = "server-templates-index";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-controller="CommandRuns" asp-action="Index" class="back-link" title="Toplu komut sayfasına dön">@Icons.Render("chevron-left", "h-4 w-4") Toplu komut</a>
+        <h1 class="page-title">Sunucu şablonları</h1>
+        <p class="page-lead">Sık kullanılan kabuk betiklerini toplu komutta tek tıkla çalıştırmak, cloud-init şablonlarını da bulut sağlayıcıda yeni sunucu kurarken kullanmak için saklayın.</p>
+    </div>
+    @if (User.HasPermission(Permissions.TemplateManage))
+    {
+        <a asp-action="Create" class="btn-primary shrink-0 whitespace-nowrap" title="Yeni şablon oluştur">@Icons.Render("plus", "h-4 w-4") Şablon ekle</a>
+    }
+</div>
+
+<section class="panel" data-ajax-list>
+    <partial name="_TemplateList" model="Model" />
+</section>

@@ -1,0 +1,43 @@
+@model ServerTemplateFormDto
+
+<p class="alert-error mb-6" data-form-error hidden></p>
+
+<section class="panel">
+    <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div>
+            <label for="Name" class="form-label">Şablon adı *</label>
+            <input id="Name" name="Name" value="@Model.Name" class="form-control" maxlength="128" placeholder="Paket güncelleme" />
+            <span class="field-validation-error" data-valmsg-for="Name"></span>
+        </div>
+        <div>
+            <label for="Kind" class="form-label">Tür</label>
+            <select id="Kind" name="Kind" class="form-control" data-kind-select>
+                @foreach (var kind in Enum.GetValues<ServerTemplateKind>())
+                {
+                    <option value="@((int)kind)" selected="@(kind == Model.Kind)">@CommandRunDisplay.KindText(kind)</option>
+                }
+            </select>
+            <p class="form-hint" data-kind-hint="1" hidden="@(Model.Kind != ServerTemplateKind.Script)">Toplu komutta seçilip sunucularda <code>sh -c</code> ile çalıştırılır.</p>
+            <p class="form-hint" data-kind-hint="2" hidden="@(Model.Kind != ServerTemplateKind.CloudInit)">Bulut sağlayıcıda yeni sunucu oluşturulurken user-data olarak verilir; <code>#cloud-config</code> ile başlamalıdır.</p>
+            <span class="field-validation-error" data-valmsg-for="Kind"></span>
+        </div>
+        <div class="sm:col-span-2">
+            <label for="Description" class="form-label">Açıklama</label>
+            <input id="Description" name="Description" value="@Model.Description" class="form-control" maxlength="500" />
+            <span class="field-validation-error" data-valmsg-for="Description"></span>
+        </div>
+        <div class="sm:col-span-2">
+            <label for="Content" class="form-label">İçerik *</label>
+            <textarea id="Content" name="Content" class="form-control template-editor" rows="14" spellcheck="false" placeholder="#!/bin/sh&#10;apt-get update">@Model.Content</textarea>
+            <p class="form-hint">Parola veya API anahtarı yazmayın; şablon içeriği şifrelenmeden saklanır ve yetkili kullanıcılara görünür.</p>
+            <span class="field-validation-error" data-valmsg-for="Content"></span>
+        </div>
+        <label class="check-card sm:col-span-2">
+            <input type="checkbox" name="RequiresSudo" value="true" checked="@Model.RequiresSudo" />
+            <span>
+                <span class="check-card-title">sudo gerektirir</span>
+                <span class="block text-xs text-slate-500">Toplu komutta seçildiğinde "sudo ile çalıştır" kutusu işaretlenir.</span>
+            </span>
+        </label>
+    </div>
+</section>

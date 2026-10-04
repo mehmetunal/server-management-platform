@@ -1,0 +1,88 @@
+@model CommandRunDetailsDto
+@{
+    var run = Model.Run;
+    var isRunning = run.Status == CommandRunStatus.Running;
+    ViewData["Title"] = "Toplu komut ayrıntısı";
+    ViewData["Page"] = "command-run-details";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Komut geçmişine dön">@Icons.Render("chevron-left", "h-4 w-4") Toplu komut</a>
+        <h1 class="page-title">Toplu komut ayrıntısı</h1>
+        <p class="page-lead">Komutun her sunucudaki sonucu. Çalışma sürerken sayfa kendiliğinden yenilenir.</p>
+    </div>
+    @if (User.HasPermission(Permissions.CommandRun))
+    {
+        <a asp-action="Create" class="btn-secondary shrink-0 whitespace-nowrap" title="Yeni toplu komut başlat">@Icons.Render("play", "h-4 w-4") Yeni komut</a>
+    }
+</div>
+
+<div class="command-details" data-command-run data-region="command-run-body" data-running="@(isRunning ? "true" : "false")">
+    <section class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title">Özet</h2>
+            <span class="@CommandRunDisplay.StatusBadgeClass(run.Status, run.FailedCount)"><span class="badge-dot"></span>@CommandRunDisplay.StatusText(run.Status)</span>
+        </div>
+        <div class="panel-body space-y-4">
+            <pre class="command-code">@run.Command</pre>
+            <dl class="command-summary">
+                <div><dt>Şablon</dt><dd>@(run.TemplateName ?? "—")</dd></div>
+                <div><dt>sudo</dt><dd>@(run.UseSudo ? "Evet" : "Hayır")</dd></div>
+                <div><dt>Zaman aşımı</dt><dd>@Model.TimeoutSeconds sn</dd></div>
+                <div><dt>Sunucu</dt><dd>@run.TargetCount</dd></div>
+                <div><dt>Başarılı</dt><dd class="text-emerald-600 dark:text-emerald-400">@run.SucceededCount</dd></div>
+                <div><dt>Başarısız</dt><dd class="@(run.FailedCount > 0 ? "text-red-600 dark:text-red-400" : string.Empty)">@run.FailedCount</dd></div>
+                <div><dt>Başlatan</dt><dd>@(run.UserName ?? "—")</dd></div>
+                <div><dt>Başlangıç</dt><dd>@DateDisplay.Format(run.StartedAt, "dd.MM.yyyy HH:mm:ss")</dd></div>
+                <div><dt>Süre</dt><dd>@(isRunning ? "Sürüyor" : DeploymentDisplay.Duration(run.StartedAt, run.CompletedAt))</dd></div>
+            </dl>
+        </div>
+    </section>
+
+    @foreach (var target in Model.Targets)
+    {
+        var open = target.Status is not (CommandTargetStatus.Succeeded or CommandTargetStatus.Pending) || Model.Targets.Count <= 3;
+        <details class="panel command-target" open="@open" data-target-id="@target.Id">
+            <summary class="command-target-head">
+                <span class="flex min-w-0 items-center gap-2">
+                    @Icons.Render("chevron-right", "command-target-chevron h-4 w-4")
+                    <span class="truncate font-medium">@target.ServerName</span>
+                </span>
+                <span class="flex shrink-0 items-center gap-3 text-xs text-slate-500">
+                    @if (target.ExitCode is int exitCode)
+                    {
+                        <span title="Çıkış kodu">çıkış: @exitCode</span>
+                    }
+                    <span title="Süre">@CommandRunDisplay.Milliseconds(target.DurationMs)</span>
+                    <span class="@CommandRunDisplay.TargetBadgeClass(target.Status)"><span class="badge-dot"></span>@CommandRunDisplay.TargetStatusText(target.Status)</span>
+                </span>
+            </summary>
+            @if (!string.IsNullOrEmpty(target.ErrorMessage))
+            {
+                <p class="command-target-error">@target.ErrorMessage</p>
+            }
+            @if (target.Status == CommandTargetStatus.TimedOut)
+            {
+                <p class="command-target-error">Komut @Model.TimeoutSeconds saniye içinde bitmedi ve durduruldu.</p>
+            }
+            @if (target.OutputTruncated)
+            {
+                <p class="command-target-note">Çıktı uzun olduğu için yalnızca son @(CommandRunRules.MaxOutputChars / 1000) bin karakter saklandı.</p>
+            }
+            <pre class="command-output">@(target.Output ?? target.Status switch
+            {
+                CommandTargetStatus.Pending => "Sırada bekliyor…",
+                CommandTargetStatus.Running => "Çalışıyor…",
+                _ => "(çıktı yok)"
+            })</pre>
+            <div class="command-target-foot">
+                <a asp-controller="Servers" asp-action="Details" asp-route-id="@target.ServerId" class="btn-ghost btn-sm" title="Sunucu ayrıntılarını aç">@Icons.Render("server", "h-4 w-4") Sunucu</a>
+                @if (!string.IsNullOrEmpty(target.Output))
+                {
+                    <button type="button" class="btn-ghost btn-sm" data-copy-output title="Bu sunucunun çıktısını panoya kopyala">@Icons.Render("copy", "h-4 w-4") Kopyala</button>
+                }
+            </div>
+        </details>
+    }
+</div>

@@ -1,0 +1,59 @@
+.command-details {
+  @apply space-y-4;
+}
+
+.command-code {
+  @apply m-0 max-h-64 overflow-auto rounded-lg bg-slate-950 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap break-words text-slate-200;
+}
+
+.command-summary {
+  @apply grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-4;
+
+  > div {
+    @apply min-w-0;
+  }
+
+  dt {
+    @apply text-xs text-slate-500;
+  }
+
+  dd {
+    @apply font-semibold break-words text-slate-900 dark:text-white;
+  }
+}
+
+.command-target {
+  @apply overflow-hidden;
+
+  &[open] .command-target-chevron {
+    @apply rotate-90;
+  }
+}
+
+.command-target-head {
+  @apply flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3;
+
+  &::-webkit-details-marker {
+    @apply hidden;
+  }
+}
+
+.command-target-chevron {
+  @apply shrink-0 text-slate-400 transition-transform;
+}
+
+.command-target-error {
+  @apply mx-4 mb-2 text-sm text-red-600 dark:text-red-400;
+}
+
+.command-target-note {
+  @apply mx-4 mb-2 text-xs text-amber-600 dark:text-amber-400;
+}
+
+.command-output {
+  @apply m-0 max-h-96 overflow-auto border-t border-slate-200 bg-slate-950 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap break-words text-slate-200 dark:border-slate-800;
+}
+
+.command-target-foot {
+  @apply flex items-center justify-end gap-1 px-3 py-2;
+}

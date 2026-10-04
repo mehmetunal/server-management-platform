@@ -1,0 +1,32 @@
+@model CommandRunIndexViewModel
+@{
+    ViewData["Title"] = "Toplu komut";
+    ViewData["Page"] = "command-runs-index";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Toplu komut</h1>
+        <p class="page-lead">Bir komutu veya betiği seçtiğiniz sunucularda aynı anda çalıştırın. Her sunucunun çıktısı ve çıkış kodu ayrı saklanır; çalıştırılan her komut denetim kaydına yazılır.</p>
+    </div>
+    <div class="flex shrink-0 items-center gap-2">
+        <a asp-controller="ServerTemplates" asp-action="Index" class="btn-secondary whitespace-nowrap" title="Kayıtlı betik ve cloud-init şablonlarını yönet">@Icons.Render("clipboard", "h-4 w-4") Şablonlar</a>
+        @if (User.HasPermission(Permissions.CommandRun))
+        {
+            <a asp-action="Create" class="btn-primary whitespace-nowrap" title="Sunuculara yeni komut gönder">@Icons.Render("play", "h-4 w-4") Komut çalıştır</a>
+        }
+    </div>
+</div>
+
+<section class="panel">
+    <form method="get" asp-action="Index" class="panel-toolbar" data-list-filter>
+        <div class="search-field">
+            <span class="search-field-icon">@Icons.Render("search", "h-4 w-4")</span>
+            <input type="search" name="search" value="@Model.Filter.Search" class="form-control" placeholder="Komut, şablon, sunucu veya kullanıcı ara…" data-live-search aria-label="Komut geçmişinde ara" />
+        </div>
+    </form>
+
+    <div data-ajax-list>
+        <partial name="_RunList" model="Model" />
+    </div>
+</section>

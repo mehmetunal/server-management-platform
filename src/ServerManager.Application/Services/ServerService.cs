@@ -309,7 +309,7 @@ public class ServerService : IServerService
         var servers = await _serverRepository.FindAsync(_ => true, cancellationToken);
         return servers
             .OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase)
-            .Select(s => new ServerOptionDto(s.Id, s.Name, s.IpAddress))
+            .Select(s => new ServerOptionDto(s.Id, s.Name, s.IpAddress, s.GroupId))
             .ToList();
     }
 

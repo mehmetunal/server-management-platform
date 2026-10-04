@@ -1,0 +1,8 @@
+.template-editor {
+  @apply min-h-72 font-mono text-xs leading-relaxed;
+  tab-size: 4;
+}
+
+[data-kind-hint][hidden] {
+  @apply hidden;
+}
