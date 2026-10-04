@@ -1,0 +1,100 @@
+@model CloudProvisionViewModel
+@{
+    ViewData["Title"] = "Bulutta sunucu oluştur";
+    ViewData["Page"] = "cloud-provision";
+    var form = Model.Form;
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Hesap listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Bulut sağlayıcıları</a>
+        <h1 class="page-title">Bulutta sunucu oluştur</h1>
+        <p class="page-lead">Seçilen hesapta yeni sunucu açılır ve sağlayıcı ücretlendirmeye başlar. İsteğe bağlı cloud-init şablonu ilk açılışta çalışır; SSH genel anahtarı eklerseniz root kullanıcısına yetkilendirilir.</p>
+    </div>
+</div>
+
+@if (Model.Accounts.Count == 0)
+{
+    <section class="panel">
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("cloud", "h-6 w-6")</span>
+            <p>Kullanılabilir bulut hesabı yok. Önce bir hesap ekleyin.</p>
+            <a asp-action="Index" class="btn-secondary btn-sm mt-3" title="Hesap listesine dön">Bulut sağlayıcıları</a>
+        </div>
+    </section>
+}
+else
+{
+    <form asp-action="Provision" method="post" data-provision-form data-catalog-url="@Url.Action("Catalog")" novalidate autocomplete="off">
+        <p class="alert-error mb-6" data-form-error hidden></p>
+
+        <div class="provision-form">
+            <section class="panel">
+                <div class="panel-header"><h2 class="panel-title">Sunucu</h2></div>
+                <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <div>
+                        <label for="AccountId" class="form-label">Hesap *</label>
+                        <select id="AccountId" name="AccountId" class="form-control" data-account-select>
+                            @foreach (var account in Model.Accounts)
+                            {
+                                <option value="@account.Id" selected="@(account.Id == form.AccountId)">@account.Name (@account.ProviderName)</option>
+                            }
+                        </select>
+                        <span class="field-validation-error" data-valmsg-for="AccountId"></span>
+                    </div>
+                    <div>
+                        <label for="Name" class="form-label">Sunucu adı *</label>
+                        <input id="Name" name="Name" class="form-control" maxlength="63" placeholder="web-03" data-name-input />
+                        <span class="field-validation-error" data-valmsg-for="Name"></span>
+                    </div>
+                    <div>
+                        <label for="Region" class="form-label">Bölge *</label>
+                        <select id="Region" name="Region" class="form-control" data-region-select disabled><option value="">Yükleniyor…</option></select>
+                        <span class="field-validation-error" data-valmsg-for="Region"></span>
+                    </div>
+                    <div>
+                        <label for="Image" class="form-label">İşletim sistemi *</label>
+                        <select id="Image" name="Image" class="form-control" data-image-select disabled><option value="">Yükleniyor…</option></select>
+                        <span class="field-validation-error" data-valmsg-for="Image"></span>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label for="Size" class="form-label">Sunucu tipi *</label>
+                        <select id="Size" name="Size" class="form-control" data-size-select disabled><option value="">Yükleniyor…</option></select>
+                        <p class="form-hint" data-price-hint></p>
+                        <span class="field-validation-error" data-valmsg-for="Size"></span>
+                    </div>
+                    <p class="alert-error sm:col-span-2" data-catalog-error hidden></p>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header"><h2 class="panel-title">İlk kurulum</h2></div>
+                <div class="panel-body grid grid-cols-1 gap-5">
+                    <div>
+                        <label for="TemplateId" class="form-label">cloud-init şablonu</label>
+                        <select id="TemplateId" name="TemplateId" class="form-control">
+                            <option value="">Şablonsuz</option>
+                            @foreach (var template in Model.Templates)
+                            {
+                                <option value="@template.Id">@template.Name</option>
+                            }
+                        </select>
+                        <p class="form-hint">Şablonları <a asp-controller="ServerTemplates" asp-action="Index" class="underline" title="Sunucu şablonlarını yönet">Sunucu şablonları</a> sayfasında cloud-init türünde oluşturabilirsiniz.</p>
+                        <span class="field-validation-error" data-valmsg-for="TemplateId"></span>
+                    </div>
+                    <div>
+                        <label for="SshPublicKey" class="form-label">SSH genel anahtarı</label>
+                        <textarea id="SshPublicKey" name="SshPublicKey" class="form-control font-mono text-xs" rows="3" spellcheck="false" placeholder="ssh-ed25519 AAAA… kullanici@bilgisayar"></textarea>
+                        <p class="form-hint">Yalnızca genel anahtar (.pub) girin. Boş bırakılırsa Hetzner tek seferlik root parolası döner (bir kez gösterilir), DigitalOcean parolayı hesabınızın e-postasına gönderir.</p>
+                        <span class="field-validation-error" data-valmsg-for="SshPublicKey"></span>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="form-actions">
+            <a asp-action="Index" class="btn-secondary" title="Oluşturmadan geri dön">İptal</a>
+            <button type="submit" class="btn-primary" title="Sunucuyu sağlayıcıda oluştur"><span class="spinner" data-spinner hidden></span> @Icons.Render("rocket", "h-4 w-4") Oluştur</button>
+        </div>
+    </form>
+}

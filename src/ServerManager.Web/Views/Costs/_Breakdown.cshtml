@@ -1,0 +1,42 @@
+@model (string Title, IReadOnlyList<CostBreakdownDto> Rows, bool IsGroup)
+
+<section class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">@Model.Title</h2>
+    </div>
+    @if (Model.Rows.Count == 0)
+    {
+        <p class="panel-body text-sm text-slate-500">Kayıt yok.</p>
+    }
+    else
+    {
+        <ul class="cost-breakdown">
+            @foreach (var row in Model.Rows)
+            {
+                <li>
+                    <div class="min-w-0">
+                        @if (Model.IsGroup && row.Color is not null)
+                        {
+                            <span class="@ServerGroupDisplay.BadgeClass(row.Color)">@row.Name</span>
+                        }
+                        else
+                        {
+                            <span class="font-medium text-slate-900 dark:text-white">@row.Name</span>
+                        }
+                        <span class="block text-xs text-slate-500">@row.ServerCount sunucu@(row.CostedServerCount < row.ServerCount ? $", {row.ServerCount - row.CostedServerCount} maliyetsiz" : "")</span>
+                    </div>
+                    <div class="text-right text-sm font-semibold text-slate-900 dark:text-white">
+                        @if (row.MonthlyCosts.Count == 0)
+                        {
+                            <span class="font-normal text-slate-400">—</span>
+                        }
+                        @foreach (var (currency, total) in row.MonthlyCosts)
+                        {
+                            <span class="block whitespace-nowrap">@CostDisplay.Amount(total, currency)</span>
+                        }
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+</section>

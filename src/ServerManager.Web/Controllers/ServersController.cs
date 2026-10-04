@@ -111,7 +111,24 @@ public class ServersController : Controller
 
     [HttpGet]
     [HasPermission(Permissions.ServerCreate)]
-    public IActionResult Create() => View(new CreateServerDto());
+    public IActionResult Create(string? name, string? ip, string? provider, string? location, decimal? monthlyCost, string? costCurrency, Guid? cloudAccountId, string? cloudExternalId)
+    {
+        var form = new CreateServerDto
+        {
+            Name = name?.Trim() ?? string.Empty,
+            Hostname = name?.Trim().ToLowerInvariant() ?? string.Empty,
+            IpAddress = ip?.Trim() ?? string.Empty,
+            Provider = provider,
+            Location = location,
+            MonthlyCost = monthlyCost,
+            CostCurrency = costCurrency,
+            CloudAccountId = string.IsNullOrWhiteSpace(cloudExternalId) ? null : cloudAccountId,
+            CloudExternalId = cloudAccountId is null ? null : cloudExternalId
+        };
+        if (form.CloudAccountId is not null)
+            form.Username = "root";
+        return View(form);
+    }
 
     [HttpPost]
     [HasPermission(Permissions.ServerCreate)]

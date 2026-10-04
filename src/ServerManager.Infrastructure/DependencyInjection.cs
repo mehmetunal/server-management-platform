@@ -1,3 +1,4 @@
+using ServerManager.Application.Cloud;
 using ServerManager.Application.Interfaces.Commands;
 using ServerManager.Infrastructure.Commands;
 using FluentMigrator.Runner;
@@ -92,6 +93,7 @@ public static class DependencyInjection
         services.Configure<AlertingOptions>(configuration.GetSection(AlertingOptions.SectionName));
         services.Configure<BackupOptions>(configuration.GetSection(BackupOptions.SectionName));
         services.Configure<SecurityScanOptions>(configuration.GetSection(SecurityScanOptions.SectionName));
+        services.Configure<CloudOptions>(configuration.GetSection(CloudOptions.SectionName));
 
         services.AddHttpClient(UptimeProbe.HttpClientName, UptimeProbe.ConfigureClient)
             .ConfigurePrimaryHttpMessageHandler(UptimeProbe.CreateHandler);
@@ -128,6 +130,7 @@ public static class DependencyInjection
         services.AddScoped<IServerGroupRepository, ServerGroupRepository>();
         services.AddScoped<ICommandRunRepository, CommandRunRepository>();
         services.AddScoped<IServerTemplateRepository, ServerTemplateRepository>();
+        services.AddScoped<ICloudAccountRepository, CloudAccountRepository>();
         services.AddScoped<IServerScriptExecutor, SshServerScriptExecutor>();
 
         services.AddScoped<IAccountService, AccountService>();

@@ -1,0 +1,10 @@
+{
+  "SystemName": "Cloud.Hetzner",
+  "FriendlyName": "Hetzner Cloud",
+  "Group": "Bulut",
+  "Version": "1.0.0",
+  "Author": "Server Manager",
+  "Description": "Hetzner Cloud projesindeki sunucuları listeler, aylık maliyetlerini eşitler ve cloud-init şablonuyla yeni sunucu oluşturur.",
+  "DisplayOrder": 50,
+  "AssemblyFileName": "ServerManager.Plugin.Cloud.Hetzner.dll"
+}

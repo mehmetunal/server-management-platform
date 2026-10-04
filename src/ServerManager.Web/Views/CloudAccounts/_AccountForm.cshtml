@@ -1,0 +1,42 @@
+@model CloudAccountFormViewModel
+@{
+    var form = Model.Form;
+    var isEdit = form.Id is not null;
+}
+
+<p class="alert-error mb-6" data-form-error hidden></p>
+
+<section class="panel">
+    <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div>
+            <label for="Name" class="form-label">Hesap adı *</label>
+            <input id="Name" name="Name" value="@form.Name" class="form-control" maxlength="64" placeholder="Hetzner - Üretim" />
+            <span class="field-validation-error" data-valmsg-for="Name"></span>
+        </div>
+        <div>
+            <label for="Provider" class="form-label">Sağlayıcı *</label>
+            @if (isEdit)
+            {
+                <input id="Provider" class="form-control" value="@Model.ProviderName" disabled />
+                <p class="form-hint">Sağlayıcı sonradan değiştirilemez.</p>
+            }
+            else
+            {
+                <select id="Provider" name="Provider" class="form-control" data-provider-select>
+                    @foreach (var provider in Model.Providers)
+                    {
+                        <option value="@provider.SystemName" selected="@(provider.SystemName == form.Provider)" data-help="@provider.TokenHelp">@provider.DisplayName</option>
+                    }
+                </select>
+            }
+            <span class="field-validation-error" data-valmsg-for="Provider"></span>
+        </div>
+        <div class="sm:col-span-2">
+            <label for="Token" class="form-label">API anahtarı @(isEdit ? string.Empty : "*")</label>
+            <input id="Token" name="Token" type="password" class="form-control font-mono" maxlength="500" autocomplete="new-password" spellcheck="false" />
+            <p class="form-hint" data-provider-help>@(isEdit ? "Kayıtlı anahtar var. Değiştirmek istemiyorsanız boş bırakın." : Model.Providers.FirstOrDefault()?.TokenHelp)</p>
+            <p class="form-hint">Anahtar kaydedilmeden önce sağlayıcıda doğrulanır ve şifrelenerek saklanır; bir daha gösterilmez.</p>
+            <span class="field-validation-error" data-valmsg-for="Token"></span>
+        </div>
+    </div>
+</section>

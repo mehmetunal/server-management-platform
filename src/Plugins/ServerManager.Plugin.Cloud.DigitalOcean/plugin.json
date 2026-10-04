@@ -1,0 +1,10 @@
+{
+  "SystemName": "Cloud.DigitalOcean",
+  "FriendlyName": "DigitalOcean",
+  "Group": "Bulut",
+  "Version": "1.0.0",
+  "Author": "Server Manager",
+  "Description": "DigitalOcean hesabındaki droplet'ları listeler, aylık maliyetlerini eşitler ve cloud-init şablonuyla yeni droplet oluşturur.",
+  "DisplayOrder": 51,
+  "AssemblyFileName": "ServerManager.Plugin.Cloud.DigitalOcean.dll"
+}

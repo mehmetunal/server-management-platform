@@ -2998,6 +2998,32 @@ Servis kontrolü ve process sonlandırma audit log'a yazılır (`system.service_
 
 Şablon içeriği şifrelenmeden saklanır; parola veya API anahtarı yazılmamalıdır. Silinen şablon yumuşak silinir; o şablonla çalıştırılmış komutların geçmişi korunur.
 
+### Bulut sağlayıcıları
+
+**Sağlayıcılar** sayfası (`/CloudAccounts`) Hetzner Cloud ve DigitalOcean hesaplarını bağlar. Her sağlayıcı ayrı bir eklentidir (`Cloud.Hetzner`, `Cloud.DigitalOcean`, grup "Bulut"); kullanmadan önce **Eklentiler** sayfasından kurulup etkinleştirilmelidir. Eklentisi kapatılan hesap listede görünür, ancak eşitleme ve sunucu oluşturma çalışmaz.
+
+| İzin | Kapsam | Varsayılan roller |
+| --- | --- | --- |
+| `cloud.view` | Hesapları ve sağlayıcıdaki sunucu listesini görüntüleme | SuperAdmin, Admin, Operator |
+| `cloud.manage` | Hesap ekleme, düzenleme, silme ve eşitleme | SuperAdmin, Admin |
+| `cloud.provision` | Sağlayıcıda yeni sunucu oluşturma | SuperAdmin, Admin |
+
+- **Hesap ekleme:** API anahtarı kaydedilmeden önce sağlayıcıda doğrulanır ve AES-256-GCM ile şifrelenerek saklanır; bir daha gösterilmez. Düzenlemede anahtar alanı boş bırakılırsa mevcut anahtar korunur. Listeleme için okuma, sunucu oluşturma için yazma yetkili anahtar gerekir.
+- **Sunucu listesi** sağlayıcıdan anlık okunur. Panele bağlı olmayan sunucularda **Panele ekle** sunucu formunu ad, IP, konum ve aylık fiyatla doldurur (kullanıcı adı `root`); SSH bilgileri girilip kaydedildiğinde sunucu hesaba bağlanır (`server.create` izni gerekir, `cloud.import` olarak audit log'a yazılır).
+- **Eşitleme** (elle veya `Cloud:SyncIntervalHours` aralığında otomatik, varsayılan 6 saat, `0` kapatır):
+  - Hiçbir hesaba bağlı olmayan ve IP adresi sağlayıcıdaki bir sunucuyla **tam olarak bir** kayıtta eşleşen panel sunucusu hesaba bağlanır. Aynı IP birden fazla panel sunucusunda varsa bağlama yapılmaz.
+  - Bağlı sunucuların aylık maliyeti ve para birimi sağlayıcı fiyatından güncellenir. Hetzner fiyatı sunucunun konumundaki **KDV hariç (net)** aylık ücrettir (EUR); DigitalOcean droplet'in aylık ücretidir (USD). Fiyat dönmeyen sunucunun elle girilmiş maliyeti değiştirilmez.
+  - Son eşitleme zamanı ve hatası hesap kartında görünür. Elle eşitleme her zaman, otomatik eşitleme yalnızca değişiklik olduğunda audit log'a `cloud.sync` olarak yazılır.
+- **Sunucu oluşturma** (`/CloudAccounts/Provision`): bölge, sunucu tipi (aylık fiyatıyla, seçilen bölgede satılanlar) ve işletim sistemi imajı sağlayıcıdan yüklenir. İsteğe bağlı cloud-init şablonu user-data olarak verilir (en fazla 32 KB). SSH genel anahtarı girilirse root kullanıcısına eklenir: şablonsuzsa `#cloud-config` + `ssh_authorized_keys`, cloud-config şablonda mevcut listeye eklenerek, `#!` betikte shebang'den hemen sonra kurulum komutlarıyla. Onay penceresinde sunucu adının yazılması istenir.
+- Anahtar verilmezse Hetzner **tek seferlik root parolası** döndürür; parola yalnızca oluşturma sonrası pencerede bir kez gösterilir, veritabanına ve audit log'a yazılmaz. DigitalOcean parolayı hesabın e-postasına gönderir. Oluşturma (başarılı veya başarısız) `cloud.provision` olarak audit log'a yazılır.
+- Hesap silindiğinde kayıt yumuşak silinir ve bağlı panel sunucularının hesap bağlantısı kaldırılır; sağlayıcıdaki sunuculara ve panel sunucu kayıtlarına dokunulmaz.
+
+Sağlayıcı API adresleri `Cloud:Hetzner:ApiUrl` (varsayılan `https://api.hetzner.cloud/v1/`) ve `Cloud:DigitalOcean:ApiUrl` (varsayılan `https://api.digitalocean.com/v2/`) ile değiştirilebilir; yerel testlerde sahte bir API'ye yönlendirmek için kullanılır. İstekler yönlendirme izlemeyen ayrı HTTP istemcileriyle yapılır; 401/403/429 yanıtları Türkçe hata mesajına çevrilir.
+
+### Maliyet raporu
+
+**Maliyet** sayfası (`/Costs`, `server.view`) sunucuların aylık maliyetini para birimine göre toplar ve yıllık tahmini gösterir; kur çevrimi yapılmaz. Rapor gruplara ve kaynağa (bulut hesabı veya "Elle girilen") göre kırılır, maliyeti girilmemiş sunucuları ayrıca işaretler ve sunucu düzenleme ekranına bağlantı verir.
+
 ### Eklentiler
 
 Sistem nopCommerce'teki plugin mantığıyla genişler: Dokploy, Dokku ve diğer DevOps araçları host'tan bağımsız birer eklentidir. Her eklenti `Plugins/{SystemName}/` klasöründe `plugin.json` tanımı, derlenmiş assembly'si (controller, derlenmiş Razor view'ları, servisler, migration'lar) ve `Content/` klasörüyle (CSS/JS) durur.

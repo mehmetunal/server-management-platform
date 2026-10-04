@@ -1,0 +1,85 @@
+@model IReadOnlyList<CloudAccountListItemDto>
+@{
+    var canManage = User.HasPermission(Permissions.CloudManage);
+    var hasProviders = ViewData["HasProviders"] as bool? ?? true;
+}
+
+@if (!hasProviders && Model.Count == 0)
+{
+    <section class="panel">
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("puzzle", "h-6 w-6")</span>
+            <p class="empty-state-title">Etkin bulut eklentisi yok</p>
+            <p>Hetzner Cloud veya DigitalOcean eklentisini Eklentiler sayfasından kurup etkinleştirin.</p>
+            @if (User.HasPermission(Permissions.PluginManage))
+            {
+                <a asp-controller="Plugins" asp-action="Index" class="btn-primary btn-sm mt-3" title="Eklentiler sayfasını aç">@Icons.Render("puzzle", "h-4 w-4") Eklentiler</a>
+            }
+        </div>
+    </section>
+}
+else if (Model.Count == 0)
+{
+    <section class="panel">
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("cloud", "h-6 w-6")</span>
+            <p class="empty-state-title">Henüz hesap bağlanmadı</p>
+            <p>Sağlayıcınızın API anahtarıyla bir hesap ekleyin; sunucular ve maliyetler otomatik okunur.</p>
+            @if (canManage)
+            {
+                <a asp-action="Create" class="btn-primary btn-sm mt-3" title="Yeni bulut hesabı bağla">@Icons.Render("plus", "h-4 w-4") Hesap ekle</a>
+            }
+        </div>
+    </section>
+}
+else
+{
+    <div class="cloud-grid">
+        @foreach (var account in Model)
+        {
+            <section class="panel cloud-card">
+                <div class="cloud-card-head">
+                    <div class="min-w-0">
+                        <p class="cloud-card-title">@account.Name</p>
+                        <p class="text-xs text-slate-500">@account.ProviderName@(account.AccountLabel is null ? string.Empty : $" · {account.AccountLabel}")</p>
+                    </div>
+                    @if (canManage)
+                    {
+                        <div class="flex shrink-0 items-center gap-1">
+                            <a asp-action="Edit" asp-route-id="@account.Id" class="btn-ghost btn-sm" title="Hesap adını veya API anahtarını değiştir">@Icons.Render("pencil", "h-4 w-4")</a>
+                            <button type="button" class="btn-ghost btn-sm text-red-600" title="Hesap bağlantısını sil (sağlayıcıdaki sunucular silinmez)"
+                                    data-ajax-action data-url="@Url.Action("Delete", new { id = account.Id })"
+                                    data-confirm-title="Hesap silinsin mi?"
+                                    data-confirm-message="&quot;@account.Name&quot; hesabının paneldeki kaydı ve API anahtarı silinecek. Sağlayıcıdaki sunuculara ve paneldeki sunucu kayıtlarına dokunulmaz."
+                                    data-confirm-label="Sil">@Icons.Render("trash", "h-4 w-4")</button>
+                        </div>
+                    }
+                </div>
+                @if (!account.IsProviderEnabled)
+                {
+                    <p class="alert-error">Sağlayıcı eklentisi devre dışı; hesap kullanılamıyor.</p>
+                }
+                <dl class="cloud-card-stats">
+                    <div><dt>Paneldeki sunucu</dt><dd>@account.LinkedServerCount</dd></div>
+                    <div><dt>Aylık maliyet</dt><dd>@CloudDisplay.Costs(account.MonthlyCosts)</dd></div>
+                    <div class="col-span-2">
+                        <dt>Son eşitleme</dt>
+                        <dd title="@DateDisplay.Format(account.LastSyncAt, "dd.MM.yyyy HH:mm")">@(account.LastSyncAt is null ? "Henüz yapılmadı" : DateDisplay.Relative(account.LastSyncAt.Value))</dd>
+                    </div>
+                </dl>
+                @if (account.LastSyncError is not null)
+                {
+                    <p class="cloud-card-error">@account.LastSyncError</p>
+                }
+                <div class="mt-auto flex flex-wrap gap-2">
+                    <a asp-action="Servers" asp-route-id="@account.Id" class="btn-secondary btn-sm" title="Sağlayıcıdaki sunucuları listele">@Icons.Render("server", "h-4 w-4") Sunucular</a>
+                    @if (canManage && account.IsProviderEnabled)
+                    {
+                        <button type="button" class="btn-ghost btn-sm" title="Sunucuları ve aylık maliyetleri şimdi eşitle"
+                                data-ajax-action data-url="@Url.Action("Sync", new { id = account.Id })">@Icons.Render("refresh", "h-4 w-4") Eşitle</button>
+                    }
+                </div>
+            </section>
+        }
+    </div>
+}

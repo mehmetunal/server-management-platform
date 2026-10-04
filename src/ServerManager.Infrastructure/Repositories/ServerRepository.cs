@@ -68,6 +68,19 @@ public class ServerRepository : Repository<Server>, IServerRepository
         return new PagedResult<Server>(items, totalCount, page, pageSize);
     }
 
+    public async Task<IReadOnlyList<Server>> GetAllForCostReportAsync(CancellationToken cancellationToken = default) =>
+        await _context.Servers
+            .AsNoTracking()
+            .Include(s => s.Group)
+            .Include(s => s.CloudAccount)
+            .ToListAsync(cancellationToken);
+
+    public Task<bool> CloudAccountExistsAsync(Guid accountId, CancellationToken cancellationToken = default) =>
+        _context.CloudAccounts.AnyAsync(a => a.Id == accountId, cancellationToken);
+
+    public Task<bool> CloudLinkExistsAsync(Guid accountId, string externalId, CancellationToken cancellationToken = default) =>
+        _context.Servers.AnyAsync(s => s.CloudAccountId == accountId && s.CloudExternalId == externalId, cancellationToken);
+
     public Task<bool> GroupExistsAsync(Guid groupId, CancellationToken cancellationToken = default) =>
         _context.ServerGroups.AnyAsync(g => g.Id == groupId, cancellationToken);
 

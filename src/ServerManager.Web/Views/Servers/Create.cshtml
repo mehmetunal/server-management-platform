@@ -13,6 +13,12 @@
 </div>
 
 <form asp-action="Create" method="post" data-server-form novalidate autocomplete="off">
+    @if (Model.CloudAccountId is not null)
+    {
+        <input type="hidden" asp-for="CloudAccountId" />
+        <input type="hidden" asp-for="CloudExternalId" />
+        <p class="alert-info mb-6">Bu sunucu bulut hesabından içe aktarılıyor. Kaydedildiğinde hesaba bağlanır ve aylık maliyeti eşitleme sırasında otomatik güncellenir. SSH kimlik bilgilerini girmeniz yeterli.</p>
+    }
     <partial name="_ServerForm" model="Model" />
 
     <div class="server-form-actions">

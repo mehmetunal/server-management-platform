@@ -1,0 +1,29 @@
+@model CloudAccountServersDto?
+@{
+    ViewData["Title"] = Model is null ? "Bulut sunucuları" : $"{Model.Account.Name} sunucuları";
+    ViewData["Page"] = "cloud-account-servers";
+    var accountId = (Guid)ViewData["AccountId"]!;
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Hesap listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Bulut sağlayıcıları</a>
+        <h1 class="page-title">@(Model?.Account.Name ?? "Bulut sunucuları")</h1>
+        <p class="page-lead">Sağlayıcıdaki sunucular anlık okunur. Panele bağlı olmayanları "Panele ekle" ile SSH bilgilerini girerek ekleyin; bağlı sunucuların aylık maliyeti eşitlemede güncellenir.</p>
+    </div>
+    <div class="flex shrink-0 items-center gap-2">
+        @if (User.HasPermission(Permissions.CloudManage))
+        {
+            <button type="button" class="btn-secondary whitespace-nowrap" title="IP eşleşen sunucuları bağla ve maliyetleri güncelle"
+                    data-ajax-action data-url="@Url.Action("Sync", new { id = accountId })">@Icons.Render("refresh", "h-4 w-4") Eşitle</button>
+        }
+        @if (User.HasPermission(Permissions.CloudProvision))
+        {
+            <a asp-action="Provision" asp-route-accountId="@accountId" class="btn-primary whitespace-nowrap" title="Bu hesapta yeni sunucu oluştur">@Icons.Render("rocket", "h-4 w-4") Sunucu oluştur</a>
+        }
+    </div>
+</div>
+
+<section class="panel" data-ajax-list>
+    <partial name="_ServerList" model="Model" />
+</section>

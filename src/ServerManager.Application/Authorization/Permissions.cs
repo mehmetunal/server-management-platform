@@ -164,7 +164,7 @@ public static class Permissions
         [CommandRun] = "Birden fazla sunucuda aynı anda komut çalıştırma",
         [TemplateManage] = "Sunucu şablonlarını (betik / cloud-init) ekleme, düzenleme ve silme",
         [CloudView] = "Bulut sağlayıcı hesaplarını, sunucu listesini ve maliyetleri görüntüleme",
-        [CloudManage] = "Bulut sağlayıcı hesabı ekleme, düzenleme, silme, eşitleme ve sunucu içe aktarma",
+        [CloudManage] = "Bulut sağlayıcı hesabı ekleme, düzenleme, silme ve eşitleme",
         [CloudProvision] = "Bulut sağlayıcıda yeni sunucu oluşturma",
         [SettingsView] = "Sistem ayarlarını ve uygulama bilgisini görüntüleme"
     };

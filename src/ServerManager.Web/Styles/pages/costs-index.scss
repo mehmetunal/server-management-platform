@@ -1,0 +1,31 @@
+.cost-summary {
+  @apply mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4;
+}
+
+.cost-tile {
+  @apply p-5;
+}
+
+.cost-tile-label {
+  @apply text-xs font-medium tracking-wide text-slate-500 uppercase;
+}
+
+.cost-tile-value {
+  @apply mt-1 text-2xl font-semibold text-slate-900 dark:text-white;
+}
+
+.cost-tile-hint {
+  @apply mt-1 text-xs text-slate-500;
+}
+
+.cost-breakdowns {
+  @apply mb-6 grid gap-6 lg:grid-cols-2;
+}
+
+.cost-breakdown {
+  @apply divide-y divide-slate-200 dark:divide-slate-800;
+
+  li {
+    @apply flex items-center justify-between gap-4 px-5 py-3;
+  }
+}

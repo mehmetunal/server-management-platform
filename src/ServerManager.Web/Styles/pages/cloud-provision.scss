@@ -1,0 +1,7 @@
+.provision-form {
+  @apply space-y-6;
+}
+
+[data-price-hint]:empty {
+  @apply hidden;
+}

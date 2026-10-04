@@ -1,0 +1,26 @@
+@model IReadOnlyList<CloudAccountListItemDto>
+@{
+    ViewData["Title"] = "Bulut sağlayıcıları";
+    ViewData["Page"] = "cloud-accounts-index";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Bulut sağlayıcıları</h1>
+        <p class="page-lead">Hetzner Cloud ve DigitalOcean hesaplarınızı bağlayın: sağlayıcıdaki sunucuları görün, panele ekleyin, aylık maliyetleri otomatik eşitleyin ve cloud-init şablonuyla yeni sunucu oluşturun.</p>
+    </div>
+    <div class="flex shrink-0 items-center gap-2">
+        @if (User.HasPermission(Permissions.CloudProvision) && Model.Count > 0)
+        {
+            <a asp-action="Provision" class="btn-secondary whitespace-nowrap" title="Bağlı bir hesapta yeni sunucu oluştur">@Icons.Render("rocket", "h-4 w-4") Sunucu oluştur</a>
+        }
+        @if (User.HasPermission(Permissions.CloudManage))
+        {
+            <a asp-action="Create" class="btn-primary whitespace-nowrap" title="Yeni bulut hesabı bağla">@Icons.Render("plus", "h-4 w-4") Hesap ekle</a>
+        }
+    </div>
+</div>
+
+<div data-ajax-list>
+    <partial name="_AccountList" model="Model" />
+</div>

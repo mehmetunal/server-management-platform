@@ -84,8 +84,18 @@ public class ServerService : IServerService
         if (dto.GroupId is { } createGroupId && !await _serverRepository.GroupExistsAsync(createGroupId, cancellationToken))
             return ServiceResult<Guid>.ValidationFailure(nameof(dto.GroupId), "Seçilen grup bulunamadı.");
 
+        var cloudExternalId = TextHelper.NullIfEmpty(dto.CloudExternalId?.Trim());
+        var cloudAccountId = cloudExternalId is null ? null : dto.CloudAccountId;
+        if (cloudAccountId is { } accountId)
+        {
+            if (cloudExternalId!.Length > 128 || !await _serverRepository.CloudAccountExistsAsync(accountId, cancellationToken))
+                return ServiceResult<Guid>.Failure("Bulut hesabı bulunamadı; sunucuyu bağlantısız eklemek için formu yeniden açın.");
+            if (await _serverRepository.CloudLinkExistsAsync(accountId, cloudExternalId, cancellationToken))
+                return ServiceResult<Guid>.Failure("Bu bulut sunucusu zaten panelde kayıtlı.", ServiceErrorType.Conflict);
+        }
+
         var userName = _currentUser.UserName;
-        var server = new Server { CreatedBy = userName };
+        var server = new Server { CreatedBy = userName, CloudAccountId = cloudAccountId, CloudExternalId = cloudAccountId is null ? null : cloudExternalId };
         ApplyFormValues(server, dto);
 
         var credential = new ServerCredential
@@ -110,6 +120,14 @@ public class ServerService : IServerService
             server.Id.ToString(),
             server.Name,
             $"{server.Username}@{server.IpAddress}:{server.SshPort}"), cancellationToken);
+
+        if (server.CloudAccountId is { } linkedAccountId)
+            await _auditLogService.LogAsync(new AuditEntry(
+                AuditActions.CloudImport,
+                AuditEntityTypes.CloudAccount,
+                linkedAccountId.ToString(),
+                server.Name,
+                $"Sağlayıcıdaki kimlik: {server.CloudExternalId}"), cancellationToken);
 
         return ServiceResult<Guid>.Success(server.Id, "Sunucu eklendi.");
     }

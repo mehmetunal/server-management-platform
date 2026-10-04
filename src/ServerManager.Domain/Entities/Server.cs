@@ -59,6 +59,13 @@ public class Server : BaseEntity
 
     public string? CostCurrency { get; set; }
 
+    public Guid? CloudAccountId { get; set; }
+
+    public CloudAccount? CloudAccount { get; set; }
+
+    /// <summary>Sağlayıcıdaki sunucu kimliği; <see cref="CloudAccountId"/> ile birlikte dolu olur.</summary>
+    public string? CloudExternalId { get; set; }
+
     public ServerCredential? Credential { get; set; }
 
     public ICollection<ServerTag> Tags { get; set; } = new List<ServerTag>();

@@ -1,3 +1,5 @@
+using ServerManager.Application.Cloud;
+using ServerManager.Application.Interfaces.Cloud;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -45,6 +47,9 @@ public static class DependencyInjection
         services.AddScoped<IServerGroupService, ServerGroupService>();
         services.AddScoped<IServerTemplateService, ServerTemplateService>();
         services.AddScoped<ICommandRunService, CommandRunService>();
+        services.AddScoped<ICloudProviderRegistry, CloudProviderRegistry>();
+        services.AddScoped<ICloudAccountService, CloudAccountService>();
+        services.AddScoped<ICostReportService, CostReportService>();
         services.AddScoped<IBackupJobService, BackupJobService>();
         services.AddScoped<IBackupRunService, BackupRunService>();
         services.AddScoped<ISecurityService, SecurityService>();

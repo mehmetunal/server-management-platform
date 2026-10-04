@@ -1,0 +1,22 @@
+@model CloudAccountFormViewModel
+@{
+    ViewData["Title"] = "Hesap ekle";
+    ViewData["Page"] = "cloud-account-form";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Hesap listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Bulut sağlayıcıları</a>
+        <h1 class="page-title">Hesap ekle</h1>
+        <p class="page-lead">Sağlayıcıyı seçip API anahtarını girin.</p>
+    </div>
+</div>
+
+<form asp-action="Create" method="post" data-cloud-account-form novalidate autocomplete="off">
+    <partial name="_AccountForm" model="Model" />
+
+    <div class="form-actions">
+        <a asp-action="Index" class="btn-secondary" title="Kaydetmeden listeye dön">İptal</a>
+        <button type="submit" class="btn-primary" title="Anahtarı doğrula ve kaydet"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+    </div>
+</form>

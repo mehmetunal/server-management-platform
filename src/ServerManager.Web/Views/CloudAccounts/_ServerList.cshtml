@@ -1,0 +1,74 @@
+@model CloudAccountServersDto?
+@{
+    var error = ViewData["Error"] as string;
+    var canCreate = User.HasPermission(Permissions.ServerCreate);
+    var accountId = ViewData["AccountId"] as Guid?;
+}
+
+@if (Model is null)
+{
+    <div class="empty-state">
+        <span class="empty-state-icon text-red-500">@Icons.Render("warning", "h-6 w-6")</span>
+        <p class="empty-state-title">Sunucu listesi alınamadı</p>
+        <p>@error</p>
+    </div>
+}
+else if (Model.Servers.Count == 0)
+{
+    <div class="empty-state">
+        <span class="empty-state-icon">@Icons.Render("cloud", "h-6 w-6")</span>
+        <p>Bu hesapta sunucu yok.</p>
+    </div>
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Sunucu</th>
+                    <th>Durum</th>
+                    <th>IPv4</th>
+                    <th>Konum / tip</th>
+                    <th>Aylık</th>
+                    <th>Panelde</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Servers)
+                {
+                    var server = item.Server;
+                    <tr>
+                        <td class="text-sm">
+                            <span class="font-medium text-slate-900 dark:text-white">@server.Name</span>
+                            <span class="block font-mono text-xs text-slate-500">#@server.ExternalId</span>
+                        </td>
+                        <td class="text-sm"><span class="@CloudDisplay.StatusBadgeClass(server.Status)"><span class="badge-dot"></span>@CloudDisplay.StatusText(server.Status)</span></td>
+                        <td class="font-mono text-sm">@(server.PublicIpv4 ?? "—")</td>
+                        <td class="text-sm">@(server.Region ?? "—")<span class="block text-xs text-slate-500">@server.Size</span></td>
+                        <td class="whitespace-nowrap text-sm">@CostDisplay.Optional(server.MonthlyPrice, server.Currency)</td>
+                        <td class="text-sm">
+                            @if (item.LinkedServerId is Guid linkedId)
+                            {
+                                <a asp-controller="Servers" asp-action="Details" asp-route-id="@linkedId" class="inline-flex items-center gap-1 text-brand-600 hover:underline dark:text-brand-400" title="Paneldeki sunucu kaydını aç">@Icons.Render("check-circle", "h-4 w-4") @item.LinkedServerName</a>
+                            }
+                            else if (canCreate && server.PublicIpv4 is not null)
+                            {
+                                <a asp-controller="Servers" asp-action="Create"
+                                   asp-route-name="@server.Name" asp-route-ip="@server.PublicIpv4"
+                                   asp-route-provider="@Model.Account.ProviderName" asp-route-location="@server.Region"
+                                   asp-route-monthlyCost="@server.MonthlyPrice?.ToString(System.Globalization.CultureInfo.InvariantCulture)" asp-route-costCurrency="@server.Currency"
+                                   asp-route-cloudAccountId="@accountId" asp-route-cloudExternalId="@server.ExternalId"
+                                   class="btn-secondary btn-sm" title="SSH bilgilerini girip bu sunucuyu panele ekle">@Icons.Render("plus", "h-4 w-4") Panele ekle</a>
+                            }
+                            else
+                            {
+                                <span class="text-xs text-slate-500">@(server.PublicIpv4 is null ? "IP bekleniyor" : "Bağlı değil")</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

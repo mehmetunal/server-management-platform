@@ -1,0 +1,101 @@
+@model CostReportDto
+@{
+    ViewData["Title"] = "Maliyet";
+    ViewData["Page"] = "costs-index";
+    var uncosted = Model.ServerCount - Model.CostedServerCount;
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Maliyet</h1>
+        <p class="page-lead">Sunucuların aylık maliyeti para birimine göre toplanır; kur çevrimi yapılmaz. Bulut hesabına bağlı sunucuların maliyeti eşitlemede sağlayıcı fiyatından (vergiler hariç) güncellenir, diğerleri sunucu düzenleme ekranından girilir.</p>
+    </div>
+</div>
+
+<div class="cost-summary">
+    @if (Model.MonthlyTotals.Count == 0)
+    {
+        <div class="panel cost-tile">
+            <p class="cost-tile-label">Aylık toplam</p>
+            <p class="cost-tile-value">—</p>
+            <p class="cost-tile-hint">Henüz maliyet girilmiş sunucu yok.</p>
+        </div>
+    }
+    @foreach (var (currency, total) in Model.MonthlyTotals)
+    {
+        <div class="panel cost-tile">
+            <p class="cost-tile-label">Aylık toplam (@currency)</p>
+            <p class="cost-tile-value">@CostDisplay.Amount(total, currency)</p>
+            <p class="cost-tile-hint">Yıllık tahmin: @CostDisplay.Amount(total * 12, currency)</p>
+        </div>
+    }
+    <div class="panel cost-tile">
+        <p class="cost-tile-label">Maliyeti girilen</p>
+        <p class="cost-tile-value">@Model.CostedServerCount / @Model.ServerCount</p>
+        <p class="cost-tile-hint">@(uncosted == 0 ? "Tüm sunucuların maliyeti girilmiş." : $"{uncosted} sunucunun maliyeti eksik.")</p>
+    </div>
+</div>
+
+<div class="cost-breakdowns">
+    <partial name="_Breakdown" model="@(("Gruplara göre", Model.ByGroup, true))" />
+    <partial name="_Breakdown" model="@(("Kaynağa göre", Model.BySource, false))" />
+</div>
+
+<section class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">Sunucular</h2>
+    </div>
+    @if (Model.Servers.Count == 0)
+    {
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("server", "h-6 w-6")</span>
+            <p>Henüz sunucu yok.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Sunucu</th>
+                        <th>Grup</th>
+                        <th>Kaynak</th>
+                        <th class="text-right">Aylık</th>
+                        <th class="text-right">Yıllık</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var server in Model.Servers)
+                    {
+                        <tr>
+                            <td class="text-sm"><a asp-controller="Servers" asp-action="Details" asp-route-id="@server.Id" class="font-medium text-slate-900 hover:underline dark:text-white" title="Sunucu ayrıntılarını aç">@server.Name</a></td>
+                            <td class="text-sm">
+                                @if (server.GroupName is not null)
+                                {
+                                    <span class="@ServerGroupDisplay.BadgeClass(server.GroupColor)">@server.GroupName</span>
+                                }
+                                else
+                                {
+                                    <span class="text-slate-400">—</span>
+                                }
+                            </td>
+                            <td class="text-sm">@server.Source</td>
+                            <td class="whitespace-nowrap text-right text-sm">
+                                @if (server.MonthlyCost is null)
+                                {
+                                    <a asp-controller="Servers" asp-action="Edit" asp-route-id="@server.Id" class="text-xs text-amber-600 hover:underline dark:text-amber-400" title="Sunucu düzenleme ekranında aylık maliyeti girin">Maliyet girin</a>
+                                }
+                                else
+                                {
+                                    @CostDisplay.Amount(server.MonthlyCost.Value, server.Currency)
+                                }
+                            </td>
+                            <td class="whitespace-nowrap text-right text-sm text-slate-500">@(server.MonthlyCost is null ? "—" : CostDisplay.Amount(server.MonthlyCost.Value * 12, server.Currency))</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

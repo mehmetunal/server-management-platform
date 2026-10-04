@@ -101,6 +101,54 @@ public class ServerServiceTests
     }
 
     [Fact]
+    public async Task Create_links_cloud_server_and_audits_import()
+    {
+        Server? added = null;
+        await _repository.AddAsync(Arg.Do<Server>(s => added = s), Arg.Any<CancellationToken>());
+        var accountId = Guid.NewGuid();
+        _repository.CloudAccountExistsAsync(accountId, Arg.Any<CancellationToken>()).Returns(true);
+        var dto = ServerTestData.ValidCreateDto();
+        dto.CloudAccountId = accountId;
+        dto.CloudExternalId = " 4711 ";
+
+        var result = await _service.CreateAsync(dto, Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(accountId, added!.CloudAccountId);
+        Assert.Equal("4711", added.CloudExternalId);
+        await _auditLog.Received(1).LogAsync(Arg.Is<AuditEntry>(e => e.Action == AuditActions.CloudImport), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Create_rejects_already_linked_cloud_server()
+    {
+        var accountId = Guid.NewGuid();
+        _repository.CloudAccountExistsAsync(accountId, Arg.Any<CancellationToken>()).Returns(true);
+        _repository.CloudLinkExistsAsync(accountId, "4711", Arg.Any<CancellationToken>()).Returns(true);
+        var dto = ServerTestData.ValidCreateDto();
+        dto.CloudAccountId = accountId;
+        dto.CloudExternalId = "4711";
+
+        var result = await _service.CreateAsync(dto, Ct);
+
+        Assert.False(result.IsSuccess);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Server>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Create_rejects_unknown_cloud_account()
+    {
+        var dto = ServerTestData.ValidCreateDto();
+        dto.CloudAccountId = Guid.NewGuid();
+        dto.CloudExternalId = "4711";
+
+        var result = await _service.CreateAsync(dto, Ct);
+
+        Assert.False(result.IsSuccess);
+        await _repository.DidNotReceive().AddAsync(Arg.Any<Server>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Create_rejects_duplicate_name()
     {
         _repository.NameExistsAsync("Production-01", null, Arg.Any<CancellationToken>()).Returns(true);

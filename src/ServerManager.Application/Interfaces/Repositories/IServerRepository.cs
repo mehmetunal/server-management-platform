@@ -13,6 +13,12 @@ public interface IServerRepository : IRepository<Server>
 
     Task<bool> GroupExistsAsync(Guid groupId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Server>> GetAllForCostReportAsync(CancellationToken cancellationToken = default);
+
+    Task<bool> CloudAccountExistsAsync(Guid accountId, CancellationToken cancellationToken = default);
+
+    Task<bool> CloudLinkExistsAsync(Guid accountId, string externalId, CancellationToken cancellationToken = default);
+
     Task<bool> NameExistsAsync(string name, Guid? excludeId = null, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyDictionary<ServerStatus, int>> GetStatusCountsAsync(CancellationToken cancellationToken = default);

@@ -29,6 +29,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     public DbSet<CommandRunTarget> CommandRunTargets => Set<CommandRunTarget>();
 
+    public DbSet<CloudAccount> CloudAccounts => Set<CloudAccount>();
+
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     public DbSet<ServerMetric> ServerMetrics => Set<ServerMetric>();

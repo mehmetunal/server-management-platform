@@ -64,6 +64,7 @@ try
     builder.Services.AddSingleton<CommandRunManager>();
     builder.Services.AddHostedService<CommandRunLifecycleWorker>();
     builder.Services.AddHostedService<SecurityScanWorker>();
+    builder.Services.AddHostedService<CloudSyncWorker>();
     if (builder.Configuration.GetValue($"{BackupOptions.SectionName}:Enabled", true))
         builder.Services.AddHostedService<BackupSchedulerWorker>();
     if (builder.Configuration.GetValue($"{MonitoringOptions.SectionName}:Enabled", true))

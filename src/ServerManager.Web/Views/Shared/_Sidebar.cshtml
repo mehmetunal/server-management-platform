@@ -13,6 +13,7 @@
     var canFiles = canServers && User.HasPermission(Permissions.FileView);
     var canSystem = canServers && User.HasPermission(Permissions.SystemView);
     var canCommands = User.HasPermission(Permissions.CommandView);
+    var canCloud = User.HasPermission(Permissions.CloudView);
 }
 <aside class="app-sidebar" data-sidebar>
     <div class="flex h-16 shrink-0 items-center gap-3 border-b border-slate-800 px-5">
@@ -38,7 +39,14 @@
         {
             <a asp-controller="ServerGroups" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "ServerGroups")" title="Sunucuları gruplara ayır ve gruba göre yönet">@Icons.Render("squares") Gruplar</a>
         }
-        <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("cloud") Sağlayıcılar <span class="nav-soon">Yakında</span></span>
+        @if (canCloud)
+        {
+            <a asp-controller="CloudAccounts" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "CloudAccounts")" title="Hetzner ve DigitalOcean hesapları, bulut sunucuları ve sunucu oluşturma">@Icons.Render("cloud") Sağlayıcılar</a>
+        }
+        @if (canServers)
+        {
+            <a asp-controller="Costs" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "Costs")" title="Sunucuların aylık maliyeti; grup ve sağlayıcı kırılımı">@Icons.Render("chart") Maliyet</a>
+        }
 
         <partial name="_PluginMenuItems" model="MenuGroups.Infrastructure" />
         <p class="nav-group">Konteynerler</p>
