@@ -15,6 +15,7 @@ using ServerManager.Application.Monitoring;
 using ServerManager.Infrastructure;
 using ServerManager.Web.BackgroundJobs;
 using ServerManager.Web.Backups;
+using ServerManager.Web.Commands;
 using ServerManager.Web.Deployments;
 using ServerManager.Web.Extensions;
 using ServerManager.Web.Framework.Authorization;
@@ -60,6 +61,8 @@ try
         options.LocalRootPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, options.LocalRootPath)));
     builder.Services.AddSingleton<BackupManager>();
     builder.Services.AddHostedService<BackupLifecycleWorker>();
+    builder.Services.AddSingleton<CommandRunManager>();
+    builder.Services.AddHostedService<CommandRunLifecycleWorker>();
     builder.Services.AddHostedService<SecurityScanWorker>();
     if (builder.Configuration.GetValue($"{BackupOptions.SectionName}:Enabled", true))
         builder.Services.AddHostedService<BackupSchedulerWorker>();

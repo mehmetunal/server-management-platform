@@ -1,3 +1,5 @@
+using ServerManager.Application.Interfaces.Commands;
+using ServerManager.Infrastructure.Commands;
 using FluentMigrator.Runner;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -124,6 +126,9 @@ public static class DependencyInjection
         services.AddScoped<IBackupRepository, BackupRepository>();
         services.AddScoped<ISecurityScanRepository, SecurityScanRepository>();
         services.AddScoped<IServerGroupRepository, ServerGroupRepository>();
+        services.AddScoped<ICommandRunRepository, CommandRunRepository>();
+        services.AddScoped<IServerTemplateRepository, ServerTemplateRepository>();
+        services.AddScoped<IServerScriptExecutor, SshServerScriptExecutor>();
 
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<IUserManagementService, UserManagementService>();

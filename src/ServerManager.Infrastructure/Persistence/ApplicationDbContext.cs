@@ -23,6 +23,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     public DbSet<ServerGroup> ServerGroups => Set<ServerGroup>();
 
+    public DbSet<ServerTemplate> ServerTemplates => Set<ServerTemplate>();
+
+    public DbSet<CommandRun> CommandRuns => Set<CommandRun>();
+
+    public DbSet<CommandRunTarget> CommandRunTargets => Set<CommandRunTarget>();
+
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     public DbSet<ServerMetric> ServerMetrics => Set<ServerMetric>();
