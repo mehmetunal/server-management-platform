@@ -2,11 +2,9 @@ using FluentMigrator;
 
 namespace ServerManager.Infrastructure.Migrations;
 
-[Migration(202610040012, "Güvenlik taramaları, audit log bütünlük zinciri ve güvenlik alarm kuralı")]
+[Migration(202610040012, "Güvenlik taramaları ve audit log bütünlük zinciri")]
 public class M012_SecuritySchema : Migration
 {
-    private static readonly DateTime SeedTime = new(2026, 10, 4, 0, 0, 0, DateTimeKind.Utc);
-
     public override void Up()
     {
         Create.Table("SecurityScans")
@@ -32,28 +30,10 @@ public class M012_SecuritySchema : Migration
 
         // Eski kayıtlarda boş kalır; zincir bu sürümden sonra yazılan ilk kayıtla başlar.
         Alter.Table("AuditLogs").AddColumn("ChainHash").AsString(64).Nullable();
-
-        // Kind 9: kritik güvenlik bulgusu. Kanal atanmadığı için yalnızca panelde görünür.
-        Insert.IntoTable("AlertRules").Row(new
-        {
-            Id = Guid.Parse("6f1e9a52-0c1d-4b9e-9d3a-1a0f00000011"),
-            Name = "Kritik güvenlik bulgusu",
-            Kind = 9,
-            Severity = 2,
-            Threshold = 0d,
-            DurationMinutes = 0,
-            IsEnabled = true,
-            NotifyRecovery = true,
-            RepeatIntervalMinutes = 0,
-            IsDeleted = false,
-            CreatedAt = SeedTime,
-            CreatedBy = "Sistem"
-        });
     }
 
     public override void Down()
     {
-        Delete.FromTable("AlertRules").Row(new { Id = Guid.Parse("6f1e9a52-0c1d-4b9e-9d3a-1a0f00000011") });
         Delete.Column("ChainHash").FromTable("AuditLogs");
         Delete.Table("SecurityScans");
     }

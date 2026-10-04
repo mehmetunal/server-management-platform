@@ -2624,7 +2624,7 @@ Sunucu detayındaki **Files** sekmesi SFTP üzerinden çalışır (sunucuya ek y
 
 ### Dokploy
 
-> Eklenti: `DevOps.Dokploy` (`src/Plugins/ServerManager.Plugin.DevOps.Dokploy`). Varsayılan olarak `Plugins:InstallOnStartup` listesindedir; devre dışı bırakılırsa sekme, sayfalar, hub ve sağlık kontrolü durur, kayıtlar silinmez.
+> Eklenti: `DevOps.Dokploy` (`src/Plugins/ServerManager.Plugin.DevOps.Dokploy`). Açılışta otomatik kurulmaz; devre dışı bırakılırsa sekme, sayfalar, hub ve sağlık kontrolü durur, kayıtlar silinmez.
 
 Sunucu detayındaki **Dokploy** sekmesi Dokploy kurulumunun durumunu gösterir; **Dokploy kur** sihirbazı resmi kurulum betiğiyle (`https://dokploy.com/install.sh`) kurulum yapar. Durum agentless olarak SSH ile (`docker service ls`, `docker ps`, sunucu içinden `/api/health`) okunur; panel adresi ve API anahtarı tanımlıysa panelden HTTP ile sağlık kontrolü ve proje özeti alınır.
 
@@ -2668,7 +2668,7 @@ Durum ve ayarlar:
 
 ### Dokku
 
-> Eklenti: `DevOps.Dokku` (`src/Plugins/ServerManager.Plugin.DevOps.Dokku`). Varsayılan olarak `Plugins:InstallOnStartup` listesindedir. Devre dışı bırakılırsa sunucu sekmesi kapanır; sunucudaki Dokku kurulumu silinmez.
+> Eklenti: `DevOps.Dokku` (`src/Plugins/ServerManager.Plugin.DevOps.Dokku`). Açılışta otomatik kurulmaz. Devre dışı bırakılırsa sunucu sekmesi kapanır; sunucudaki Dokku kurulumu silinmez.
 
 Sunucu detayındaki **Dokku** sekmesi sürümü ve uygulamaları SSH ile okur (`dokku version`, `apps:list`, `ps:report`, `domains:report`). Kurulu değilse **Dokku kur** resmi bootstrap betiğini (`https://dokku.com/install/<sürüm>/bootstrap.sh`) sudo ile çalıştırır; çıktı sayfada yenilenir, uygulama yeniden başlasa bile sunucudaki betik kendi başına sürebilir. Uygulama satırındaki **Yeniden başlat** `dokku ps:restart` çağırır.
 
@@ -2751,18 +2751,7 @@ Menüde **Alarmlar** (açık ve geçmiş alarmlar, kurallar, bildirim kanalları
 
 **Kurallar.** Her kuralın türü, önem derecesi (Uyarı / Kritik), eşiği, süresi, isteğe bağlı sunucu kapsamı, bağlı kanalları, "düzelince bildir" seçeneği ve tekrar aralığı vardır. Türler: CPU, RAM, disk (en dolu bölüm), sunucu erişilemiyor, uptime kontrolü başarısız, SSL sertifikası süresi, deployment başarısız ve yedekleme başarısız. Metrik kuralları süre boyunca her ölçümde eşiğin aşılmasını bekler; tek bir anlık sıçrama alarm açmaz. `AlertEvaluationWorker` kuralları `EvaluationIntervalSeconds` aralığıyla (en az 15 sn) değerlendirir.
 
-İlk kurulumda kanal atanmamış varsayılan kurallar eklenir; bunlar yalnızca panelde (zil ve Alarmlar sayfası) görünür, bildirim göndermek için kurala kanal bağlanmalıdır:
-
-| Kural | Önem |
-| --- | --- |
-| CPU %90 üzerinde (5 dk) | Kritik |
-| RAM %90 üzerinde (5 dk) | Uyarı |
-| Disk %85 üzerinde / %95 üzerinde | Uyarı / Kritik |
-| Sunucu erişilemiyor (2 dk) | Kritik |
-| Uptime kontrolü başarısız (2 dk) | Kritik |
-| SSL sertifikası 30 günden az / 7 günden az | Uyarı / Kritik |
-| Deployment başarısız | Uyarı |
-| Yedekleme başarısız | Kritik |
+Kurallar kurulumda otomatik eklenmez; panelden oluşturulur. Kurala kanal bağlanmazsa alarm yalnızca panelde (zil ve Alarmlar sayfası) görünür.
 
 **Alarm akışı.**
 
@@ -3099,7 +3088,7 @@ Sistem nopCommerce'teki plugin mantığıyla genişler: Dokploy, Dokku ve diğer
 | Anahtar (`Plugins:`) | Varsayılan | Açıklama |
 | --- | --- | --- |
 | `Directory` | `Plugins` | Eklenti klasörlerinin bulunduğu dizin (uygulama kök dizinine göre) |
-| `InstallOnStartup` | `["DevOps.Dokploy", "DevOps.Dokku", "Git.GitHub", "Notifications.Email", "Notifications.Telegram", "Notifications.Discord", "Storage.S3", "Storage.AzureBlob"]` | Daha önce hiç kurulmamışsa açılışta otomatik kurulan eklentiler; sonradan devre dışı bırakılan eklenti yeniden etkinleştirilmez |
+| `InstallOnStartup` | `[]` | Daha önce hiç kurulmamışsa açılışta otomatik kurulan eklentiler; varsayılan boştur, sonradan devre dışı bırakılan eklenti yeniden etkinleştirilmez |
 
 Tablo gerektirmeyen eklentilerde (bildirim kanalları gibi) migration adımı atlanır.
 
@@ -3117,7 +3106,7 @@ Tablo gerektirmeyen eklentilerde (bildirim kanalları gibi) migration adımı at
 
 ### GitHub App
 
-> Eklenti: `Git.GitHub` (`src/Plugins/ServerManager.Plugin.Git.GitHub`). Varsayılan olarak `Plugins:InstallOnStartup` listesindedir. Devre dışı bırakılırsa menü ve sayfa kapanır, bağlantılı projelerin deployment'ı durur; kayıtlar silinmez.
+> Eklenti: `Git.GitHub` (`src/Plugins/ServerManager.Plugin.Git.GitHub`). Açılışta otomatik kurulmaz. Devre dışı bırakılırsa menü ve sayfa kapanır, bağlantılı projelerin deployment'ı durur; kayıtlar silinmez.
 
 GitHub hesaplarındaki veya kurumlarındaki depoları projelere erişim anahtarı girmeden tanıtır. Menüde **Deployment → GitHub** sayfası bulunur (`github.manage`, varsayılan SuperAdmin ve Admin).
 

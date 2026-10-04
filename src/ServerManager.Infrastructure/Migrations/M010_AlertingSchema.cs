@@ -5,8 +5,6 @@ namespace ServerManager.Infrastructure.Migrations;
 [Migration(202610040010, "Alarm kuralları, bildirim kanalları, uptime ve SSL izleme tabloları")]
 public class M010_AlertingSchema : Migration
 {
-    private static readonly DateTime SeedTime = new(2026, 10, 4, 0, 0, 0, DateTimeKind.Utc);
-
     public override void Up()
     {
         Create.Table("NotificationChannels")
@@ -167,8 +165,6 @@ public class M010_AlertingSchema : Migration
             .WithColumn("UpdatedBy").AsString(256).Nullable();
         Create.Index("IX_SslCertificateMonitors_ServerId").OnTable("SslCertificateMonitors").OnColumn("ServerId");
         Execute.Sql("CREATE UNIQUE INDEX UX_SslCertificateMonitors_Host_Port ON SslCertificateMonitors (Host, Port) WHERE IsDeleted = 0;");
-
-        SeedDefaultRules();
     }
 
     public override void Down()
@@ -182,36 +178,4 @@ public class M010_AlertingSchema : Migration
         Delete.Table("AlertRules");
         Delete.Table("NotificationChannels");
     }
-
-    /// <summary>Kanal atanmamış varsayılan kurallar yalnızca panel içinde (zil) görünür; kullanıcı kanal ekleyip bağlar.</summary>
-    private void SeedDefaultRules()
-    {
-        // Kind: 1 CPU, 2 RAM, 3 disk, 4 offline, 5 uptime, 6 SSL, 7 deployment. Severity: 1 uyarı, 2 kritik.
-        Rule("6f1e9a52-0c1d-4b9e-9d3a-1a0f00000001", "CPU %90 üzerinde (5 dk)", 1, 2, 90, 5);
-        Rule("6f1e9a52-0c1d-4b9e-9d3a-1a0f00000002", "RAM %90 üzerinde (5 dk)", 2, 1, 90, 5);
-        Rule("6f1e9a52-0c1d-4b9e-9d3a-1a0f00000003", "Disk %85 üzerinde", 3, 1, 85, 0);
-        Rule("6f1e9a52-0c1d-4b9e-9d3a-1a0f00000004", "Disk %95 üzerinde", 3, 2, 95, 0);
-        Rule("6f1e9a52-0c1d-4b9e-9d3a-1a0f00000005", "Sunucu erişilemiyor (2 dk)", 4, 2, 0, 2);
-        Rule("6f1e9a52-0c1d-4b9e-9d3a-1a0f00000006", "Uptime kontrolü başarısız (2 dk)", 5, 2, 0, 2);
-        Rule("6f1e9a52-0c1d-4b9e-9d3a-1a0f00000007", "SSL sertifikası 30 günden az", 6, 1, 30, 0);
-        Rule("6f1e9a52-0c1d-4b9e-9d3a-1a0f00000008", "SSL sertifikası 7 günden az", 6, 2, 7, 0);
-        Rule("6f1e9a52-0c1d-4b9e-9d3a-1a0f00000009", "Deployment başarısız", 7, 1, 0, 0);
-    }
-
-    private void Rule(string id, string name, int kind, int severity, double threshold, int durationMinutes) =>
-        Insert.IntoTable("AlertRules").Row(new
-        {
-            Id = Guid.Parse(id),
-            Name = name,
-            Kind = kind,
-            Severity = severity,
-            Threshold = threshold,
-            DurationMinutes = durationMinutes,
-            IsEnabled = true,
-            NotifyRecovery = true,
-            RepeatIntervalMinutes = 0,
-            IsDeleted = false,
-            CreatedAt = SeedTime,
-            CreatedBy = "Sistem"
-        });
 }

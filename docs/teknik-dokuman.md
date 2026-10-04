@@ -171,7 +171,7 @@ Maliyet sayfası kur çevirmez. Para birimi yoksa ve tutar varsa USD sayılır. 
 
 Kurulum migration, izin ve `InstalledPlugins` satırı yazar. Devre dışı bırakmak tabloyu silmez. Uninstall yoktur. Yeni dll veya yeni klasör için süreç yeniden başlar. Kur, etkinleştir ve kapat yeniden başlatma istemez.
 
-`Plugins:InstallOnStartup` listesindeki eklenti hiç kurulmamışsa açılışta kurulur. Sonradan kapatılan eklenti bu liste yüzünden yeniden açılmaz.
+`Plugins:InstallOnStartup` varsayılanı boştur. Listeye yazılan eklenti hiç kurulmamışsa açılışta kurulur. Sonradan kapatılan eklenti bu liste yüzünden yeniden açılmaz.
 
 | SystemName | Grup | İş |
 | --- | --- | --- |

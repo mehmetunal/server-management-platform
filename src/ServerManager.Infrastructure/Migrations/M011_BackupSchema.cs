@@ -5,8 +5,6 @@ namespace ServerManager.Infrastructure.Migrations;
 [Migration(202610040011, "Yedekleme depolama hedefleri, yedekleme işleri ve çalışma geçmişi")]
 public class M011_BackupSchema : Migration
 {
-    private static readonly DateTime SeedTime = new(2026, 10, 4, 0, 0, 0, DateTimeKind.Utc);
-
     public override void Up()
     {
         Create.Table("BackupStorages")
@@ -100,28 +98,10 @@ public class M011_BackupSchema : Migration
             .OnColumn("StartedAt").Descending();
         Create.Index("IX_BackupRuns_StartedAt").OnTable("BackupRuns").OnColumn("StartedAt");
         Create.Index("IX_BackupRuns_Status").OnTable("BackupRuns").OnColumn("Status");
-
-        // Kind 8: yedekleme başarısız. Kanal atanmadığı için yalnızca panelde görünür.
-        Insert.IntoTable("AlertRules").Row(new
-        {
-            Id = Guid.Parse("6f1e9a52-0c1d-4b9e-9d3a-1a0f00000010"),
-            Name = "Yedekleme başarısız",
-            Kind = 8,
-            Severity = 2,
-            Threshold = 0d,
-            DurationMinutes = 0,
-            IsEnabled = true,
-            NotifyRecovery = true,
-            RepeatIntervalMinutes = 0,
-            IsDeleted = false,
-            CreatedAt = SeedTime,
-            CreatedBy = "Sistem"
-        });
     }
 
     public override void Down()
     {
-        Delete.FromTable("AlertRules").Row(new { Id = Guid.Parse("6f1e9a52-0c1d-4b9e-9d3a-1a0f00000010") });
         Delete.Table("BackupRuns");
         Delete.Table("BackupJobs");
         Delete.Table("BackupStorages");
