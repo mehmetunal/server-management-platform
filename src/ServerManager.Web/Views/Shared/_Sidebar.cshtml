@@ -14,6 +14,7 @@
     var canSystem = canServers && User.HasPermission(Permissions.SystemView);
     var canCommands = User.HasPermission(Permissions.CommandView);
     var canCloud = User.HasPermission(Permissions.CloudView);
+    var canSettings = User.HasPermission(Permissions.SettingsView);
 }
 <aside class="app-sidebar" data-sidebar>
     <div class="flex h-16 shrink-0 items-center gap-3 border-b border-slate-800 px-5">
@@ -139,6 +140,9 @@
             <a asp-controller="Plugins" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "Plugins")" title="Dokploy gibi DevOps eklentilerini kur, etkinleştir veya devre dışı bırak">@Icons.Render("puzzle") Eklentiler</a>
         }
         <partial name="_PluginMenuItems" model="MenuGroups.Management" />
-        <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("settings") Ayarlar <span class="nav-soon">Yakında</span></span>
+        @if (canSettings)
+        {
+            <a asp-controller="Settings" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "Settings")" title="Uygulama sürümü, veritabanı durumu ve çalışan yapılandırma">@Icons.Render("settings") Ayarlar</a>
+        }
     </nav>
 </aside>

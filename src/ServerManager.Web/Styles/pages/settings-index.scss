@@ -1,0 +1,39 @@
+.settings-summary {
+  @apply mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4;
+}
+
+.settings-tile {
+  @apply p-5;
+}
+
+.settings-tile-label {
+  @apply text-xs font-medium tracking-wide text-slate-500 uppercase;
+}
+
+.settings-tile-value {
+  @apply mt-1 truncate text-2xl font-semibold text-slate-900 dark:text-white;
+}
+
+.settings-tile-hint {
+  @apply mt-1 truncate text-xs text-slate-500;
+}
+
+.settings-sections {
+  @apply grid gap-6 lg:grid-cols-2;
+}
+
+.settings-list {
+  @apply divide-y divide-slate-200 dark:divide-slate-800;
+
+  > div {
+    @apply flex items-center justify-between gap-4 px-5 py-3 text-sm;
+  }
+
+  dt {
+    @apply text-slate-500;
+  }
+
+  dd {
+    @apply text-right font-medium text-slate-900 dark:text-white;
+  }
+}

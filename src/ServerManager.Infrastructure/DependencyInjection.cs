@@ -21,6 +21,7 @@ using ServerManager.Application.Terminal;
 using ServerManager.Application.Interfaces.Deployments;
 using ServerManager.Application.Interfaces.Docker;
 using ServerManager.Application.Interfaces.Files;
+using ServerManager.Application.Interfaces;
 using ServerManager.Application.Interfaces.Monitoring;
 using ServerManager.Application.Interfaces.Repositories;
 using ServerManager.Application.Monitoring;
@@ -105,6 +106,7 @@ public static class DependencyInjection
         services.AddSingleton<ISshConnectionTester, SshNetConnectionTester>();
         services.AddSingleton<IMetricsCollector, SshMetricsCollector>();
         services.AddSingleton<IAgentReportParser, AgentReportParser>();
+        services.AddScoped<IDatabaseInfoReader, DatabaseInfoReader>();
         services.AddSingleton<IRemoteCommandRunner, SshRemoteCommandRunner>();
         services.AddSingleton<ITerminalSessionFactory, SshTerminalSessionFactory>();
         services.AddSingleton<IDockerClient, SshDockerClient>();

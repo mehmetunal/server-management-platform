@@ -1960,6 +1960,8 @@ görülebilmelidir.
 - Server provisioning
 - Server templates
 
+> Durum: tamamlandı. Ayrıntılar için bkz. [Toplu komut ve şablonlar](#toplu-komut-ve-şablonlar), [Bulut sağlayıcıları](#bulut-sağlayıcıları), [Maliyet raporu](#maliyet-raporu), [Agent](#agent) ve [Ayarlar](#ayarlar).
+
 ---
 
 # 71. İlk Sürümde Kesinlikle Olması Gerekenler
@@ -3023,6 +3025,20 @@ Sağlayıcı API adresleri `Cloud:Hetzner:ApiUrl` (varsayılan `https://api.hetz
 ### Maliyet raporu
 
 **Maliyet** sayfası (`/Costs`, `server.view`) sunucuların aylık maliyetini para birimine göre toplar ve yıllık tahmini gösterir; kur çevrimi yapılmaz. Rapor gruplara ve kaynağa (bulut hesabı veya "Elle girilen") göre kırılır, maliyeti girilmemiş sunucuları ayrıca işaretler ve sunucu düzenleme ekranına bağlantı verir.
+
+### Agent
+
+Panelin SSH ile ulaşamadığı sunucular (NAT arkası, kapalı SSH) için sunucuda çalışan küçük bir agent metrik gönderir. Kurulum ve durum, sunucunun **Metrikler** sekmesinin altındaki panelden yönetilir (`server.view` görür, `server.edit` token üretir ve iptal eder).
+
+- **Token** (`sma_` + 43 karakter) yalnızca oluşturulduğu anda, kurulum komutunun içinde bir kez gösterilir. Veritabanında SHA-256 özeti saklanır; düz metin loglanmaz. Yeni token eskisini geçersiz kılar. İptal `agent.token_revoke`, oluşturma `agent.token_create` olarak audit log'a yazılır.
+- Kurulum komutu `GET /api/agent/install.sh` betiğini indirir. Betik token içermez; `SM_URL` ve `SM_TOKEN` ortam değişkenleriyle root olarak çalıştırılır. systemd varsa dakikada bir zamanlayıcı, yoksa cron kurulur. Kaldırma: aynı betik `uninstall` argümanıyla.
+- Agent, SSH toplayıcısıyla aynı ölçüm betiğini yerelde çalıştırıp çıktıyı `POST /api/agent/report` ile gönderir (Bearer token, `X-Agent-Version`). Rapor metrik, anlık görüntü ve sağlık kaydı olarak SSH ile toplanmış gibi yazılır. İki rapor arasında en az 20 saniye olmalıdır; izleme kapalıysa rapor reddedilir.
+- Son rapor 3 dakika içindeyse o sunucudan SSH ile ayrıca metrik toplanmaz. Host key doğrulanmamış ve agent'ı 5 dakikadır sessiz olan sunucu için başarısız sağlık kaydı yazılır; ardışık başarısızlık eşiği dolunca sunucu çevrimdışı olur.
+- Rapor uç noktası oturumsuzdur ve IP başına dakikada 120 istekle sınırlıdır. Gövde en fazla 256 KB olabilir. Panel HTTP üzerinden açıldıysa metrik sayfası token'ın ağda şifresiz gideceğini uyarır.
+
+### Ayarlar
+
+**Ayarlar** sayfası (`/Settings`, `settings.view`, SuperAdmin ve Admin) sürüm, çalışma ortamı, süreç süresi ve veritabanı şema sürümünü gösterir. İzleme, alarm, yedekleme, güvenlik taraması, bulut eşitleme ve agent aralıkları çalışan yapılandırmadan okunur. Sayfa değer değiştirmez; bağlantı dizesi, ana anahtar ve API anahtarları gösterilmez.
 
 ### Eklentiler
 

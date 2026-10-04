@@ -51,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<ICloudAccountService, CloudAccountService>();
         services.AddScoped<ICostReportService, CostReportService>();
         services.AddScoped<IAgentService, AgentService>();
+        services.AddScoped<ISystemInfoService, SystemInfoService>();
         services.AddScoped<IBackupJobService, BackupJobService>();
         services.AddScoped<IBackupRunService, BackupRunService>();
         services.AddScoped<ISecurityService, SecurityService>();

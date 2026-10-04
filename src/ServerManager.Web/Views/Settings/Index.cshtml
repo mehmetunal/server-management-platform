@@ -1,0 +1,64 @@
+@model SystemInfoDto
+@{
+    ViewData["Title"] = "Ayarlar";
+    ViewData["Page"] = "settings-index";
+    var uptime = DateTime.UtcNow - DateTime.SpecifyKind(Model.StartedAtUtc, DateTimeKind.Utc);
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Ayarlar</h1>
+        <p class="page-lead">Uygulamanın sürümü, veritabanı durumu ve çalışan yapılandırma. Değerler appsettings dosyasından okunur; bu sayfadan değiştirilmez. Bağlantı dizeleri ve anahtarlar gösterilmez.</p>
+    </div>
+</div>
+
+<div class="settings-summary">
+        <div class="panel settings-tile">
+        <p class="settings-tile-label">Sürüm</p>
+        <p class="settings-tile-value">@Model.Version</p>
+        <p class="settings-tile-hint">.NET @Model.Runtime</p>
+    </div>
+    <div class="panel settings-tile">
+        <p class="settings-tile-label">Ortam</p>
+        <p class="settings-tile-value">@Model.EnvironmentName</p>
+        <p class="settings-tile-hint">@Model.OperatingSystem</p>
+    </div>
+    <div class="panel settings-tile">
+        <p class="settings-tile-label">Çalışma süresi</p>
+        <p class="settings-tile-value">@Uptime(uptime)</p>
+        <p class="settings-tile-hint" title="@DateDisplay.Format(Model.StartedAtUtc, "dd.MM.yyyy HH:mm:ss")">@DateDisplay.Relative(Model.StartedAtUtc) başladı</p>
+    </div>
+    <div class="panel settings-tile">
+        <p class="settings-tile-label">Veritabanı</p>
+        <p class="settings-tile-value">@(Model.Database.IsConnected ? "Bağlı" : "Yok")</p>
+        <p class="settings-tile-hint">@(Model.Database.SchemaVersion is { } version ? $"Şema {version}" : Model.Database.Message)</p>
+    </div>
+</div>
+
+<div class="settings-sections">
+    @foreach (var group in Model.Sections)
+    {
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">@group.Title</h2></div>
+            <dl class="settings-list">
+                @foreach (var item in group.Items)
+                {
+                    <div>
+                        <dt>@item.Label</dt>
+                        <dd>@item.Value</dd>
+                    </div>
+                }
+            </dl>
+        </section>
+    }
+</div>
+
+@functions {
+    private static string Uptime(TimeSpan elapsed)
+    {
+        if (elapsed.TotalMinutes < 1) return $"{Math.Max(0, (int)elapsed.TotalSeconds)} sn";
+        if (elapsed.TotalHours < 1) return $"{(int)elapsed.TotalMinutes} dk";
+        if (elapsed.TotalDays < 1) return $"{(int)elapsed.TotalHours} sa {elapsed.Minutes} dk";
+        return $"{(int)elapsed.TotalDays} gün {elapsed.Hours} sa";
+    }
+}

@@ -1,4 +1,3 @@
-import { bindAjaxActions } from '../components/ajax-actions.js';
 import { debounce, on, qs, qsa } from '../core/dom.js';
 import { confirmAction, showSecretList } from '../core/dialog.js';
 import { getHtml, postForm } from '../core/http.js';
@@ -28,7 +27,13 @@ const refreshLiveViews = debounce(() => {
     refreshAgentPanel();
 }, 1500);
 
-initServerPage({ onUpdate: refreshLiveViews, regions: ['server-header'] });
+initServerPage({
+    onUpdate: refreshLiveViews,
+    regions: ['server-header'],
+    onActionSuccess: async trigger => {
+        if (agentPanel?.contains(trigger)) await refreshAgentPanel();
+    }
+});
 
 on(document, 'click', '[data-range-link]', (event, link) => {
     event.preventDefault();
@@ -41,7 +46,6 @@ on(document, 'click', '[data-range-link]', (event, link) => {
 
 if (agentPanel) {
     refreshAgentPanel();
-    bindAjaxActions(agentPanel, { onSuccess: refreshAgentPanel });
 
     on(agentPanel, 'click', '[data-agent-create]', async (event, button) => {
         event.preventDefault();
