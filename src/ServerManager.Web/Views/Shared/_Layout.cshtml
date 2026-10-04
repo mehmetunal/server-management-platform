@@ -1,6 +1,6 @@
 @{
     var title = ViewData["Title"] as string;
-    var breadcrumbs = ViewData["Breadcrumb"] as IReadOnlyList<BreadcrumbItem>;
+    var breadcrumbs = BreadcrumbTrail.Build(ViewContext, Url);
     var userName = User.Identity?.Name;
     var roleName = Roles.All.FirstOrDefault(r => User.IsInRole(r));
 }

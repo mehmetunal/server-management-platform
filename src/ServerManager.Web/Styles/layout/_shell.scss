@@ -32,15 +32,15 @@
   }
 
   .page-breadcrumb {
-    @apply flex min-w-0 items-center gap-1.5 text-sm;
+    @apply flex min-w-0 items-center gap-1.5 overflow-hidden text-sm;
   }
 
   .page-breadcrumb-link {
-    @apply truncate text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100;
+    @apply min-w-0 shrink truncate text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100;
   }
 
   .page-breadcrumb-current {
-    @apply truncate font-medium text-slate-800 dark:text-slate-100;
+    @apply min-w-0 shrink truncate font-medium text-slate-800 dark:text-slate-100;
   }
 
   .page-breadcrumb-sep {

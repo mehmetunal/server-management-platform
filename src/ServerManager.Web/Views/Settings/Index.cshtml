@@ -2,11 +2,6 @@
 @{
     ViewData["Title"] = "Ayarlar";
     ViewData["Page"] = "settings-index";
-    ViewData["Breadcrumb"] = new List<BreadcrumbItem>
-    {
-        new("Dashboard", User.HasPermission(Permissions.DashboardView) ? Url.Action("Index", "Dashboard") : null, "Panele dön"),
-        new("Ayarlar")
-    };
     var info = Model.Info;
     var canManage = User.HasPermission(Permissions.SettingsManage);
     var uptime = DateTime.UtcNow - DateTime.SpecifyKind(info.StartedAtUtc, DateTimeKind.Utc);
