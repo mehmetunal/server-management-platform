@@ -1,9 +1,13 @@
 @use "backup-shared";
 
 .backup-filters {
-  @apply lg:grid-cols-6;
+  @apply lg:grid-cols-3 2xl:grid-cols-7;
+
+  > .search-field {
+    @apply sm:col-span-2 lg:col-span-1 2xl:col-span-2;
+  }
 }
 
 .backup-filter-actions {
-  @apply flex gap-2 sm:col-span-2 lg:col-span-1;
+  @apply flex items-center gap-2 whitespace-nowrap sm:col-span-2 lg:col-span-1;
 }

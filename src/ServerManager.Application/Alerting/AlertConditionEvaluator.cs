@@ -109,11 +109,11 @@ public static class AlertConditionEvaluator
             {
                 var key = b.JobId.ToString();
                 if (b.Status != BackupRunStatus.Failed)
-                    return new AlertCondition(key, b.JobName, b.ServerId, b.ServerName, AlertConditionState.Ok, null, $"{b.JobName} son yedeği başarılı.");
+                    return new AlertCondition(key, b.JobName, b.ServerId, b.ServerName, AlertConditionState.Ok, null, $"{b.JobName}: son yedekleme başarılı.");
 
                 var reason = string.IsNullOrWhiteSpace(b.FailureReason) ? "neden kaydedilmedi" : b.FailureReason;
                 return new AlertCondition(key, b.JobName, b.ServerId, b.ServerName, AlertConditionState.Firing, null,
-                    $"{b.JobName} yedeği başarısız ({b.ServerName}): {reason}");
+                    $"{b.JobName}: yedekleme başarısız ({b.ServerName}): {reason}");
             }).ToList();
 
     private static IEnumerable<AlertServerSnapshot> Scope(AlertRule rule, IReadOnlyList<AlertServerSnapshot> servers) =>

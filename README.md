@@ -1938,6 +1938,8 @@ görülebilmelidir.
 - S3/R2
 - Restore
 
+> Durum: tamamlandı. Ayrıntılar için bkz. [Yedekleme](#yedekleme).
+
 ## Phase 9 — Security
 
 - Security center
@@ -2706,7 +2708,7 @@ Menüde **Alarmlar** (açık ve geçmiş alarmlar, kurallar, bildirim kanalları
 | `alert.acknowledge` | Alarmı üstlenme (görüldü olarak işaretleme) | SuperAdmin, Admin, Operator |
 | `alert.manage` | Kurallar, bildirim kanalları, uptime ve SSL kontrollerini ekleme, düzenleme, silme; kanal testi, "Şimdi kontrol et" | SuperAdmin, Admin |
 
-**Kurallar.** Her kuralın türü, önem derecesi (Uyarı / Kritik), eşiği, süresi, isteğe bağlı sunucu kapsamı, bağlı kanalları, "düzelince bildir" seçeneği ve tekrar aralığı vardır. Türler: CPU, RAM, disk (en dolu bölüm), sunucu erişilemiyor, uptime kontrolü başarısız, SSL sertifikası süresi ve deployment başarısız. Metrik kuralları süre boyunca her ölçümde eşiğin aşılmasını bekler; tek bir anlık sıçrama alarm açmaz. `AlertEvaluationWorker` kuralları `EvaluationIntervalSeconds` aralığıyla (en az 15 sn) değerlendirir.
+**Kurallar.** Her kuralın türü, önem derecesi (Uyarı / Kritik), eşiği, süresi, isteğe bağlı sunucu kapsamı, bağlı kanalları, "düzelince bildir" seçeneği ve tekrar aralığı vardır. Türler: CPU, RAM, disk (en dolu bölüm), sunucu erişilemiyor, uptime kontrolü başarısız, SSL sertifikası süresi, deployment başarısız ve yedekleme başarısız. Metrik kuralları süre boyunca her ölçümde eşiğin aşılmasını bekler; tek bir anlık sıçrama alarm açmaz. `AlertEvaluationWorker` kuralları `EvaluationIntervalSeconds` aralığıyla (en az 15 sn) değerlendirir.
 
 İlk kurulumda kanal atanmamış varsayılan kurallar eklenir; bunlar yalnızca panelde (zil ve Alarmlar sayfası) görünür, bildirim göndermek için kurala kanal bağlanmalıdır:
 
@@ -2719,6 +2721,7 @@ Menüde **Alarmlar** (açık ve geçmiş alarmlar, kurallar, bildirim kanalları
 | Uptime kontrolü başarısız (2 dk) | Kritik |
 | SSL sertifikası 30 günden az / 7 günden az | Uyarı / Kritik |
 | Deployment başarısız | Uyarı |
+| Yedekleme başarısız | Kritik |
 
 **Alarm akışı.**
 
@@ -2775,6 +2778,109 @@ Bildirim metni Türkçedir: önem, kural adı, hedef, değer/eşik ve açılış
 
 Yerel testte gerçek Telegram/Discord/SMTP yerine yerel sahte sunucular kullanın (`Telegram__ApiUrl`, `Discord__AllowedHosts__0`, `Discord__AllowHttp=true` ortam değişkenleri ve yerel bir SMTP portu); canlı sohbetlere veya kanallara test bildirimi göndermeyin.
 
+### Yedekleme
+
+Menüde **Yedekleme** altında üç sekme bulunur: **İşler** (yedekleme işleri ve "Şimdi yedekle"), **Geçmiş** (tüm yedek ve geri yükleme çalışmaları, filtreli) ve **Depolama** (yedeklerin yazıldığı hedefler). Yedekler SSH üzerinden akış olarak alınır; sunucuda geçici dosya oluşmaz, veri panelden doğrudan depolamaya aktarılır.
+
+| İzin | Kapsam | Varsayılan roller |
+| --- | --- | --- |
+| `backup.view` | İşleri, geçmişi ve çalışma ayrıntılarını (log dahil) görüntüleme | SuperAdmin, Admin, Operator, Developer, Viewer |
+| `backup.execute` | "Şimdi yedekle", süren işlemi iptal etme | SuperAdmin, Admin, Operator |
+| `backup.manage` | İş ve depolama hedefi ekleme, düzenleme, silme; depolama testi; yedek dosyasını elle silme | SuperAdmin, Admin |
+| `backup.restore` | Geri yükleme ve yedek dosyasını indirme | SuperAdmin, Admin |
+
+#### Yedek türleri
+
+| Tür | Kaynak | Sunucuda çalışan | Gereken yetki |
+| --- | --- | --- | --- |
+| Dosya | Bir veya daha çok mutlak yol, isteğe bağlı hariç tutma desenleri (`*.log`, `cache/`) | `tar -czf -` (GNU veya BusyBox tar) | Okunacak dosyalar için genelde tam sudo veya root |
+| Docker volume | Volume adı | `alpine:3` yardımcı container'ı volume'u salt okunur bağlar ve `tar` ile arşivler (`--network none`, log kapalı) | docker grubu **veya** yalnızca `docker` için sudo |
+| Veritabanı (container) | Container adı, PostgreSQL veya MySQL/MariaDB, veritabanı, kullanıcı, parola | Tek bir `docker exec -i` içinde `pg_dump` / `mariadb-dump` (yoksa `mysqldump`) ve container içindeki `gzip` | docker grubu **veya** yalnızca `docker` için sudo |
+| Veritabanı (sunucu) | Host, port, veritabanı, kullanıcı, parola | Sunucudaki istemci araçları ve `gzip` | İstemci araçları kurulu olmalı |
+
+- Veritabanı parolası komut satırına yazılmaz: stdin'den okunur ve `PGPASSWORD` / `MYSQL_PWD` ile yalnızca döküm aracına verilir. Parola `Security:MasterKey` ile şifreli saklanır ve arayüzde geri gösterilmez.
+- Volume yedeğinden önce volume'un varlığı kontrol edilir; yanlış adla boş bir volume oluşturulup boş yedek alınmaz ("Volume bulunamadı").
+- PostgreSQL dökümü `--clean --if-exists --no-owner --no-privileges`, MySQL dökümü `--single-transaction --routines --triggers` ile alınır.
+- Volume yedeği çalışan container'ı durdurmaz. Sürekli yazılan veriler (ör. veritabanı dosyaları) için tutarlı yedek gerekiyorsa veritabanı yedeği kullanın veya yazan container'ı yedek sırasında durdurun.
+- Yardımcı imaj sunucuda yoksa Docker Hub'dan çekilir; sunucunun Docker Hub'a erişimi yoksa `alpine:3` imajını önceden yükleyin. Rootless Docker'da volume'lar kullanıcının kendi Docker daemon'ındadır; iş o kullanıcıyla bağlanan sunucu kaydıyla tanımlanmalıdır.
+- Sudo yetkisi yetersizse hata Türkçe açıklanır (dosya ve sunucudaki veritabanı yedekleri tam sudo, volume ve container veritabanı yedekleri yalnızca docker yetkisi ister).
+
+#### Zamanlama, saklama, eşzamanlılık
+
+- **Zamanlama:** Elle, saatlik (her N saatte bir, gün başına hizalı), günlük (belirli saat) veya haftalık (gün + saat). Saatler `Backup:TimeZone` saat dilimine göre yorumlanır; yaz saati geçişlerinde yerel saat korunur, olmayan saat (ileri alınan saat) bir sonraki geçerli ana kayar. Uygulama kapalıyken kaçırılan çalışmalar açılışta **bir kez** telafi edilir.
+- **Eşzamanlılık:** Aynı iş için aynı anda tek işlem (yedek veya geri yükleme) çalışır; ikincisi reddedilir. Toplam eşzamanlı işlem sayısı `Backup:MaxConcurrency` ile sınırlıdır.
+- **İptal ve kesinti:** İptal SSH komutunu ve depolamaya yazmayı durdurur, yarım dosya bırakılmaz (S3'te yarım multipart yükleme iptal edilir). Uygulama kapanırken süren işlemler durdurulur; açılışta yarım kalan kayıtlar "Kesildi" olarak işaretlenir.
+- **Saklama:** Her işte "son N yedeği tut" (1–365) ve isteğe bağlı "N günden eskileri sil" (0 = kapalı). Saklama yalnızca yeni yedek başarıyla kaydedildikten sonra çalışır ve yalnızca o işin **başarılı yedek dosyalarını** depolamadan siler; en yeni yedek hiçbir koşulda silinmez. Çalışma kayıtları, logları ve audit geçmişi silinmez; kayıtta dosyanın "Saklama politikası" tarafından silindiği görünür.
+- İş veya depolama hedefi silindiğinde (soft delete) alınmış yedekler ve geçmiş korunur; geçmiş sayfasından geri yüklenebilir.
+
+#### Depolama hedefleri
+
+| Tür | Ayarlar | Notlar |
+| --- | --- | --- |
+| Yerel disk | Klasör adı | Panel sunucusunda `Backup:LocalRootPath` altında bir klasör; kök dışına çıkılamaz. Yazma önce `.partial` dosyasına yapılır, tamamlanınca yeniden adlandırılır |
+| S3 uyumlu (`Storage.S3` eklentisi) | Endpoint (AWS için boş), bölge, bucket, önek, erişim anahtarı, gizli anahtar, path-style | Amazon S3, Cloudflare R2, MinIO, Backblaze B2, SeaweedFS. 16 MiB parçalarla multipart yükleme; küçük yedekler tek istekle gider. Gizli anahtar `Security:MasterKey` ile şifrelenir ve geri gösterilmez |
+
+- **Test et** düğmesi hedefe küçük bir dosya yazar, okur ve siler.
+- Nesne adı `{önek}{işKimliği}/{yyyyMMdd-HHmmss}-{kısaKimlik}.tar.gz` (veritabanında `.sql.gz`), şifreliyse sonuna `.smbk` eklenir.
+- S3 bucket'ında yarım kalmış multipart yüklemeleri birkaç gün sonra temizleyen bir yaşam döngüsü kuralı (abort incomplete multipart upload) önerilir; panel hata durumunda yüklemeyi zaten iptal eder, kural yalnızca bağlantı tamamen koptuğunda kalan parçalar içindir.
+- R2 için endpoint `https://<hesap>.r2.cloudflarestorage.com`, bölge `auto`; MinIO/SeaweedFS için path-style açık olmalıdır.
+
+#### Şifreleme ve sıkıştırma
+
+Tüm yedekler gzip ile sıkıştırılır. Şifreleme iş başına açılır (varsayılan açık) ve işe girilen **şifreleme parolasıyla** yapılır:
+
+- Biçim (`SMBK`, sürüm 1): 36 baytlık başlık (`SMBK` | sürüm | bayrak | 2 boş bayt | PBKDF2 tur sayısı (uint32, big-endian) | 16 bayt salt | 8 bayt nonce öneki), ardından 1 MiB'lık AES-256-GCM parçaları (son-parça bayrağı | uzunluk | şifreli veri | 16 bayt etiket).
+- Anahtar PBKDF2-HMAC-SHA256 (varsayılan 600.000 tur, `Backup:KeyDerivationIterations`) ile türetilir. Her parçanın nonce'u önek + parça sırasıdır; başlık, parça sırası ve son-parça bayrağı ek doğrulama verisidir. Bu sayede parçaların yer değiştirmesi, kesilme ve sona veri ekleme tespit edilir; çözme ilk bozuk parçada durur ve işlem başarısız sayılır.
+- Parola işte `Security:MasterKey` ile şifreli saklanır; her çalışma kendi parolasının kopyasını tutar. İşin parolası sonradan değiştirilse bile eski yedekler kendi parolasıyla açılır.
+- Çalışma ayrıntısındaki **İndir** şifreli dosyayı olduğu gibi, **Çözülmüş indir** ise panelde çözerek `.tar.gz` / `.sql.gz` olarak verir. İndirmelerde SHA-256 özeti çalışma kaydındakiyle karşılaştırılabilir.
+
+#### Anahtar kaybı ve kurtarma planı
+
+Yedekler panelden bağımsız açılabilir; tek gereken şifreleme parolasıdır.
+
+1. **Şifreleme parolalarını panel dışında saklayın** (parola yöneticisi, kasa). Parola kaybolursa ve panel de yoksa şifreli yedek açılamaz; bu tasarım gereğidir.
+2. **`Security:MasterKey` kaybolursa** panel kayıtlı parolaları çözemez: indirme ve geri yükleme "Yedek şifreleme parolası çözülemedi (master key değişmiş olabilir)" hatası verir; şifreli **İndir** yine çalışır. Yedek dosyaları sağlamdır; dosyayı depolamadan (S3 konsolu, `aws s3 cp`, yerel klasör) alıp aşağıdaki araçla açın. Ardından yeni MasterKey ile işin parolasını yeniden girin.
+3. **Panel tamamen kaybolursa** aynı yol geçerlidir: yedek dosyası + parola yeterlidir.
+
+```bash
+python3 -m pip install cryptography
+SM_BACKUP_PASSPHRASE='...' python3 tools/backup-decrypt.py yedek.tar.gz.smbk yedek.tar.gz   # parola verilmezse sorulur
+tar -xzf yedek.tar.gz -C /geri/yukleme/klasoru        # dosya ve volume yedekleri
+gunzip -c yedek.sql.gz | psql -d hedef_db              # PostgreSQL (MySQL: | mysql hedef_db)
+```
+
+Araç bozuk/eksik dosyada ve yanlış parolada Türkçe hata verir, yarım çıktı bırakmaz; `-` çıktısı stdout'a yazar. Şifrelenmemiş yedekler doğrudan `tar` / `gunzip` ile açılır.
+
+#### Geri yükleme
+
+Geçmişteki başarılı bir yedekten **Geri yükle** formu açılır; hedef sunucu yedeğin alındığı sunucudan farklı olabilir. Hedefteki verinin üzerine yazılacağı onaylanmadan işlem başlamaz.
+
+| Tür | Hedef | Davranış |
+| --- | --- | --- |
+| Dosya | Mutlak klasör (varsayılan `/`; `/proc`, `/sys`, `/dev` ve `..` yasak) | Arşiv klasöre açılır, aynı adlı dosyaların üzerine yazılır; arşivde olmayan dosyalar silinmez |
+| Docker volume | Volume adı (varsayılan kaynak volume) | Volume yoksa oluşturulur; içerik üzerine yazılır, fazlalık silinmez |
+| Veritabanı | Container/host ve veritabanı adı | Veritabanı önceden var olmalıdır. PostgreSQL dökümü tabloları silip yeniden oluşturur; hata olursa ilk hatada durur (`ON_ERROR_STOP`) |
+
+Hiçbir yedek veya geri yükleme komutu sunucuda dosya silmez. Geri yükleme de bir çalışma olarak geçmişe ve audit log'a yazılır. Şifreli yedekte parola yanlışsa geri yükleme hedefe veri yazmadan durur; dosya ortasında bozulma varsa bozuk parçada durur ve çalışma başarısız olur (o ana kadar açılan kısım hedefte kalır). Ayrıca depolamadan okunan dosyanın SHA-256 özeti yedek alınırken kaydedilenle karşılaştırılır.
+
+**Alarm:** "Yedekleme başarısız" kuralı (varsayılan Kritik, kanal atanmamış) bir işin son yedeği başarısız olunca alarm açar; aynı iş başarılı yedek alınca kapanır.
+
+**Audit:** `backup_storage.create/update/delete/test`, `backup_job.create/update/delete`, `backup.start/complete/cancel/restore/download/artifact_delete`. Gizli değerler (parolalar, anahtarlar) log'a, audit'e ve çalışma loguna yazılmaz.
+
+| Anahtar (`Backup:`) | Varsayılan | Açıklama |
+| --- | --- | --- |
+| `Enabled` | `true` | Zamanlayıcıyı açar/kapatır (elle yedek yine çalışır) |
+| `SchedulerIntervalSeconds` | `30` | Zamanı gelen işlerin kontrol aralığı |
+| `MaxConcurrency` | `2` | Aynı anda çalışan en fazla yedek/geri yükleme |
+| `TimeZone` | `Europe/Istanbul` | Günlük/haftalık zamanlamanın saat dilimi (IANA veya Windows kimliği; geçersizse UTC) |
+| `BackupTimeoutMinutes` | `240` | Tek yedeğin en uzun süresi |
+| `RestoreTimeoutMinutes` | `240` | Tek geri yüklemenin en uzun süresi |
+| `LocalRootPath` | `App_Data/backups` | Yerel depolama klasörlerinin kökü (uygulama dizinine göre veya mutlak) |
+| `KeyDerivationIterations` | `600000` | Yeni yedeklerde PBKDF2 tur sayısı (eski yedekler başlıktaki değerle açılır) |
+| `MaxStoredLogKilobytes` | `256` | Çalışma başına saklanan en fazla log |
+
+Yerel testte gerçek bucket yerine yerel bir S3 sunucusu (ör. SeaweedFS veya MinIO container'ı) ve test SSH sunucusu kullanın; canlı sunuculardan veya canlı bucket'lardan test yedeği almayın.
+
 ### Eklentiler
 
 Sistem nopCommerce'teki plugin mantığıyla genişler: Dokploy, Dokku ve diğer DevOps araçları host'tan bağımsız birer eklentidir. Her eklenti `Plugins/{SystemName}/` klasöründe `plugin.json` tanımı, derlenmiş assembly'si (controller, derlenmiş Razor view'ları, servisler, migration'lar) ve `Content/` klasörüyle (CSS/JS) durur.
@@ -2796,7 +2902,7 @@ Sistem nopCommerce'teki plugin mantığıyla genişler: Dokploy, Dokku ve diğer
 | Anahtar (`Plugins:`) | Varsayılan | Açıklama |
 | --- | --- | --- |
 | `Directory` | `Plugins` | Eklenti klasörlerinin bulunduğu dizin (uygulama kök dizinine göre) |
-| `InstallOnStartup` | `["DevOps.Dokploy", "Git.GitHub", "Notifications.Email", "Notifications.Telegram", "Notifications.Discord"]` | Daha önce hiç kurulmamışsa açılışta otomatik kurulan eklentiler; sonradan devre dışı bırakılan eklenti yeniden etkinleştirilmez |
+| `InstallOnStartup` | `["DevOps.Dokploy", "Git.GitHub", "Notifications.Email", "Notifications.Telegram", "Notifications.Discord", "Storage.S3"]` | Daha önce hiç kurulmamışsa açılışta otomatik kurulan eklentiler; sonradan devre dışı bırakılan eklenti yeniden etkinleştirilmez |
 
 Tablo gerektirmeyen eklentilerde (bildirim kanalları gibi) migration adımı atlanır.
 
@@ -2807,6 +2913,7 @@ Tablo gerektirmeyen eklentilerde (bildirim kanalları gibi) migration adımı at
 | `Notifications.Email` | Bildirim | Hazır (bkz. [Bildirim kanalları](#bildirim-kanalları)) |
 | `Notifications.Telegram` | Bildirim | Hazır (bkz. [Bildirim kanalları](#bildirim-kanalları)) |
 | `Notifications.Discord` | Bildirim | Hazır (bkz. [Bildirim kanalları](#bildirim-kanalları)) |
+| `Storage.S3` | Yedekleme | Hazır (bkz. [Yedekleme](#yedekleme)) |
 | `DevOps.Dokku` | DevOps | Planlandı |
 | `Git.GitLab` | Git | Planlandı |
 
