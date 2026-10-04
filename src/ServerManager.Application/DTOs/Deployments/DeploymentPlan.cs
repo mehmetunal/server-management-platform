@@ -32,6 +32,9 @@ public sealed class DeploymentPlan
     /// <summary>Proje klasörüne <c>.env</c> olarak yazılır; null ise mevcut dosyaya dokunulmaz.</summary>
     public string? Environment { get; init; }
 
+    /// <summary>Boşsa container'a Traefik etiketi yazılmaz ve mevcut davranış korunur.</summary>
+    public IReadOnlyList<DeploymentRoute> Routes { get; init; } = [];
+
     public TimeSpan GitTimeout { get; init; } = TimeSpan.FromMinutes(5);
 
     public TimeSpan BuildTimeout { get; init; } = TimeSpan.FromMinutes(30);

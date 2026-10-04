@@ -25,6 +25,7 @@ public class DeploymentService : IDeploymentService
     private const string RunningConflictMessage = "Bu proje için süren bir deployment var; bitmesini bekleyin veya iptal edin.";
 
     private readonly IDeploymentRepository _repository;
+    private readonly IDeploymentDomainService _domains;
     private readonly IServerConnectionProvider _connectionProvider;
     private readonly IDeploymentProvider _provider;
     private readonly ISecretProtector _secretProtector;
@@ -37,6 +38,7 @@ public class DeploymentService : IDeploymentService
 
     public DeploymentService(
         IDeploymentRepository repository,
+        IDeploymentDomainService domains,
         IServerConnectionProvider connectionProvider,
         IDeploymentProvider provider,
         ISecretProtector secretProtector,
@@ -48,6 +50,7 @@ public class DeploymentService : IDeploymentService
         ILogger<DeploymentService> logger)
     {
         _repository = repository;
+        _domains = domains;
         _connectionProvider = connectionProvider;
         _provider = provider;
         _secretProtector = secretProtector;
@@ -222,6 +225,16 @@ public class DeploymentService : IDeploymentService
         }
 
         PortMappings.TryParse(project.PortMappings, out var ports, out _);
+        IReadOnlyList<DeploymentRoute> routes = [];
+        if (project.BuildType != DeploymentBuildType.Commands)
+        {
+            var loaded = await _domains.GetRoutesAsync(project, cancellationToken);
+            if (!loaded.IsSuccess)
+                return Failed(loaded.Message ?? "Domain yönlendirmesi hazırlanamadı.");
+
+            routes = loaded.Data ?? [];
+        }
+
         var plan = new DeploymentPlan
         {
             Slug = project.Slug,
@@ -242,6 +255,7 @@ public class DeploymentService : IDeploymentService
             DeployCommand = project.DeployCommand,
             UseSudoForCommands = project.UseSudoForCommands,
             Environment = environment,
+            Routes = routes,
             GitTimeout = TimeSpan.FromSeconds(Math.Max(30, _options.GitTimeoutSeconds)),
             BuildTimeout = TimeSpan.FromMinutes(Math.Max(1, _options.BuildTimeoutMinutes)),
             DeployTimeout = TimeSpan.FromMinutes(Math.Max(1, _options.DeployTimeoutMinutes))

@@ -37,27 +37,28 @@ public class FilesController : Controller
     [HttpGet]
     public async Task<IActionResult> Index(Guid id, string? path, CancellationToken cancellationToken)
     {
-        ServerPageViewModel? page = null;
         if (!Request.IsAjax())
         {
-            page = await _pageBuilder.BuildAsync(id, ServerPageViewModel.FilesTab, MetricRange.OneHour, cancellationToken);
+            var page = await _pageBuilder.BuildAsync(id, ServerPageViewModel.FilesTab, MetricRange.OneHour, cancellationToken);
             if (page is null)
                 return NotFound();
+
+            return View(new FileManagerViewModel
+            {
+                Page = page,
+                List = new FileListViewModel { ServerId = id, RequestedPath = path },
+                MaxUploadMegabytes = _options.MaxUploadMegabytes
+            });
         }
 
         var listing = await _fileService.ListAsync(id, path, cancellationToken);
-        var list = new FileListViewModel
+        return PartialView("_FileList", new FileListViewModel
         {
             ServerId = id,
             Listing = listing.Data,
             Error = listing.IsSuccess ? null : FirstMessage(listing) ?? "Klasör listelenemedi.",
             RequestedPath = path
-        };
-
-        if (page is null)
-            return PartialView("_FileList", list);
-
-        return View(new FileManagerViewModel { Page = page, List = list, MaxUploadMegabytes = _options.MaxUploadMegabytes });
+        });
     }
 
     [HttpGet]

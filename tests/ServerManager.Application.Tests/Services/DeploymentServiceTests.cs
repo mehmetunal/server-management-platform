@@ -25,6 +25,7 @@ public class DeploymentServiceTests
     private static readonly DateTimeOffset Now = new(2026, 10, 3, 12, 0, 0, TimeSpan.Zero);
 
     private readonly IDeploymentRepository _repository = Substitute.For<IDeploymentRepository>();
+    private readonly IDeploymentDomainService _domains = Substitute.For<IDeploymentDomainService>();
     private readonly IServerConnectionProvider _connectionProvider = Substitute.For<IServerConnectionProvider>();
     private readonly IDeploymentProvider _provider = Substitute.For<IDeploymentProvider>();
     private readonly FakeSecretProtector _protector = new();
@@ -43,10 +44,13 @@ public class DeploymentServiceTests
         _gitIntegrations.Find(Arg.Any<string>()).Returns((IGitIntegration?)null);
         _gitIntegrations.GetEnabled().Returns([]);
         _repository.GetProjectAsync(_project.Id, Arg.Any<CancellationToken>()).Returns(_project);
+        _domains.GetRoutesAsync(Arg.Any<DeploymentProject>(), Arg.Any<CancellationToken>())
+            .Returns(ServiceResult<IReadOnlyList<DeploymentRoute>>.Success([]));
         _connectionProvider.GetAsync(_server.Id, Arg.Any<CancellationToken>())
             .Returns(ServiceResult<ServerConnection>.Success(new ServerConnection { ServerId = _server.Id, ServerName = _server.Name, Context = _context }));
         _service = new DeploymentService(
             _repository,
+            _domains,
             _connectionProvider,
             _provider,
             _protector,

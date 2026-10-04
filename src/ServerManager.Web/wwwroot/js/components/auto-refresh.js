@@ -1,3 +1,5 @@
+import { onPageDispose } from '../core/page-scope.js';
+
 /**
  * Sekme görünürken fn'i belirli aralıklarla çağırır; sekme gizliyken durur, geri gelince hemen yeniler.
  * Önceki çağrı bitmeden yenisi başlatılmaz.
@@ -24,15 +26,22 @@ export function startAutoRefresh(fn, intervalMs) {
         timer = setInterval(tick, intervalMs);
     };
 
-    document.addEventListener('visibilitychange', () => {
+    const onVisibility = () => {
         if (document.hidden) {
             stop();
             return;
         }
         tick();
         start();
-    });
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    const dispose = () => {
+        stop();
+        document.removeEventListener('visibilitychange', onVisibility);
+    };
+    onPageDispose(dispose);
 
     start();
-    return { stop };
+    return { stop: dispose };
 }

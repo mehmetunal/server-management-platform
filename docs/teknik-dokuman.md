@@ -141,6 +141,8 @@ Sağlayıcılar `IBackupStorageProvider` uygular. Çekirdek yerel diski, `Storag
 
 Proje çekirdektedir. Dokploy veya Dokku dağıtımının yerine geçmez. Git, hedef sunucuda SSH ile çalışır. Erişim anahtarı `x-access-token` olarak stdin’den gider, diske ve loga yazılmaz.
 
+Domain kaydı `DeploymentDomains` tablosundadır. Aynı sunucuda aynı host ve yol iki kez kullanılamaz. Sunucuda bir kez `sm-traefik` ve `sm-proxy` ağı kurulur. Compose dosyası değiştirilmez; yanına `sm-proxy.override.yml` yazılır. Dockerfile container'ına etiket `docker run` ile eklenir. Özel sertifika ve anahtar şifreli saklanır, komut satırına yazılmaz, `/var/lib/sm-traefik/dynamic` altına stdin ile gider. Domain'i olmayan proje eskisi gibi yalnızca port veya compose ile ayağa kalkar. Proje silinince kayıt panelden kalkar; onay kutusundaki kalıcı silme sunucudaki klasörü, container'ı, imajı, volume'ları ve bu projenin vekil dosyalarını da kaldırır. `sm-traefik` durmaz. Deployment geçmişi silinmez. `Deployment:AcmeEmail` Let's Encrypt hesabıdır.
+
 GitHub App eklentisi `contents: read` ve `metadata: read` ister. Private key ile kısa ömürlü JWT, oradan kurulum anahtarı üretilir. Anahtar önbelleğe alınmaz ve tek depoya daraltılır. Private key, client secret ve webhook secret şifrelidir. Uygulamayı kullanan proje varken kayıt kaldırılamaz. Kaldırma yumuşak siler, GitHub’daki uygulamayı silmez.
 
 `GitHub:PublicBaseUrl` boşsa isteğin adresi dönüş adresi olur. Ters vekil varsa doldurulmalıdır. Manifest ve kurulum dönüşü, Strict çerez yüzünden ara sayfa kullanır.

@@ -20,8 +20,11 @@ public interface IProjectService
 
     Task<ServiceResult> UpdateAsync(UpdateProjectDto dto, CancellationToken cancellationToken = default);
 
-    /// <summary>Kaydı soft delete ile kaldırır; sunucudaki klasöre, container'lara ve deployment geçmişine dokunulmaz.</summary>
-    Task<ServiceResult> DeleteAsync(Guid id, string? confirmationName, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Kaydı panelden kaldırır. <paramref name="hardDelete"/> ise sunucudaki klasör, container, imaj,
+    /// volume ve domain yönlendirmesi de silinir. Deployment geçmişi ve audit kaydı kalır.
+    /// </summary>
+    Task<ServiceResult> DeleteAsync(Guid id, string? confirmationName, bool hardDelete, CancellationToken cancellationToken = default);
 
     Task<ServiceResult<GitBranchListDto>> ListBranchesAsync(Guid id, CancellationToken cancellationToken = default);
 

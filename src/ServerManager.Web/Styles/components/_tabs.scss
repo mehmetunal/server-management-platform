@@ -1,12 +1,6 @@
 @layer components {
   .tab-list {
-    @apply flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-slate-800;
-    scrollbar-width: thin;
-    scrollbar-color: transparent transparent;
-
-    &:hover {
-      scrollbar-color: var(--color-slate-400) transparent;
-    }
+    @apply flex flex-wrap gap-x-1 border-b border-slate-200 dark:border-slate-800;
   }
 
   .tab {

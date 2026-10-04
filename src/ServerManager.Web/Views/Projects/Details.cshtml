@@ -18,11 +18,13 @@
         @if (canManage)
         {
             <a asp-action="Edit" asp-route-id="@project.Id" class="btn-secondary" title="Depo, build ve ortam ayarlarını düzenle">@Icons.Render("pencil", "h-4 w-4") Düzenle</a>
-            <button type="button" class="btn-danger" title="Projeyi panelden kaldır; sunucudaki dosya ve container'lara dokunulmaz"
+            <button type="button" class="btn-danger" title="Projeyi panelden kaldır. İsterseniz sunucudaki uygulamayı ve domain yönlendirmesini de silin"
                     data-ajax-action data-url="@Url.Action("Delete", new { id = project.Id })"
                     data-confirm-title="Proje silinsin mi?"
-                    data-confirm-message="Proje ve ayarları panelden kaldırılır. Sunucudaki klasör, container ve image'lar silinmez; deployment geçmişi denetim için saklanır."
+                    data-confirm-message="Proje panelden kaldırılır. Deployment geçmişi denetim için saklanır. Kutuyu işaretlemezseniz sunucudaki klasör ve çalışan uygulama olduğu gibi kalır."
                     data-confirm-name="@project.Name"
+                    data-confirm-check="Sunucudaki klasörü, container'ı, imajı, volume'ları ve domain yönlendirmesini de sil"
+                    data-check-field="hardDelete"
                     data-confirm-label="Projeyi sil"
                     data-redirect>
                 @Icons.Render("trash", "h-4 w-4") Sil
@@ -105,6 +107,95 @@
                     <pre class="project-command">@project.DeployCommand</pre>
                 </div>
             }
+        </section>
+
+        <section class="panel" data-domains
+                 data-build-type="@((int)project.BuildType)"
+                 data-compose="@((int)DeploymentBuildType.DockerCompose)"
+                 data-commands="@((int)DeploymentBuildType.Commands)"
+                 data-custom="@((int)DeploymentTlsMode.Custom)"
+                 data-delete-url="@Url.Action("DeleteDomain", new { id = project.Id })">
+            <div class="panel-header">
+                <h2 class="panel-title">Domainler</h2>
+                @if (canManage && project.BuildType != DeploymentBuildType.Commands)
+                {
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" class="btn-secondary btn-sm" data-proxy-install data-url="@Url.Action("InstallProxy", new { id = project.Id })" title="Sunucuya Traefik vekilini kur veya durmuşsa başlat">@Icons.Render("shield", "h-4 w-4") Vekil kur</button>
+                        <button type="button" class="btn-secondary btn-sm" data-routing-apply data-url="@Url.Action("ApplyRouting", new { id = project.Id })" title="Kayıtlı domainleri yeniden build etmeden uygula">@Icons.Render("refresh", "h-4 w-4") Yönlendir</button>
+                        <button type="button" class="btn-primary btn-sm" data-domain-add title="Yeni host adı ekle">@Icons.Render("plus", "h-4 w-4") Domain ekle</button>
+                    </div>
+                }
+            </div>
+            <div class="panel-body space-y-4">
+                @if (project.BuildType == DeploymentBuildType.Commands)
+                {
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Komutla dağıtılan projeye domain bağlanmaz. Docker Compose veya Dockerfile seçin.</p>
+                }
+                else
+                {
+                    <p class="text-sm" data-proxy-status data-url="@Url.Action("ProxyStatus", new { id = project.Id })">Vekil durumu kontrol ediliyor.</p>
+                    <div data-domain-list data-url="@Url.Action("Domains", new { id = project.Id })">
+                        <partial name="_DomainTable" model="new DomainPanelViewModel { ProjectId = project.Id, BuildType = project.BuildType, Domains = Model.Domains, CanManage = canManage }" />
+                    </div>
+                    @if (canManage)
+                    {
+                        <form class="space-y-4" data-domain-form hidden action="@Url.Action("SaveDomain", new { id = project.Id })" novalidate>
+                            <input type="hidden" name="Id" value="" />
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div>
+                                    <label class="form-label" for="domain-host">Host *</label>
+                                    <input id="domain-host" name="Host" class="form-control font-mono" placeholder="api.ornek.com" maxlength="253" spellcheck="false" autocomplete="off" />
+                                    <span class="field-validation-error" data-valmsg-for="Host"></span>
+                                </div>
+                                <div>
+                                    <label class="form-label" for="domain-path">Yol</label>
+                                    <input id="domain-path" name="Path" class="form-control font-mono" placeholder="/api" maxlength="200" spellcheck="false" autocomplete="off" />
+                                    <p class="form-hint">Boşsa host'un tamamı yönlenir.</p>
+                                    <span class="field-validation-error" data-valmsg-for="Path"></span>
+                                </div>
+                                <div>
+                                    <label class="form-label" for="domain-port">Container portu *</label>
+                                    <input id="domain-port" name="ContainerPort" class="form-control font-mono" inputmode="numeric" value="80" />
+                                    <p class="form-hint">Uygulamanın container içinde dinlediği port.</p>
+                                    <span class="field-validation-error" data-valmsg-for="ContainerPort"></span>
+                                </div>
+                                <div data-compose-field>
+                                    <label class="form-label" for="domain-service">Compose servisi *</label>
+                                    <input id="domain-service" name="ServiceName" class="form-control font-mono" placeholder="web" maxlength="63" spellcheck="false" autocomplete="off" />
+                                    <span class="field-validation-error" data-valmsg-for="ServiceName"></span>
+                                </div>
+                                <div>
+                                    <label class="form-label" for="domain-tls">Sertifika *</label>
+                                    <select id="domain-tls" name="TlsMode" class="form-control" data-tls-mode asp-items="DeploymentDisplay.TlsModeOptions(DeploymentTlsMode.Cloudflare)"></select>
+                                    <p class="form-hint" data-tls-hint="cloudflare">Kilit Cloudflare'de kalır. Sunucu yalnızca 80 dinler.</p>
+                                    <p class="form-hint" data-tls-hint="letsencrypt" hidden>Let's Encrypt sertifikayı alır. A kaydı bu sunucuya doğrudan bakmalıdır.</p>
+                                    <p class="form-hint" data-tls-hint="custom" hidden>Elinizdeki sertifika ve özel anahtar Traefik'e yazılır.</p>
+                                    <span class="field-validation-error" data-valmsg-for="TlsMode"></span>
+                                </div>
+                            </div>
+                            <div data-custom-fields hidden>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="form-label" for="domain-cert">Sertifika (PEM)</label>
+                                        <textarea id="domain-cert" name="CertificatePem" class="form-control font-mono domain-pem" rows="6" spellcheck="false" placeholder="-----BEGIN CERTIFICATE-----"></textarea>
+                                        <p class="form-hint" data-cert-keep hidden>Boş bırakırsanız kayıtlı sertifika korunur.</p>
+                                        <span class="field-validation-error" data-valmsg-for="CertificatePem"></span>
+                                    </div>
+                                    <div>
+                                        <label class="form-label" for="domain-key">Özel anahtar (PEM)</label>
+                                        <textarea id="domain-key" name="PrivateKey" class="form-control font-mono domain-pem" rows="6" spellcheck="false" placeholder="-----BEGIN PRIVATE KEY-----"></textarea>
+                                        <span class="field-validation-error" data-valmsg-for="PrivateKey"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <button type="submit" class="btn-primary" title="Domaini kaydet ve yönlendirmeyi uygula"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+                                <button type="button" class="btn-secondary" data-domain-cancel title="Formu kapat">Vazgeç</button>
+                            </div>
+                        </form>
+                    }
+                }
+            </div>
         </section>
     </div>
 

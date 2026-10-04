@@ -44,7 +44,13 @@
             }
         </div>
     }
-    else if (listing!.Entries.Count == 0)
+    else if (listing is null)
+    {
+        <div class="empty-state" aria-busy="true">
+            <p>Klasör listeleniyor…</p>
+        </div>
+    }
+    else if (listing.Entries.Count == 0)
     {
         <div class="empty-state">
             <span class="empty-state-icon">@Icons.Render("folder", "h-6 w-6")</span>

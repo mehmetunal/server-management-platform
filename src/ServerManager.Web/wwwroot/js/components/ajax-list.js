@@ -1,6 +1,7 @@
 import { debounce, on } from '../core/dom.js';
 import { getHtml } from '../core/http.js';
 import { notify } from '../core/notify.js';
+import { pageSignal } from '../core/page-scope.js';
 
 const SEARCH_DELAY_MS = 350;
 
@@ -30,12 +31,14 @@ function syncForm(form, url) {
 export function createAjaxList(root, { form, onLoaded, history = true, url: initialUrl } = {}) {
     let sequence = 0;
     let currentUrl = initialUrl ?? window.location.pathname + window.location.search;
+    const basePath = new URL(currentUrl, window.location.origin).pathname;
 
     async function load(url, { push = true } = {}) {
         const current = ++sequence;
+        if (!root.isConnected) return;
         root.setAttribute('aria-busy', 'true');
         const response = await getHtml(url);
-        if (current !== sequence) return;
+        if (current !== sequence || !root.isConnected) return;
         root.removeAttribute('aria-busy');
         if (!response.ok) {
             notify.error(response.message || 'Liste yüklenemedi.');
@@ -71,10 +74,12 @@ export function createAjaxList(root, { form, onLoaded, history = true, url: init
     });
 
     if (history) {
+        const signal = pageSignal();
         window.addEventListener('popstate', () => {
+            if (!root.isConnected || window.location.pathname !== basePath) return;
             if (form) syncForm(form, window.location.href);
             load(window.location.pathname + window.location.search, { push: false });
-        });
+        }, signal ? { signal } : undefined);
     }
 
     return {

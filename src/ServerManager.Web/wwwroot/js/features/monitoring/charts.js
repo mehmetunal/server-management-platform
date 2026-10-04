@@ -1,6 +1,7 @@
 import { qsa } from '../../core/dom.js';
 import { getJson } from '../../core/http.js';
 import { formatBytes, formatNumber } from '../../core/format.js';
+import { onPageDispose } from '../../core/page-scope.js';
 
 const COLORS = {
     cpu: '#6366f1',
@@ -88,6 +89,7 @@ function chartOptions(key) {
 }
 
 function createGroup(container) {
+    let closed = false;
     const group = {
         url: container.dataset.seriesUrl,
         live: container.dataset.liveRange === 'true',
@@ -103,6 +105,7 @@ function createGroup(container) {
 
     group.refresh = async () => {
         const response = await getJson(group.url);
+        if (closed) return;
         if (!response.isSuccess) {
             group.charts.forEach(({ empty }) => {
                 if (!empty) return;
@@ -130,6 +133,7 @@ function createGroup(container) {
     };
 
     group.refresh();
+    group.close = () => { closed = true; };
     return group;
 }
 
@@ -137,11 +141,19 @@ function createGroup(container) {
 export function createChartGroups() {
     if (!window.Chart) return [];
     const groups = qsa('[data-metric-charts]').map(createGroup);
-    if (groups.length) {
-        new MutationObserver(() => groups.forEach(group => group.charts.forEach(({ key, chart }) => {
+    const observer = groups.length
+        ? new MutationObserver(() => groups.forEach(group => group.charts.forEach(({ key, chart }) => {
             chart.options = chartOptions(key);
             chart.update('none');
-        }))).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    }
+        })))
+        : null;
+    observer?.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    onPageDispose(() => {
+        observer?.disconnect();
+        groups.forEach(group => {
+            group.close();
+            group.charts.forEach(({ chart }) => chart.destroy());
+        });
+    });
     return groups;
 }

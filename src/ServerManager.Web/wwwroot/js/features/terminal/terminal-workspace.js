@@ -2,6 +2,7 @@ import { confirmAction } from '../../core/dialog.js';
 import { debounce, element, on, qs } from '../../core/dom.js';
 import { failureMessage, getJson } from '../../core/http.js';
 import { notify } from '../../core/notify.js';
+import { onPageDispose, pageSignal } from '../../core/page-scope.js';
 import { createTerminalHub } from './terminal-hub.js';
 import { createTerminalSession } from './terminal-session.js';
 import { renderStatus } from './terminal-status.js';
@@ -327,7 +328,7 @@ export function createTerminalWorkspace(root) {
             active?.view.fit();
             active?.view.focus();
         });
-    });
+    }, pageSignal() ? { signal: pageSignal() } : undefined);
 
     historyToggle.addEventListener('click', () => setHistoryPanel(historyPanel.hidden));
     on(root, 'click', '[data-terminal-history-refresh]', () => loadHistory());
@@ -345,6 +346,15 @@ export function createTerminalWorkspace(root) {
     if (localStorage.getItem(HISTORY_PANEL_KEY) === '1') setHistoryPanel(true);
     renderToolbar();
     restore();
+    onPageDispose(() => {
+        if (document.fullscreenElement === root) document.exitFullscreen().catch(() => { });
+        for (const tab of tabs) {
+            tab.session.dispose();
+            tab.view.dispose();
+        }
+        tabs.length = 0;
+        hub.stop().catch(() => { });
+    });
 
     return { openNew };
 }

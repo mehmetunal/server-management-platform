@@ -41,6 +41,7 @@ function syncPathInput() {
 
 const list = createAjaxList(listRoot, { form: pathForm, onLoaded: syncPathInput });
 const reload = () => list.reload();
+list.load(listUrl(pathInput.value.trim()), { push: false });
 
 function applyHiddenPreference() {
     root.classList.toggle('show-hidden', hiddenToggle.checked);

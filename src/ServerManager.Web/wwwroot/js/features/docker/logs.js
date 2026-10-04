@@ -1,6 +1,7 @@
 import { element, qs } from '../../core/dom.js';
 import { failureMessage, getJson } from '../../core/http.js';
 import { formatClock, formatTimestamp } from '../../core/format.js';
+import { onPageDispose } from '../../core/page-scope.js';
 
 const FOLLOW_INTERVAL_MS = 3000;
 const MAX_LINES = 5000;
@@ -159,6 +160,7 @@ export function createLogViewer(root) {
     follow.addEventListener('change', () => setFollow(follow.checked));
     qs('[data-logs-reload]', root).addEventListener('click', load);
     qs('[data-logs-download]', root).addEventListener('click', download);
+    onPageDispose(() => clearInterval(followTimer));
 
     return {
         activate() {

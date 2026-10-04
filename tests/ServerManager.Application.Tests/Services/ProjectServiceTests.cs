@@ -26,6 +26,7 @@ public class ProjectServiceTests
     private static readonly DateTimeOffset Now = new(2026, 10, 3, 12, 0, 0, TimeSpan.Zero);
 
     private readonly IDeploymentRepository _repository = Substitute.For<IDeploymentRepository>();
+    private readonly IDeploymentDomainService _domains = Substitute.For<IDeploymentDomainService>();
     private readonly IServerRepository _serverRepository = Substitute.For<IServerRepository>();
     private readonly IServerConnectionProvider _connectionProvider = Substitute.For<IServerConnectionProvider>();
     private readonly IDeploymentProvider _provider = Substitute.For<IDeploymentProvider>();
@@ -44,6 +45,7 @@ public class ProjectServiceTests
         _serverRepository.GetByIdAsync(_server.Id, Arg.Any<CancellationToken>()).Returns(_server);
         _service = new ProjectService(
             _repository,
+            _domains,
             _serverRepository,
             _connectionProvider,
             _provider,
@@ -171,17 +173,56 @@ public class ProjectServiceTests
         var project = ProjectTestData.Project(_server);
         _repository.GetProjectAsync(project.Id, Arg.Any<CancellationToken>()).Returns(project);
 
-        var wrong = await _service.DeleteAsync(project.Id, "müşteri api", Ct);
+        var wrong = await _service.DeleteAsync(project.Id, "müşteri api", false, Ct);
         Assert.Equal(ServiceErrorType.Validation, wrong.ErrorType);
         Assert.False(project.IsDeleted);
 
-        var result = await _service.DeleteAsync(project.Id, " Müşteri API ", Ct);
+        var result = await _service.DeleteAsync(project.Id, " Müşteri API ", false, Ct);
 
         Assert.True(result.IsSuccess);
         Assert.True(project.IsDeleted);
         Assert.Equal(Now.UtcDateTime, project.DeletedAt);
         Assert.Equal("admin@example.com", project.DeletedBy);
+        await _domains.Received(1).OnProjectDeletedAsync(project, Arg.Any<CancellationToken>(), true);
+        await _provider.DidNotReceiveWithAnyArgs().RemoveDeploymentAsync(null!, null!, default, Ct);
         await _auditLog.Received(1).LogAsync(Arg.Is<AuditEntry>(e => e.Action == AuditActions.ProjectDelete), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Hard_delete_removes_the_server_copy_and_skips_a_second_routing_update()
+    {
+        var project = ProjectTestData.Project(_server);
+        _repository.GetProjectAsync(project.Id, Arg.Any<CancellationToken>()).Returns(project);
+        var context = new RemoteExecutionContext { Connection = new SshConnectionRequest { Host = "203.0.113.10", Username = "deploy" } };
+        _connectionProvider.GetAsync(_server.Id, Arg.Any<CancellationToken>())
+            .Returns(ServiceResult<ServerConnection>.Success(new ServerConnection { ServerId = _server.Id, ServerName = _server.Name, Context = context }));
+        _provider.RemoveDeploymentAsync(context, Arg.Is<DeploymentPlan>(p => p.DeployPath == project.DeployPath && p.Slug == project.Slug), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
+            .Returns(ServiceResult.Success("Sunucudaki uygulama silindi."));
+
+        var result = await _service.DeleteAsync(project.Id, project.Name, true, Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Contains("kaldırıldı", result.Message, StringComparison.Ordinal);
+        Assert.True(project.IsDeleted);
+        await _domains.Received(1).OnProjectDeletedAsync(project, Arg.Any<CancellationToken>(), false);
+    }
+
+    [Fact]
+    public async Task Hard_delete_keeps_the_project_when_the_server_cleanup_fails()
+    {
+        var project = ProjectTestData.Project(_server);
+        _repository.GetProjectAsync(project.Id, Arg.Any<CancellationToken>()).Returns(project);
+        var context = new RemoteExecutionContext { Connection = new SshConnectionRequest { Host = "203.0.113.10", Username = "deploy" } };
+        _connectionProvider.GetAsync(_server.Id, Arg.Any<CancellationToken>())
+            .Returns(ServiceResult<ServerConnection>.Success(new ServerConnection { ServerId = _server.Id, ServerName = _server.Name, Context = context }));
+        _provider.RemoveDeploymentAsync(context, Arg.Any<DeploymentPlan>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
+            .Returns(ServiceResult.Failure("Sunucudaki uygulama silinemedi."));
+
+        var result = await _service.DeleteAsync(project.Id, project.Name, true, Ct);
+
+        Assert.False(result.IsSuccess);
+        Assert.False(project.IsDeleted);
+        await _domains.DidNotReceiveWithAnyArgs().OnProjectDeletedAsync(null!, default, false);
     }
 
     [Fact]

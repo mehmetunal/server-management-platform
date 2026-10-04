@@ -1,4 +1,5 @@
 import { on, qsa } from '../core/dom.js';
+import { pageSignal } from '../core/page-scope.js';
 
 export function openModal(modal) {
     if (!modal) return;
@@ -14,10 +15,11 @@ export function closeModal(modal) {
 export function bindModals(root = document) {
     on(root, 'click', '[data-modal-open]', (event, trigger) => openModal(document.getElementById(trigger.dataset.modalOpen)));
     on(root, 'click', '[data-modal-close]', (event, button) => closeModal(button.closest('[data-modal]')));
+    const signal = pageSignal();
     root.addEventListener('click', event => {
         if (event.target instanceof Element && event.target.matches('[data-modal]')) closeModal(event.target);
-    });
+    }, signal ? { signal } : undefined);
     document.addEventListener('keydown', event => {
         if (event.key === 'Escape') qsa('[data-modal]').forEach(closeModal);
-    });
+    }, signal ? { signal } : undefined);
 }

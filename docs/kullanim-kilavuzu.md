@@ -124,8 +124,11 @@ Geçmişten indirebilir, şifreliyse çözülmüş indirebilir ve geri yükleyeb
 2. GitHub App eklentisi açıksa depoyu kişisel erişim anahtarı yazmadan bağlayabilirsiniz. Bağlantı GitHub sayfasında onaylanır.
 3. **Deployment başlat**. Canlı log deployment sayfasındadır.
 4. Bitmiş bir dağıtımı yeniden çalıştırabilirsiniz.
+5. Proje sayfasındaki **Domainler** kartından host ekleyin. DNS kaydını siz açarsınız. Sertifika Cloudflare (sunucuda sertifika yok, yalnızca 80), Let's Encrypt veya yapıştırdığınız özel sertifika olabilir. Komut türündeki projeye domain bağlanmaz.
+6. İlk domainden önce **Vekil kur**. Bu, sunucuda `sm-traefik` adlı Traefik'i 80 ve 443'e alır. Port doluysa kurulum durur.
+7. Proje silinirken kutu işaretlenmezse yalnızca panel kaydı kapanır. Kutu işaretlenirse sunucudaki klasör, container, imaj, volume ve domain yönlendirmesi de silinir. Deployment geçmişi kalır.
 
-Build komutu hedef sunucuda çalışır. Bu yetkiyi yalnızca sunucuya komut yazmasına güvendiğiniz role verin.
+Build komutu hedef sunucuda çalışır. Bu yetkiyi yalnızca sunucuya komut yazmasına güvendiğiniz role verin. Let's Encrypt için domain'in A kaydı bu sunucuya doğrudan bakmalıdır. Turuncu bulut açıksa Cloudflare türünü seçin.
 
 ## 10. Toplu komut ve şablon
 

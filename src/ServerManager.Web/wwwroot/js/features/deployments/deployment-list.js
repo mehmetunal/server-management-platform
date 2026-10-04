@@ -1,5 +1,6 @@
 import { createAjaxList } from '../../components/ajax-list.js';
 import { on, qs, setBusy } from '../../core/dom.js';
+import { onPageDispose, pageSignal } from '../../core/page-scope.js';
 
 const RUNNING_REFRESH_MS = 5000;
 
@@ -27,7 +28,9 @@ export function initDeploymentList(root, { form, embedded = false } = {}) {
         onLoaded: schedule
     });
 
-    document.addEventListener('visibilitychange', schedule);
+    const signal = pageSignal();
+    document.addEventListener('visibilitychange', schedule, signal ? { signal } : undefined);
+    onPageDispose(() => clearTimeout(timer));
     on(document, 'click', '[data-deployments-refresh]', async (event, button) => {
         setBusy(button, true);
         try {

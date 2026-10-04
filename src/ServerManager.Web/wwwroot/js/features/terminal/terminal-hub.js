@@ -95,6 +95,9 @@ export function createTerminalHub(url) {
         onReconnected(listener) {
             reconnectListeners.add(listener);
             return () => reconnectListeners.delete(listener);
+        },
+        stop() {
+            return connection.stop();
         }
     };
 }

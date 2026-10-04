@@ -57,6 +57,10 @@ public static class AuditActions
     public const string DeploymentStart = "deployment.start";
     public const string DeploymentComplete = "deployment.complete";
     public const string DeploymentCancel = "deployment.cancel";
+    public const string DeploymentDomainCreate = "deployment_domain.create";
+    public const string DeploymentDomainUpdate = "deployment_domain.update";
+    public const string DeploymentDomainDelete = "deployment_domain.delete";
+    public const string DeploymentProxyInstall = "deployment_proxy.install";
 
     public const string AlertRuleCreate = "alert_rule.create";
     public const string AlertRuleUpdate = "alert_rule.update";
@@ -177,6 +181,10 @@ public static class AuditActions
         [DeploymentStart] = "Deployment başlatıldı",
         [DeploymentComplete] = "Deployment tamamlandı",
         [DeploymentCancel] = "Deployment iptal edildi",
+        [DeploymentDomainCreate] = "Domain ekleme",
+        [DeploymentDomainUpdate] = "Domain güncelleme",
+        [DeploymentDomainDelete] = "Domain silme",
+        [DeploymentProxyInstall] = "Vekil kurulumu",
         [AlertRuleCreate] = "Alarm kuralı ekleme",
         [AlertRuleUpdate] = "Alarm kuralı güncelleme",
         [AlertRuleDelete] = "Alarm kuralı silme",

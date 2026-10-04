@@ -28,7 +28,7 @@
                     @Icons.Render("menu")
                 </button>
 
-                <div class="min-w-0 flex-1">
+                <div class="min-w-0 flex-1" data-topbar-heading>
                     @if (breadcrumbs is { Count: > 0 })
                     {
                         <partial name="_Breadcrumb" model="breadcrumbs" />

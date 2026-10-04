@@ -1,4 +1,5 @@
 import { qs } from '../../core/dom.js';
+import { onPageDispose } from '../../core/page-scope.js';
 import { createTerminalHub } from '../terminal/terminal-hub.js';
 import { createTerminalSession } from '../terminal/terminal-session.js';
 import { isBusyState, renderStatus } from '../terminal/terminal-status.js';
@@ -41,6 +42,11 @@ export function createTerminal(root) {
     connectButton.addEventListener('click', () => session.reconnect());
     disconnectButton.addEventListener('click', () => session.stop());
     takeoverButton?.addEventListener('click', () => session.reconnect());
+    onPageDispose(() => {
+        session.dispose();
+        view.dispose();
+        hub.stop().catch(() => { });
+    });
 
     return {
         activate() {

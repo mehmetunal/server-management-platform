@@ -1,5 +1,6 @@
 import { createAjaxList } from '../../components/ajax-list.js';
 import { qs } from '../../core/dom.js';
+import { onPageDispose, pageSignal } from '../../core/page-scope.js';
 
 const RUNNING_REFRESH_MS = 3000;
 
@@ -27,7 +28,9 @@ export function initBackupRunList(root, { form, embedded = false } = {}) {
         onLoaded: schedule
     });
 
-    document.addEventListener('visibilitychange', schedule);
+    const signal = pageSignal();
+    document.addEventListener('visibilitychange', schedule, signal ? { signal } : undefined);
+    onPageDispose(() => clearTimeout(timer));
     schedule();
     return list;
 }

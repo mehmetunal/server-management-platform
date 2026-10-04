@@ -26,6 +26,7 @@ public class ProjectService : IProjectService
     private const int MaxSlugAttempts = 50;
 
     private readonly IDeploymentRepository _repository;
+    private readonly IDeploymentDomainService _domains;
     private readonly IServerRepository _serverRepository;
     private readonly IServerConnectionProvider _connectionProvider;
     private readonly IDeploymentProvider _provider;
@@ -42,6 +43,7 @@ public class ProjectService : IProjectService
 
     public ProjectService(
         IDeploymentRepository repository,
+        IDeploymentDomainService domains,
         IServerRepository serverRepository,
         IServerConnectionProvider connectionProvider,
         IDeploymentProvider provider,
@@ -57,6 +59,7 @@ public class ProjectService : IProjectService
         ILogger<ProjectService> logger)
     {
         _repository = repository;
+        _domains = domains;
         _serverRepository = serverRepository;
         _connectionProvider = connectionProvider;
         _provider = provider;
@@ -220,7 +223,7 @@ public class ProjectService : IProjectService
         return ServiceResult.Success("Proje güncellendi.");
     }
 
-    public async Task<ServiceResult> DeleteAsync(Guid id, string? confirmationName, CancellationToken cancellationToken = default)
+    public async Task<ServiceResult> DeleteAsync(Guid id, string? confirmationName, bool hardDelete, CancellationToken cancellationToken = default)
     {
         var project = await _repository.GetProjectAsync(id, cancellationToken);
         if (project is null)
@@ -232,14 +235,52 @@ public class ProjectService : IProjectService
         if (await _repository.GetRunningDeploymentAsync(id, cancellationToken) is not null)
             return ServiceResult.Failure("Proje için süren bir deployment var; bitmesini bekleyin veya iptal edin.", ServiceErrorType.Conflict);
 
+        if (hardDelete)
+        {
+            var removed = await RemoveFromServerAsync(project, cancellationToken);
+            if (!removed.IsSuccess)
+                return removed;
+        }
+
         project.IsDeleted = true;
         project.DeletedAt = UtcNow;
         project.DeletedBy = _currentUser.UserName;
-        await _repository.SaveChangesAsync(cancellationToken);
+        await _domains.OnProjectDeletedAsync(project, cancellationToken, detachRouting: !hardDelete);
 
-        _logger.LogWarning("Deployment projesi silindi (soft delete). ProjectId: {ProjectId}, Name: {ProjectName}", project.Id, project.Name);
-        await AuditAsync(AuditActions.ProjectDelete, project, $"Sunucudaki {project.DeployPath} klasörü ve container'lar silinmedi.", cancellationToken);
-        return ServiceResult.Success("Proje silindi. Sunucudaki dosyalar ve çalışan uygulama olduğu gibi bırakıldı.");
+        var detail = hardDelete
+            ? $"Sunucudaki {project.DeployPath} klasörü, container, imaj, volume ve domain yönlendirmesi silindi."
+            : $"Sunucudaki {project.DeployPath} klasörü ve container'lar silinmedi.";
+        _logger.LogWarning("Deployment projesi silindi. ProjectId: {ProjectId}, Name: {ProjectName}, HardDelete: {HardDelete}", project.Id, project.Name, hardDelete);
+        await AuditAsync(AuditActions.ProjectDelete, project, detail, cancellationToken);
+        return ServiceResult.Success(hardDelete
+            ? "Proje silindi. Sunucudaki klasör, container, imaj ve domain yönlendirmesi kaldırıldı."
+            : "Proje silindi. Sunucudaki dosyalar ve çalışan uygulama olduğu gibi bırakıldı.");
+    }
+
+    private async Task<ServiceResult> RemoveFromServerAsync(DeploymentProject project, CancellationToken cancellationToken)
+    {
+        if (!DeployPaths.TryValidate(project.DeployPath, out var pathError))
+            return ServiceResult.Failure(pathError ?? "Deploy klasörü silinemez.");
+
+        var connection = await _connectionProvider.GetAsync(project.ServerId, cancellationToken);
+        if (!connection.IsSuccess || connection.Data is null)
+            return ServiceResult.Failure(connection.Message ?? "Sunucuya bağlanılamadı.", connection.ErrorType);
+
+        var plan = new DeploymentPlan
+        {
+            Slug = project.Slug,
+            Source = new GitSource { RepositoryUrl = project.RepositoryUrl },
+            Branch = project.Branch,
+            DeployPath = project.DeployPath,
+            BuildType = project.BuildType,
+            ComposeFile = project.ComposeFile ?? "docker-compose.yml",
+            DockerfilePath = project.DockerfilePath ?? "Dockerfile"
+        };
+        return await _provider.RemoveDeploymentAsync(
+            connection.Data.Context,
+            plan,
+            TimeSpan.FromMinutes(Math.Max(1, _options.DeployTimeoutMinutes)),
+            cancellationToken);
     }
 
     public async Task<ServiceResult<GitBranchListDto>> ListBranchesAsync(Guid id, CancellationToken cancellationToken = default)

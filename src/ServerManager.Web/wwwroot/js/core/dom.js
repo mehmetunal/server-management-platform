@@ -1,13 +1,16 @@
+import { pageSignal } from './page-scope.js';
+
 export const qs = (selector, root = document) => root.querySelector(selector);
 
 export const qsa = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 
 /** Olay yetkilendirme: AJAX ile sonradan eklenen öğeler de yakalanır. */
 export function on(root, type, selector, handler) {
+    const signal = pageSignal();
     root.addEventListener(type, event => {
         const target = event.target instanceof Element ? event.target.closest(selector) : null;
         if (target && root.contains(target)) handler(event, target);
-    });
+    }, signal ? { signal } : undefined);
 }
 
 export function setBusy(button, busy, busyLabel) {

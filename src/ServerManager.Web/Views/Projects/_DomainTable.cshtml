@@ -1,0 +1,70 @@
+@model DomainPanelViewModel
+@{
+    var compose = Model.BuildType == DeploymentBuildType.DockerCompose;
+}
+
+@if (Model.Domains.Count == 0)
+{
+    <p class="text-sm text-slate-500 dark:text-slate-400">Henüz domain yok. Host adını yazın; DNS kaydını siz açarsınız.</p>
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Host</th>
+                    <th>Port</th>
+                    @if (compose)
+                    {
+                        <th>Servis</th>
+                    }
+                    <th>Sertifika</th>
+                    @if (Model.CanManage)
+                    {
+                        <th class="text-right">İşlem</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var domain in Model.Domains)
+                {
+                    var address = string.IsNullOrEmpty(domain.Path) ? domain.Host : domain.Host + domain.Path;
+                    <tr>
+                        <td class="font-mono text-sm">@address</td>
+                        <td class="font-mono text-sm">@domain.ContainerPort</td>
+                        @if (compose)
+                        {
+                            <td class="font-mono text-sm">@(domain.ServiceName ?? "—")</td>
+                        }
+                        <td>@DeploymentDisplay.TlsModeText(domain.TlsMode)</td>
+                        @if (Model.CanManage)
+                        {
+                            <td class="text-right whitespace-nowrap">
+                                <button type="button" class="btn-ghost btn-sm" title="Bu domainin host, port ve sertifika türünü düzenle" aria-label="Domaini düzenle"
+                                        data-domain-edit
+                                        data-id="@domain.Id"
+                                        data-host="@domain.Host"
+                                        data-path="@domain.Path"
+                                        data-port="@domain.ContainerPort"
+                                        data-service="@domain.ServiceName"
+                                        data-tls="@((int)domain.TlsMode)"
+                                        data-has-certificate="@(domain.HasCertificate ? "1" : "0")">
+                                    @Icons.Render("pencil", "h-4 w-4")
+                                    <span class="sr-only">Düzenle</span>
+                                </button>
+                                <button type="button" class="btn-ghost btn-sm" title="Domaini panelden kaldır ve yönlendirmeyi güncelle" aria-label="Domaini sil"
+                                        data-domain-delete
+                                        data-id="@domain.Id"
+                                        data-host="@domain.Host">
+                                    @Icons.Render("trash", "h-4 w-4")
+                                    <span class="sr-only">Sil</span>
+                                </button>
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

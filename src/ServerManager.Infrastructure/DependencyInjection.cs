@@ -125,6 +125,7 @@ public static class DependencyInjection
         services.AddScoped<ITerminalLogRepository, TerminalLogRepository>();
         services.AddScoped<IPluginRepository, PluginRepository>();
         services.AddScoped<IDeploymentRepository, DeploymentRepository>();
+        services.AddScoped<IDeploymentDomainRepository, DeploymentDomainRepository>();
         services.AddScoped<IAlertRepository, AlertRepository>();
         services.AddScoped<IUptimeRepository, UptimeRepository>();
         services.AddScoped<ISslCertificateRepository, SslCertificateRepository>();

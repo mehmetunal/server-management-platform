@@ -1,4 +1,5 @@
 import { qs, qsa } from '../../core/dom.js';
+import { onPageDispose } from '../../core/page-scope.js';
 
 const BAR_CLASSES = ['bg-emerald-500', 'bg-amber-500', 'bg-red-500', 'bg-slate-300', 'dark:bg-slate-700'];
 
@@ -68,6 +69,7 @@ export function startLiveUpdates({ onUpdate } = {}) {
     connection.start().then(join).catch(() => {
         // Canlı güncelleme olmadan sayfa çalışmaya devam eder.
     });
+    onPageDispose(() => connection.stop().catch(() => { }));
 
     return { handleUpdate };
 }

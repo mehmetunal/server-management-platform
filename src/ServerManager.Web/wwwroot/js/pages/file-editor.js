@@ -3,6 +3,7 @@ import { on, qs, qsa, setBusy } from '../core/dom.js';
 import { formatBytes } from '../core/format.js';
 import { failureMessage, getJson, postForm } from '../core/http.js';
 import { notify } from '../core/notify.js';
+import { pageSignal } from '../core/page-scope.js';
 import { createDownloader } from '../features/files/file-download.js';
 import { resolveMode, SELECTABLE_MODES } from '../features/files/editor-modes.js';
 import { initServerPage } from '../features/servers/server-page.js';
@@ -190,7 +191,7 @@ window.addEventListener('beforeunload', event => {
     if (!isDirty()) return;
     event.preventDefault();
     event.returnValue = '';
-});
+}, pageSignal() ? { signal: pageSignal() } : undefined);
 
 qsa('a[href]', document).forEach(link => {
     link.addEventListener('click', async event => {

@@ -34,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<IPluginService, PluginService>();
         services.AddScoped<IProjectService, ProjectService>();
         services.AddScoped<IDeploymentService, DeploymentService>();
+        services.AddScoped<IDeploymentDomainService, DeploymentDomainService>();
         services.AddScoped<IGitIntegrationRegistry, GitIntegrationRegistry>();
         services.AddScoped<INotificationChannelRegistry, NotificationChannelRegistry>();
         services.AddScoped<INotificationDispatcher, NotificationDispatcher>();

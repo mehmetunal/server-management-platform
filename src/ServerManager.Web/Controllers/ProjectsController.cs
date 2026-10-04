@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using ServerManager.Application.Authorization;
+using ServerManager.Domain.Enums;
 using ServerManager.Application.DTOs.Deployments;
 using ServerManager.Application.Interfaces;
 using ServerManager.Application.Interfaces.Deployments;
@@ -20,6 +21,7 @@ public class ProjectsController : Controller
     public const string GitIntegrationsKey = "GitIntegrations";
 
     private readonly IProjectService _projectService;
+    private readonly IDeploymentDomainService _domains;
     private readonly IDeploymentService _deploymentService;
     private readonly DeploymentManager _deploymentManager;
     private readonly ICurrentUserService _currentUser;
@@ -27,6 +29,7 @@ public class ProjectsController : Controller
 
     public ProjectsController(
         IProjectService projectService,
+        IDeploymentDomainService domains,
         IDeploymentService deploymentService,
         DeploymentManager deploymentManager,
         ICurrentUserService currentUser,
@@ -34,6 +37,7 @@ public class ProjectsController : Controller
     {
         _gitIntegrations = gitIntegrations;
         _projectService = projectService;
+        _domains = domains;
         _deploymentService = deploymentService;
         _deploymentManager = deploymentManager;
         _currentUser = currentUser;
@@ -64,8 +68,69 @@ public class ProjectsController : Controller
         return View(new ProjectDetailsViewModel
         {
             Project = project.Data!,
+            Domains = await _domains.ListAsync(id, cancellationToken),
             Deployments = new DeploymentListViewModel { Deployments = deployments, Filter = filter, ShowProject = false }
         });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Domains(Guid id, CancellationToken cancellationToken)
+    {
+        var project = await _projectService.GetDetailsAsync(id, cancellationToken);
+        if (!project.IsSuccess)
+            return NotFound();
+
+        return PartialView("_DomainTable", DomainPanel(id, project.Data!.BuildType, await _domains.ListAsync(id, cancellationToken)));
+    }
+
+    [HttpGet]
+    [HasPermission(Permissions.DeploymentManage)]
+    public async Task<IActionResult> ProxyStatus(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _domains.GetProxyStatusAsync(id, cancellationToken);
+        if (!result.IsSuccess)
+            return this.ApiFailure(result, "Vekil durumu okunamadı.");
+
+        return Ok(ApiResponse<ProxyStatusDto>.Success(result.Data, result.Data!.Message));
+    }
+
+    [HttpPost]
+    [HasPermission(Permissions.DeploymentManage)]
+    [EnableRateLimiting(RateLimitPolicies.DeploymentAction)]
+    public async Task<IActionResult> InstallProxy(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _domains.InstallProxyAsync(id, cancellationToken);
+        return result.IsSuccess ? this.ApiSuccess(result.Message) : this.ApiFailure(result, "Vekil kurulamadı.");
+    }
+
+    [HttpPost]
+    [HasPermission(Permissions.DeploymentManage)]
+    [EnableRateLimiting(RateLimitPolicies.DeploymentAction)]
+    public async Task<IActionResult> ApplyRouting(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _domains.ApplyAsync(id, cancellationToken);
+        return result.IsSuccess ? this.ApiSuccess(result.Message) : this.ApiFailure(result, "Yönlendirme uygulanamadı.");
+    }
+
+    [HttpPost]
+    [HasPermission(Permissions.DeploymentManage)]
+    [EnableRateLimiting(RateLimitPolicies.DeploymentAction)]
+    public async Task<IActionResult> SaveDomain(Guid id, DomainFormDto dto, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+            return this.ApiInvalidModel();
+
+        var result = await _domains.SaveAsync(id, dto, cancellationToken);
+        return result.IsSuccess ? this.ApiSuccess(result.Message) : this.ApiFailure(result, "Domain kaydedilemedi.");
+    }
+
+    [HttpPost]
+    [HasPermission(Permissions.DeploymentManage)]
+    [EnableRateLimiting(RateLimitPolicies.DeploymentAction)]
+    public async Task<IActionResult> DeleteDomain(Guid id, Guid domainId, string? confirmationHost, CancellationToken cancellationToken)
+    {
+        var result = await _domains.DeleteAsync(id, domainId, confirmationHost, cancellationToken);
+        return result.IsSuccess ? this.ApiSuccess(result.Message) : this.ApiFailure(result, "Domain silinemedi.");
     }
 
     [HttpGet]
@@ -121,9 +186,9 @@ public class ProjectsController : Controller
 
     [HttpPost]
     [HasPermission(Permissions.DeploymentManage)]
-    public async Task<IActionResult> Delete(Guid id, string? confirmationName, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(Guid id, string? confirmationName, bool hardDelete, CancellationToken cancellationToken)
     {
-        var result = await _projectService.DeleteAsync(id, confirmationName, cancellationToken);
+        var result = await _projectService.DeleteAsync(id, confirmationName, hardDelete, cancellationToken);
         if (!result.IsSuccess)
             return this.ApiFailure(result, "Proje silinemedi.");
 
@@ -205,6 +270,15 @@ public class ProjectsController : Controller
 
         return this.ApiSuccess(result.Message, Url.Action(nameof(DeploymentsController.Details), "Deployments", new { id = result.Data }));
     }
+
+    private DomainPanelViewModel DomainPanel(Guid projectId, DeploymentBuildType buildType, IReadOnlyList<DomainListItemDto> domains) =>
+        new()
+        {
+            ProjectId = projectId,
+            BuildType = buildType,
+            Domains = domains,
+            CanManage = User.HasPermission(Permissions.DeploymentManage)
+        };
 
     private void SetFormData() =>
         ViewData[GitIntegrationsKey] = _gitIntegrations.GetEnabled().Select(i => i.DisplayName).ToList();

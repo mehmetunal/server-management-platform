@@ -1,3 +1,4 @@
+using ServerManager.Application.Deployments;
 using ServerManager.Application.DTOs.Deployments;
 using ServerManager.Domain.Enums;
 using ServerManager.Infrastructure.Deployments;
@@ -123,6 +124,49 @@ public class DeploymentCommandsTests
         Assert.DoesNotContain("--env-file", DeploymentCommands.DockerRun(Plan(), Sha));
 
     [Fact]
+    public void Routes_attach_the_proxy_network_and_a_second_compose_file()
+    {
+        var plan = Plan();
+        plan = new DeploymentPlan
+        {
+            Slug = plan.Slug,
+            Source = plan.Source,
+            Branch = plan.Branch,
+            DeployPath = plan.DeployPath,
+            BuildType = DeploymentBuildType.DockerCompose,
+            ComposeFile = plan.ComposeFile,
+            Routes =
+            [
+                new DeploymentRoute
+                {
+                    RouterName = "api-abcd1234",
+                    Host = "api.ornek.com",
+                    ContainerPort = 8080,
+                    ServiceName = "web",
+                    TlsMode = DeploymentTlsMode.Cloudflare
+                }
+            ]
+        };
+
+        Assert.Contains("sm-proxy.override.yml", DeploymentCommands.ComposeUp(plan), StringComparison.Ordinal);
+        Assert.Contains("--no-build", DeploymentCommands.ComposeUp(plan, noBuild: true), StringComparison.Ordinal);
+        var run = DeploymentCommands.DockerRun(plan, Sha);
+        Assert.Contains("--network sm-proxy", run, StringComparison.Ordinal);
+        Assert.Contains("traefik.enable=true", run, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Proxy_install_quotes_the_email_and_checks_that_traefik_is_running()
+    {
+        var command = DeploymentCommands.InstallProxy("ops@example.com");
+
+        Assert.Contains("traefik:v3.5", command, StringComparison.Ordinal);
+        Assert.Contains("'ops@example.com'", command, StringComparison.Ordinal);
+        Assert.Contains("{{.State.Running}}", command, StringComparison.Ordinal);
+        Assert.Contains("SM_PROXY=busy", command, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void User_command_runs_in_project_directory_with_errexit()
     {
         var command = DeploymentCommands.RunUserCommand("/srv/apps/api", "npm ci\r\nnpm run build");
@@ -131,5 +175,18 @@ public class DeploymentCommandsTests
         Assert.Contains("set -e", command);
         Assert.Contains($"cd -- {Inner("/srv/apps/api")}", command);
         Assert.Contains("npm ci\nnpm run build", command);
+    }
+
+    [Fact]
+    public void Remove_project_deletes_the_folder_and_leaves_the_proxy_container()
+    {
+        var command = DeploymentCommands.RemoveProject(Plan());
+
+        Assert.Contains("down --remove-orphans --rmi local -v", command, StringComparison.Ordinal);
+        Assert.Contains($"P={Inner("/srv/apps/api")}", command, StringComparison.Ordinal);
+        Assert.Contains("rm -rf -- \"$P\"", command, StringComparison.Ordinal);
+        Assert.Contains(Inner("sm-api"), command, StringComparison.Ordinal);
+        Assert.DoesNotContain("docker rm -f 'sm-traefik'", command, StringComparison.Ordinal);
+        Assert.DoesNotContain("docker rm -f sm-traefik", command, StringComparison.Ordinal);
     }
 }

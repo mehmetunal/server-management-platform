@@ -61,6 +61,17 @@ public static class DeploymentDisplay
     public static IEnumerable<SelectListItem> GitProviderOptions(GitProvider selected) =>
         Enum.GetValues<GitProvider>().Select(p => new SelectListItem(GitProviderText(p), ((int)p).ToString(), p == selected));
 
+    public static string TlsModeText(DeploymentTlsMode mode) => mode switch
+    {
+        DeploymentTlsMode.Cloudflare => "Cloudflare",
+        DeploymentTlsMode.LetsEncrypt => "Let's Encrypt",
+        DeploymentTlsMode.Custom => "Özel sertifika",
+        _ => mode.ToString()
+    };
+
+    public static IEnumerable<SelectListItem> TlsModeOptions(DeploymentTlsMode selected) =>
+        Enum.GetValues<DeploymentTlsMode>().Select(mode => new SelectListItem(TlsModeText(mode), ((int)mode).ToString(), mode == selected));
+
     public static string ShortSha(string? sha) => string.IsNullOrEmpty(sha) ? "—" : GitRefs.ShortSha(sha);
 
     public static string Duration(DateTime startedAt, DateTime? completedAt)

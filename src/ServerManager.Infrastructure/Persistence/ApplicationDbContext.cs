@@ -51,6 +51,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     public DbSet<Deployment> Deployments => Set<Deployment>();
 
+    public DbSet<DeploymentDomain> DeploymentDomains => Set<DeploymentDomain>();
+
     public DbSet<AlertRule> AlertRules => Set<AlertRule>();
 
     public DbSet<AlertRuleChannel> AlertRuleChannels => Set<AlertRuleChannel>();

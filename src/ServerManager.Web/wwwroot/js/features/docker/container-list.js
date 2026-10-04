@@ -1,6 +1,7 @@
 import { qs, qsa } from '../../core/dom.js';
 import { getJson } from '../../core/http.js';
 import { formatBytes, formatNumber } from '../../core/format.js';
+import { onPageDispose } from '../../core/page-scope.js';
 
 const STATS_INTERVAL_MS = 10000;
 const HIDE_STOPPED_KEY = 'sm-docker-hide-stopped';
@@ -64,6 +65,7 @@ export function createContainerStats(panel) {
         }
     };
 
-    setInterval(refresh, STATS_INTERVAL_MS);
+    const timer = setInterval(refresh, STATS_INTERVAL_MS);
+    onPageDispose(() => clearInterval(timer));
     return { refresh };
 }
