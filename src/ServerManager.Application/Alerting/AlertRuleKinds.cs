@@ -27,6 +27,7 @@ public static class AlertRuleKinds
         AlertRuleKind.UptimeCheckDown => "Uptime kontrolü başarısız",
         AlertRuleKind.SslCertificateExpiry => "SSL sertifikası bitiyor",
         AlertRuleKind.DeploymentFailed => "Deployment başarısız",
+        AlertRuleKind.BackupFailed => "Yedekleme başarısız",
         _ => kind.ToString()
     };
 
@@ -40,6 +41,7 @@ public static class AlertRuleKinds
             AlertRuleKind.SslCertificateExpiry => $"Bitişe {Number(threshold)} günden az",
             AlertRuleKind.ServerOffline or AlertRuleKind.UptimeCheckDown =>
                 durationMinutes > 0 ? $"{durationMinutes} dk boyunca" : "İlk hatada",
+            AlertRuleKind.BackupFailed => "Son yedekleme başarısız olduğunda",
             _ => "Son deployment başarısız olduğunda"
         };
     }

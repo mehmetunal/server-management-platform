@@ -6,6 +6,7 @@
     var canPlugins = User.HasPermission(Permissions.PluginManage);
     var canDeployments = User.HasPermission(Permissions.DeploymentView);
     var canAlerts = User.HasPermission(Permissions.AlertView);
+    var canBackups = User.HasPermission(Permissions.BackupView);
 }
 <aside class="app-sidebar" data-sidebar>
     <div class="flex h-16 shrink-0 items-center gap-3 border-b border-slate-800 px-5">
@@ -65,7 +66,10 @@
 
         <partial name="_PluginMenuItems" model="MenuGroups.Monitoring" />
         <p class="nav-group">Yönetim</p>
-        <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("archive") Yedekleme <span class="nav-soon">Yakında</span></span>
+        @if (canBackups)
+        {
+            <a asp-controller="BackupJobs" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "BackupJobs", "BackupRuns", "BackupStorages")" title="Dosya, Docker volume ve veritabanı yedekleri; geri yükleme">@Icons.Render("archive") Yedekleme</a>
+        }
         <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("shield") Güvenlik <span class="nav-soon">Yakında</span></span>
         @if (canUsers)
         {

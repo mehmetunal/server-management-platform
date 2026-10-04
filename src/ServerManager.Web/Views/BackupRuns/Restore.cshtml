@@ -1,0 +1,98 @@
+@model BackupRestoreViewModel
+@{
+    var form = Model.Form;
+    var run = form.Run;
+    ViewData["Title"] = $"{run.JobName} · Geri yükle";
+    ViewData["Page"] = "backup-restore";
+    var warning = run.SourceType switch
+    {
+        BackupSourceType.Files => "Arşivdeki dosyalar hedef klasöre açılır; aynı adlı dosyaların üzerine yazılır. Hedefte olup arşivde olmayan dosyalar silinmez.",
+        BackupSourceType.DockerVolume => "Arşiv volume'un içine açılır; aynı adlı dosyaların üzerine yazılır. Volume yoksa oluşturulur. Volume'u kullanan container'ı önce durdurmanız önerilir.",
+        _ => form.DatabaseEngine == BackupDatabaseEngine.PostgreSql
+            ? "Döküm hedef veritabanında çalıştırılır: yedekteki tablolar silinip yeniden oluşturulur (DROP … IF EXISTS). Yedekte olmayan tablolar korunur."
+            : "Döküm hedef veritabanında çalıştırılır: yedekteki tablolar silinip yeniden oluşturulur (DROP TABLE IF EXISTS). Yedekte olmayan tablolar korunur."
+    };
+    var canSubmit = run.SourceType != BackupSourceType.Database || form.CanRestoreDatabase;
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Details" asp-route-id="@run.Id" class="back-link" title="Yedek ayrıntılarına dön">@Icons.Render("chevron-left", "h-4 w-4") @run.FileName</a>
+        <h1 class="page-title">Yedeği geri yükle</h1>
+        <p class="page-lead">@run.JobName işinin @DateDisplay.Format(run.StartedAt, "dd.MM.yyyy HH:mm") tarihli yedeği (@BackupDisplay.Size(run.SizeBytes)) seçtiğiniz sunucuya aktarılır. Şifreli yedeklerin şifresi panelde çözülür ve bütünlüğü (SHA-256) doğrulanır.</p>
+    </div>
+</div>
+
+<form asp-action="Restore" asp-route-id="@run.Id" method="post" data-restore-form novalidate autocomplete="off"
+      data-source-name="@run.FileName">
+    <p class="alert-error mb-6" data-form-error hidden></p>
+
+    <div class="backup-form">
+        <div class="alert-warning">@warning</div>
+
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Hedef</h2></div>
+            <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                    <label for="TargetServerId" class="form-label">Hedef sunucu *</label>
+                    <select id="TargetServerId" name="TargetServerId" class="form-control" data-restore-server>
+                        @foreach (var server in Model.Servers)
+                        {
+                            <option value="@server.Id" selected="@(server.Id == form.DefaultServerId)">@server.Name (@server.IpAddress)</option>
+                        }
+                    </select>
+                    <span class="field-validation-valid" data-valmsg-for="TargetServerId"></span>
+                </div>
+
+                @switch (run.SourceType)
+                {
+                    case BackupSourceType.Files:
+                        <div class="sm:col-span-2">
+                            <label for="TargetDirectory" class="form-label">Açılacak klasör *</label>
+                            <input id="TargetDirectory" name="TargetDirectory" value="@form.DefaultDirectory" class="form-control font-mono" maxlength="1024" />
+                            <p class="form-hint">"/" dosyaları özgün konumlarına yazar. Önce başka bir klasöre (ör. /tmp/restore) açıp kontrol etmek daha güvenlidir.</p>
+                            <span class="field-validation-valid" data-valmsg-for="TargetDirectory"></span>
+                        </div>
+                        break;
+                    case BackupSourceType.DockerVolume:
+                        <div class="sm:col-span-2">
+                            <label for="TargetVolume" class="form-label">Hedef volume *</label>
+                            <input id="TargetVolume" name="TargetVolume" value="@form.DefaultVolume" class="form-control font-mono" maxlength="255" />
+                            <p class="form-hint">Farklı bir ad yazarsanız yedek yeni volume'a açılır.</p>
+                            <span class="field-validation-valid" data-valmsg-for="TargetVolume"></span>
+                        </div>
+                        break;
+                    default:
+                        @if (!form.CanRestoreDatabase)
+                        {
+                            <p class="alert-error sm:col-span-2">Bu yedeğin veritabanı bağlantı bilgileri bulunamadı. Dosyayı indirip elle geri yükleyin.</p>
+                        }
+                        else
+                        {
+                            <div>
+                                <label for="TargetContainer" class="form-label">Container</label>
+                                <input id="TargetContainer" name="TargetContainer" value="@form.DefaultContainer" class="form-control font-mono" maxlength="255" />
+                                <p class="form-hint">Boşsa işteki ayar kullanılır. Kullanıcı ve parola işten alınır.</p>
+                                <span class="field-validation-valid" data-valmsg-for="TargetContainer"></span>
+                            </div>
+                            <div>
+                                <label for="TargetDatabase" class="form-label">Hedef veritabanı *</label>
+                                <input id="TargetDatabase" name="TargetDatabase" value="@form.DefaultDatabase" class="form-control font-mono" maxlength="128" />
+                                <p class="form-hint">Veritabanı önceden var olmalıdır. @BackupDisplay.EngineText(form.DatabaseEngine)</p>
+                                <span class="field-validation-valid" data-valmsg-for="TargetDatabase"></span>
+                            </div>
+                        }
+                        break;
+                }
+            </div>
+        </section>
+    </div>
+
+    <div class="form-actions">
+        <a asp-action="Details" asp-route-id="@run.Id" class="btn-secondary" title="Geri yüklemeden dön">Vazgeç</a>
+        @if (canSubmit)
+        {
+            <button type="submit" class="btn-danger" title="Onay penceresinden sonra geri yüklemeyi başlat"><span class="spinner" data-spinner hidden></span> Geri yükle</button>
+        }
+    </div>
+</form>

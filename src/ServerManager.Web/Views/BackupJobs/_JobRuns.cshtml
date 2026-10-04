@@ -1,0 +1,13 @@
+@model BackupJobDetailsViewModel
+
+@if (Model.RecentRuns.Count == 0)
+{
+    <div class="empty-state">
+        <span class="empty-state-icon">@Icons.Render("clock", "h-6 w-6")</span>
+        <p>Bu iş için henüz yedek alınmadı.</p>
+    </div>
+}
+else
+{
+    <partial name="~/Views/BackupRuns/_RunTable.cshtml" model="Model.RecentRuns" view-data='new ViewDataDictionary(ViewData) { ["ShowJob"] = false }' />
+}

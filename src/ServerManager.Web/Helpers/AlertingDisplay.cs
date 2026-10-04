@@ -42,6 +42,7 @@ public static class AlertingDisplay
         AlertRuleKind.UptimeCheckDown => "signal",
         AlertRuleKind.SslCertificateExpiry => "lock",
         AlertRuleKind.DeploymentFailed => "rocket",
+        AlertRuleKind.BackupFailed => "archive",
         _ => "bell"
     };
 

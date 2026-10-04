@@ -217,6 +217,21 @@ public class AlertRepository : IAlertRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<AlertBackupSnapshot>> GetLatestFinishedBackupsAsync(CancellationToken cancellationToken = default)
+    {
+        var finished = _context.BackupRuns
+            .AsNoTracking()
+            .Where(r => r.Operation == BackupOperation.Backup && r.JobId != null)
+            .Where(r => r.Status == BackupRunStatus.Succeeded || r.Status == BackupRunStatus.Failed)
+            .Where(r => _context.BackupJobs.Any(j => j.Id == r.JobId));
+
+        return await finished
+            .Where(r => !finished.Any(other => other.JobId == r.JobId && other.StartedAt > r.StartedAt))
+            .Select(r => new AlertBackupSnapshot(
+                r.JobId!.Value, r.JobName, r.ServerId, r.ServerName, r.Id, r.Status, r.FailureReason, r.CompletedAt))
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
         _context.SaveChangesAsync(cancellationToken);
 }

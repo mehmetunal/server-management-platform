@@ -1,0 +1,49 @@
+@model BackupStorageIndexViewModel
+@{
+    ViewData["Title"] = "Yedek depolama";
+    ViewData["Page"] = "backup-storages-index";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Yedek depolama</h1>
+        <p class="page-lead">Yedek dosyalarının saklanacağı yerler. Hedefi ekledikten sonra test edin; test küçük bir deneme dosyası yazar, okur ve siler.</p>
+    </div>
+</div>
+
+<partial name="_BackupTabs" />
+
+<section class="panel mb-6">
+    <div class="panel-header">
+        <h2 class="panel-title">Hedef ekle</h2>
+    </div>
+    <div class="panel-body">
+        @if (Model.Providers.Count == 0)
+        {
+            <p class="text-sm text-slate-500">
+                Etkin depolama sağlayıcısı yok.
+                @if (User.HasPermission(Permissions.PluginManage))
+                {
+                    <a asp-controller="Plugins" asp-action="Index" class="font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400" title="S3 depolama eklentisini etkinleştir">Eklentiler</a>
+                }
+                sayfasından S3 depolama eklentisini etkinleştirin.
+            </p>
+        }
+        else
+        {
+            <div class="provider-grid">
+                @foreach (var provider in Model.Providers)
+                {
+                    <a asp-action="Create" asp-route-provider="@provider.SystemName" class="provider-card" title="@provider.DisplayName hedefi ekle">
+                        <span class="provider-card-title">@Icons.Render("plus", "h-4 w-4") @provider.DisplayName</span>
+                        <span class="provider-card-text">@provider.Description</span>
+                    </a>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+<div data-ajax-list>
+    <partial name="_StorageList" model="Model" />
+</div>

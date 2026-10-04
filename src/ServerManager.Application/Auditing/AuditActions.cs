@@ -68,6 +68,20 @@ public static class AuditActions
     public const string SslMonitorUpdate = "ssl_monitor.update";
     public const string SslMonitorDelete = "ssl_monitor.delete";
 
+    public const string BackupStorageCreate = "backup_storage.create";
+    public const string BackupStorageUpdate = "backup_storage.update";
+    public const string BackupStorageDelete = "backup_storage.delete";
+    public const string BackupStorageTest = "backup_storage.test";
+    public const string BackupJobCreate = "backup_job.create";
+    public const string BackupJobUpdate = "backup_job.update";
+    public const string BackupJobDelete = "backup_job.delete";
+    public const string BackupStart = "backup.start";
+    public const string BackupComplete = "backup.complete";
+    public const string BackupCancel = "backup.cancel";
+    public const string BackupRestore = "backup.restore";
+    public const string BackupDownload = "backup.download";
+    public const string BackupArtifactDelete = "backup.artifact_delete";
+
     public const string PluginInstall = "plugin.install";
     public const string PluginEnable = "plugin.enable";
     public const string PluginDisable = "plugin.disable";
@@ -138,6 +152,19 @@ public static class AuditActions
         [SslMonitorCreate] = "SSL izleme ekleme",
         [SslMonitorUpdate] = "SSL izleme güncelleme",
         [SslMonitorDelete] = "SSL izleme silme",
+        [BackupStorageCreate] = "Yedek depolama ekleme",
+        [BackupStorageUpdate] = "Yedek depolama güncelleme",
+        [BackupStorageDelete] = "Yedek depolama silme",
+        [BackupStorageTest] = "Yedek depolama testi",
+        [BackupJobCreate] = "Yedekleme işi ekleme",
+        [BackupJobUpdate] = "Yedekleme işi güncelleme",
+        [BackupJobDelete] = "Yedekleme işi silme",
+        [BackupStart] = "Yedekleme başlatıldı",
+        [BackupComplete] = "Yedekleme tamamlandı",
+        [BackupCancel] = "Yedekleme iptal edildi",
+        [BackupRestore] = "Yedek geri yükleme",
+        [BackupDownload] = "Yedek indirme",
+        [BackupArtifactDelete] = "Yedek dosyası silme",
         [PluginInstall] = "Eklenti kurulumu",
         [PluginEnable] = "Eklenti etkinleştirildi",
         [PluginDisable] = "Eklenti devre dışı bırakıldı",

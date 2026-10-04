@@ -1,0 +1,52 @@
+@model BackupRunIndexViewModel
+@{
+    ViewData["Title"] = "Yedek geçmişi";
+    ViewData["Page"] = "backup-runs-index";
+    var filter = Model.List.Filter;
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Yedek geçmişi</h1>
+        <p class="page-lead">Tüm yedekleme ve geri yükleme çalışmaları. Dosyası duran başarılı yedekler indirilebilir veya bir sunucuya geri yüklenebilir; kayıtlar silinmez.</p>
+    </div>
+</div>
+
+<partial name="_BackupTabs" />
+
+<section class="panel">
+    <form method="get" asp-action="Index" class="panel-toolbar backup-filters" data-list-filter>
+        <div class="search-field">
+            <span class="search-field-icon">@Icons.Render("search", "h-4 w-4")</span>
+            <input type="search" name="search" value="@filter.Search" class="form-control" placeholder="İş, sunucu, dosya veya kullanıcı ara…" data-live-search aria-label="Yedek ara" />
+        </div>
+        <select name="jobId" class="form-control" data-auto-submit aria-label="İş">
+            <option value="">Tüm işler</option>
+            @foreach (var job in Model.Jobs)
+            {
+                <option value="@job.Id" selected="@(job.Id == filter.JobId)">@job.Name</option>
+            }
+        </select>
+        <select name="serverId" class="form-control" data-auto-submit aria-label="Sunucu">
+            <option value="">Tüm sunucular</option>
+            @foreach (var server in Model.Servers)
+            {
+                <option value="@server.Id" selected="@(server.Id == filter.ServerId)">@server.Name</option>
+            }
+        </select>
+        <select name="operation" class="form-control" data-auto-submit aria-label="İşlem" asp-items="BackupDisplay.OperationOptions(filter.Operation)">
+            <option value="">Tüm işlemler</option>
+        </select>
+        <select name="status" class="form-control" data-auto-submit aria-label="Durum" asp-items="BackupDisplay.StatusOptions(filter.Status)">
+            <option value="">Tüm durumlar</option>
+        </select>
+        <div class="backup-filter-actions">
+            <button type="submit" class="btn-secondary btn-sm" title="Listeyi arama ve filtrelere göre süz">@Icons.Render("search", "h-4 w-4") Filtrele</button>
+            <a asp-action="Index" class="btn-ghost btn-sm" data-list-link title="Tüm filtreleri kaldır">Filtreleri temizle</a>
+        </div>
+    </form>
+
+    <div data-ajax-list>
+        <partial name="_RunList" model="Model.List" />
+    </div>
+</section>

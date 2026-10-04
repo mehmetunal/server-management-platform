@@ -7,7 +7,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ServerManager.Application.Alerting;
 using ServerManager.Application.Authorization;
+using ServerManager.Application.Backups;
 using ServerManager.Application.Deployments;
+using ServerManager.Application.Interfaces.Backups;
+using ServerManager.Infrastructure.Backups;
 using ServerManager.Application.Docker;
 using ServerManager.Application.Files;
 using ServerManager.Application.Plugins;
@@ -81,6 +84,7 @@ public static class DependencyInjection
         services.Configure<PluginOptions>(configuration.GetSection(PluginOptions.SectionName));
         services.Configure<DeploymentOptions>(configuration.GetSection(DeploymentOptions.SectionName));
         services.Configure<AlertingOptions>(configuration.GetSection(AlertingOptions.SectionName));
+        services.Configure<BackupOptions>(configuration.GetSection(BackupOptions.SectionName));
 
         services.AddHttpClient(UptimeProbe.HttpClientName, UptimeProbe.ConfigureClient)
             .ConfigurePrimaryHttpMessageHandler(UptimeProbe.CreateHandler);
@@ -95,6 +99,8 @@ public static class DependencyInjection
         services.AddSingleton<IDockerClient, SshDockerClient>();
         services.AddSingleton<IRemoteFileSystem, SftpRemoteFileSystem>();
         services.AddSingleton<IDeploymentProvider, SshDeploymentProvider>();
+        services.AddSingleton<IBackupSourceRunner, SshBackupSourceRunner>();
+        services.AddSingleton<IBackupStorageProvider, LocalBackupStorageProvider>();
         services.AddSingleton<IPluginMigrator>(provider =>
             new FluentPluginMigrator(connectionString, provider.GetRequiredService<ILoggerFactory>()));
 
@@ -107,6 +113,7 @@ public static class DependencyInjection
         services.AddScoped<IAlertRepository, AlertRepository>();
         services.AddScoped<IUptimeRepository, UptimeRepository>();
         services.AddScoped<ISslCertificateRepository, SslCertificateRepository>();
+        services.AddScoped<IBackupRepository, BackupRepository>();
 
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<IUserManagementService, UserManagementService>();

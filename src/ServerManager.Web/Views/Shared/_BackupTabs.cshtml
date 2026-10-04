@@ -1,0 +1,12 @@
+@{
+    var controller = ViewContext.RouteData.Values["controller"] as string;
+    string Active(string name) => string.Equals(controller, name, StringComparison.OrdinalIgnoreCase) ? "is-active" : string.Empty;
+}
+<nav class="tab-list backup-tabs" aria-label="Yedekleme sayfaları">
+    <a asp-controller="BackupJobs" asp-action="Index" class="tab @Active("BackupJobs")" title="Neyin, nereye, ne sıklıkla yedekleneceğini belirleyen işler">Yedekleme işleri</a>
+    <a asp-controller="BackupRuns" asp-action="Index" class="tab @Active("BackupRuns")" title="Alınan yedekler ve geri yüklemeler">Geçmiş</a>
+    @if (User.HasPermission(Permissions.BackupManage))
+    {
+        <a asp-controller="BackupStorages" asp-action="Index" class="tab @Active("BackupStorages")" title="Yedeklerin saklandığı yerler (yerel disk, S3, R2…)">Depolama</a>
+    }
+</nav>

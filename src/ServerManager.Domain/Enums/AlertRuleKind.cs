@@ -8,5 +8,6 @@ public enum AlertRuleKind
     ServerOffline = 4,
     UptimeCheckDown = 5,
     SslCertificateExpiry = 6,
-    DeploymentFailed = 7
+    DeploymentFailed = 7,
+    BackupFailed = 8
 }

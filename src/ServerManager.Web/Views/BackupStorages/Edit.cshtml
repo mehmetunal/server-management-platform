@@ -1,0 +1,23 @@
+@model BackupStorageFormDto
+@{
+    var provider = (BackupStorageProviderDto)ViewData[ServerManager.Web.Controllers.BackupStoragesController.ProviderKey]!;
+    ViewData["Title"] = $"{Model.Name} · Düzenle";
+    ViewData["Page"] = "backup-storage-form";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Depolama listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Yedek depolama</a>
+        <h1 class="page-title">@Model.Name</h1>
+        <p class="page-lead">@provider.DisplayName hedefinin ayarları. Adresi veya klasörü değiştirirseniz eski yedekler yeni konumda aranır; eski dosyalar taşınmaz.</p>
+    </div>
+</div>
+
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" data-storage-form novalidate autocomplete="off">
+    <partial name="_StorageForm" model="Model" />
+
+    <div class="form-actions">
+        <a asp-action="Index" class="btn-secondary" title="Kaydetmeden listeye dön">İptal</a>
+        <button type="submit" class="btn-primary" title="Değişiklikleri kaydet"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+    </div>
+</form>

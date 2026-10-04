@@ -1,0 +1,22 @@
+@model IReadOnlyList<BackupJobListItemDto>
+@{
+    ViewData["Title"] = "Yedekleme";
+    ViewData["Page"] = "backup-jobs-index";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Yedekleme</h1>
+        <p class="page-lead">Sunuculardaki klasörlerin, Docker volume'larının ve veritabanlarının yedekleri. Veri sunucuda sıkıştırılır, panelde şifrelenir ve seçtiğiniz depolama hedefine yazılır.</p>
+    </div>
+    @if (User.HasPermission(Permissions.BackupManage))
+    {
+        <a asp-action="Create" class="btn-primary" title="Yeni yedekleme işi tanımla">@Icons.Render("plus", "h-4 w-4") Yeni iş</a>
+    }
+</div>
+
+<partial name="_BackupTabs" />
+
+<div data-ajax-list>
+    <partial name="_JobList" model="Model" />
+</div>

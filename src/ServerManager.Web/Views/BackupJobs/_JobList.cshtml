@@ -1,0 +1,96 @@
+@model IReadOnlyList<BackupJobListItemDto>
+@{
+    var canExecute = User.HasPermission(Permissions.BackupExecute);
+    var canManage = User.HasPermission(Permissions.BackupManage);
+}
+
+<section class="panel">
+    @if (Model.Count == 0)
+    {
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("archive", "h-6 w-6")</span>
+            <p class="empty-state-title">Henüz yedekleme işi yok</p>
+            <p>
+                Önce
+                @if (canManage)
+                {
+                    <a asp-controller="BackupStorages" asp-action="Index" class="panel-link" title="Depolama hedefi ekle">depolama hedefi</a>
+                }
+                else
+                {
+                    <span>depolama hedefi</span>
+                }
+                ekleyin, ardından neyin yedekleneceğini tanımlayın.
+            </p>
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>İş</th>
+                        <th>Kaynak</th>
+                        <th>Zamanlama</th>
+                        <th>Son yedek</th>
+                        <th class="text-right">İşlem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var job in Model)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-action="Details" asp-route-id="@job.Id" class="backup-link" title="İş ayrıntıları ve yedek geçmişi">@job.Name</a>
+                                <span class="block text-xs text-slate-500">@job.ServerName → @job.StorageName</span>
+                                @if (!job.IsEnabled)
+                                {
+                                    <span class="badge-neutral" title="Zamanlanmış çalışmalar durduruldu; elle yedek alınabilir">Kapalı</span>
+                                }
+                            </td>
+                            <td class="text-sm">
+                                <span class="backup-source">@Icons.Render(BackupDisplay.SourceTypeIcon(job.SourceType), "h-4 w-4") @job.SourceSummary</span>
+                                @if (job.EncryptionEnabled)
+                                {
+                                    <span class="backup-meta" title="Yedek AES-256-GCM ile şifrelenir">@Icons.Render("lock", "h-3 w-3") Şifreli</span>
+                                }
+                            </td>
+                            <td class="text-sm">
+                                <span class="block">@BackupDisplay.Schedule(job)</span>
+                                @if (job.IsEnabled && job.NextRunAt is not null)
+                                {
+                                    <span class="text-xs text-slate-500" title="@DateDisplay.Format(job.NextRunAt)">Sonraki: @DateDisplay.Format(job.NextRunAt, "dd.MM HH:mm")</span>
+                                }
+                            </td>
+                            <td class="text-sm">
+                                @if (job.LastRunStatus is { } status)
+                                {
+                                    <span class="@BackupDisplay.StatusBadgeClass(status)" title="@DateDisplay.Format(job.LastRunAt)"><span class="badge-dot"></span>@BackupDisplay.StatusText(status)</span>
+                                    <span class="block text-xs text-slate-500">@DateDisplay.Relative(job.LastRunAt)</span>
+                                }
+                                else
+                                {
+                                    <span class="text-slate-500">Henüz yok</span>
+                                }
+                            </td>
+                            <td class="text-right whitespace-nowrap">
+                                @if (canExecute)
+                                {
+                                    <button type="button" class="btn-secondary btn-sm" title="Şimdi yedek al ve ilerlemeyi izle" data-ajax-action data-redirect
+                                            data-url="@Url.Action("Run", new { id = job.Id })">
+                                        @Icons.Render("play", "h-4 w-4") Yedek al
+                                    </button>
+                                }
+                                @if (canManage)
+                                {
+                                    <a asp-action="Edit" asp-route-id="@job.Id" class="btn-ghost btn-sm" title="İşi düzenle">@Icons.Render("pencil", "h-4 w-4")</a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

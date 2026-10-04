@@ -61,5 +61,8 @@ public interface IAlertRepository
 
     Task<IReadOnlyList<AlertDeploymentSnapshot>> GetLatestFinishedDeploymentsAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Silinmemiş her yedekleme işinin son biten (başarılı/başarısız) yedeği.</summary>
+    Task<IReadOnlyList<AlertBackupSnapshot>> GetLatestFinishedBackupsAsync(CancellationToken cancellationToken = default);
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

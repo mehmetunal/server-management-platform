@@ -1,0 +1,130 @@
+@model BackupRunDetailsDto
+@{
+    var run = Model;
+    var isRestore = run.Operation == BackupOperation.Restore;
+    ViewData["Title"] = $"{run.JobName} · {BackupDisplay.OperationText(run.Operation)}";
+    ViewData["Page"] = "backup-run-details";
+    var canExecute = User.HasPermission(Permissions.BackupExecute);
+    var canRestore = User.HasPermission(Permissions.BackupRestore);
+    var canManage = User.HasPermission(Permissions.BackupManage);
+    var downloadError = TempData[ServerManager.Web.Controllers.BackupRunsController.DownloadErrorKey] as string;
+}
+
+<div class="page-header">
+    <div>
+        @if (run.JobId is Guid jobId)
+        {
+            <a asp-controller="BackupJobs" asp-action="Details" asp-route-id="@jobId" class="back-link" title="İş ayrıntılarına dön">@Icons.Render("chevron-left", "h-4 w-4") @run.JobName</a>
+        }
+        else
+        {
+            <a asp-action="Index" class="back-link" title="Yedek geçmişine dön">@Icons.Render("chevron-left", "h-4 w-4") Yedek geçmişi</a>
+        }
+        <h1 class="page-title">@BackupDisplay.OperationText(run.Operation)</h1>
+        <p class="page-lead">
+            @if (isRestore)
+            {
+                @:@run.FileName yedeği @run.ServerName sunucusuna geri yükleniyor (@run.RestoreTarget). Sayfa kapansa da işlem sürer.
+            }
+            else
+            {
+                @:@run.ServerName sunucusundan @run.StorageName hedefine yedek. Sayfa kapansa da işlem sürer; durum birkaç saniyede bir yenilenir.
+            }
+        </p>
+    </div>
+    <div class="flex flex-wrap gap-2" data-region="backup-run-actions">
+        @if (canExecute && run.IsRunning)
+        {
+            <button type="button" class="btn-danger" title="Aktarımı durdur; geri yüklemede hedefe yazılmış kısım geri alınmaz" data-ajax-action
+                    data-url="@Url.Action("Cancel", new { id = run.Id })"
+                    data-confirm-title="İşlem iptal edilsin mi?"
+                    data-confirm-message="@(isRestore ? "Geri yükleme durdurulur. Hedefe o ana kadar yazılmış veri geri alınmaz." : "Yedekleme durdurulur; yarım dosya depolamada bırakılmaz.")"
+                    data-confirm-label="İptal et">
+                @Icons.Render("stop", "h-4 w-4") İptal et
+            </button>
+        }
+        @if (canRestore && run.IsArtifactAvailable)
+        {
+            <a asp-action="Restore" asp-route-id="@run.Id" class="btn-primary" title="Bu yedeği bir sunucuya geri yükle">@Icons.Render("upload", "h-4 w-4") Geri yükle</a>
+            @if (run.IsEncrypted)
+            {
+                <a asp-action="Download" asp-route-id="@run.Id" asp-route-decrypt="true" class="btn-secondary" title="Panelde şifresini çözerek .gz dosyası olarak indir">@Icons.Render("download", "h-4 w-4") İndir (çözülmüş)</a>
+                <a asp-action="Download" asp-route-id="@run.Id" class="btn-ghost" title="Şifreli .smbk dosyasını olduğu gibi indir; parolayla tools/backup-decrypt.py ile açılır">@Icons.Render("lock", "h-4 w-4") Şifreli indir</a>
+            }
+            else
+            {
+                <a asp-action="Download" asp-route-id="@run.Id" class="btn-secondary" title="Yedek dosyasını indir">@Icons.Render("download", "h-4 w-4") İndir</a>
+            }
+        }
+        @if (canManage && run.IsArtifactAvailable)
+        {
+            <button type="button" class="btn-ghost-danger" title="Yedek dosyasını depolamadan sil; kayıt geçmişte kalır" data-ajax-action
+                    data-url="@Url.Action("DeleteArtifact", new { id = run.Id })"
+                    data-confirm-title="Yedek dosyası silinsin mi?"
+                    data-confirm-message="@run.FileName depolamadan kalıcı olarak silinir ve bu yedek artık geri yüklenemez. Çalışma kaydı geçmişte kalır."
+                    data-confirm-label="Dosyayı sil">
+                @Icons.Render("trash", "h-4 w-4")
+            </button>
+        }
+    </div>
+</div>
+
+@if (downloadError is not null)
+{
+    <p class="alert-error mb-6">@downloadError</p>
+}
+
+<div class="backup-details-grid" data-backup-run data-region="backup-run-body" data-running="@(run.IsRunning ? "true" : "false")">
+    <section class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title">Log</h2>
+            <span class="@BackupDisplay.StatusBadgeClass(run.Status)"><span class="badge-dot"></span>@BackupDisplay.StatusText(run.Status)</span>
+        </div>
+        <pre class="backup-log" data-backup-log>@(string.IsNullOrEmpty(run.Log) ? "Başlatılıyor…" : run.Log)</pre>
+        @if (!string.IsNullOrEmpty(run.FailureReason))
+        {
+            <p class="backup-result">@run.FailureReason</p>
+        }
+    </section>
+
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Özet</h2></div>
+        <dl class="panel-body detail-list">
+            <div><dt class="detail-term">İş</dt><dd class="detail-value">@run.JobName</dd></div>
+            <div><dt class="detail-term">Tür</dt><dd class="detail-value">@BackupDisplay.SourceTypeText(run.SourceType)</dd></div>
+            <div><dt class="detail-term">@(isRestore ? "Hedef sunucu" : "Sunucu")</dt><dd class="detail-value">@run.ServerName</dd></div>
+            @if (isRestore)
+            {
+                <div><dt class="detail-term">Hedef</dt><dd class="detail-value">@run.RestoreTarget</dd></div>
+                @if (run.SourceRunId is Guid sourceId)
+                {
+                    <div><dt class="detail-term">Kaynak yedek</dt><dd class="detail-value"><a asp-action="Details" asp-route-id="@sourceId" class="panel-link" title="Geri yüklenen yedeği aç">@run.FileName</a></dd></div>
+                }
+            }
+            else
+            {
+                <div><dt class="detail-term">Tetikleyen</dt><dd class="detail-value">@BackupDisplay.TriggerText(run.Trigger)</dd></div>
+                <div><dt class="detail-term">Dosya</dt><dd class="detail-value font-mono text-xs break-all">@(run.FileName ?? "—")</dd></div>
+            }
+            <div><dt class="detail-term">Depolama</dt><dd class="detail-value">@run.StorageName</dd></div>
+            <div><dt class="detail-term">Boyut</dt><dd class="detail-value">@BackupDisplay.Size(run.SizeBytes)</dd></div>
+            <div><dt class="detail-term">Şifreleme</dt><dd class="detail-value">@(run.IsEncrypted ? "AES-256-GCM" : "Yok")</dd></div>
+            @if (!string.IsNullOrEmpty(run.Sha256))
+            {
+                <div><dt class="detail-term">SHA-256</dt><dd class="detail-value font-mono text-xs break-all">@run.Sha256</dd></div>
+            }
+            <div><dt class="detail-term">Başlatan</dt><dd class="detail-value">@(run.UserName ?? "—")</dd></div>
+            <div><dt class="detail-term">Başlangıç</dt><dd class="detail-value">@DateDisplay.Format(run.StartedAt, "dd.MM.yyyy HH:mm:ss")</dd></div>
+            <div><dt class="detail-term">Bitiş</dt><dd class="detail-value">@DateDisplay.Format(run.CompletedAt, "dd.MM.yyyy HH:mm:ss")</dd></div>
+            <div><dt class="detail-term">Süre</dt><dd class="detail-value">@(run.IsRunning ? "Sürüyor" : DeploymentDisplay.Duration(run.StartedAt, run.CompletedAt))</dd></div>
+            @if (!string.IsNullOrEmpty(run.CancelledBy))
+            {
+                <div><dt class="detail-term">İptal eden</dt><dd class="detail-value">@run.CancelledBy</dd></div>
+            }
+            @if (run.ArtifactDeletedAt is not null)
+            {
+                <div><dt class="detail-term">Dosya silindi</dt><dd class="detail-value">@DateDisplay.Format(run.ArtifactDeletedAt, "dd.MM.yyyy HH:mm") · @(run.ArtifactDeletedBy ?? "—")</dd></div>
+            }
+        </dl>
+    </section>
+</div>

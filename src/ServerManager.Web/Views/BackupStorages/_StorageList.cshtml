@@ -1,0 +1,78 @@
+@model BackupStorageIndexViewModel
+
+<section class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">Hedefler</h2>
+    </div>
+    @if (Model.Storages.Count == 0)
+    {
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("archive", "h-6 w-6")</span>
+            <p class="empty-state-title">Henüz depolama hedefi yok</p>
+            <p>Yukarıdan bir tür seçin; yedekleme işleri bu hedeflere yazar.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Hedef</th>
+                        <th>İş</th>
+                        <th>Son test</th>
+                        <th class="text-right">İşlem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var storage in Model.Storages)
+                    {
+                        <tr>
+                            <td>
+                                <span class="block font-medium">@storage.Name</span>
+                                <span class="text-xs text-slate-500">@storage.ProviderDisplayName</span>
+                                @if (!storage.IsProviderEnabled)
+                                {
+                                    <span class="badge-warning ml-1" title="Eklenti devre dışı; bu hedefe yedek yazılamaz ve okunamaz">Eklenti etkin değil</span>
+                                }
+                            </td>
+                            <td class="whitespace-nowrap text-sm">@storage.JobCount</td>
+                            <td class="text-sm">
+                                @if (storage.LastTestedAt is null)
+                                {
+                                    <span class="text-slate-500">Test edilmedi</span>
+                                }
+                                else if (storage.LastError is null)
+                                {
+                                    <span class="badge-success" title="@DateDisplay.Format(storage.LastTestedAt)"><span class="badge-dot"></span>Başarılı · @DateDisplay.Relative(storage.LastTestedAt)</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-danger" title="@DateDisplay.Format(storage.LastTestedAt)"><span class="badge-dot"></span>Hata · @DateDisplay.Relative(storage.LastTestedAt)</span>
+                                    <p class="storage-error">@storage.LastError</p>
+                                }
+                            </td>
+                            <td class="text-right whitespace-nowrap">
+                                @if (storage.IsProviderEnabled)
+                                {
+                                    <button type="button" class="btn-secondary btn-sm" title="Yazma, okuma ve silme iznini deneme dosyasıyla doğrula" data-ajax-action
+                                            data-url="@Url.Action("Test", new { id = storage.Id })">
+                                        @Icons.Render("bolt", "h-4 w-4") Test
+                                    </button>
+                                    <a asp-action="Edit" asp-route-id="@storage.Id" class="btn-ghost btn-sm" title="Hedefi düzenle">@Icons.Render("pencil", "h-4 w-4")</a>
+                                }
+                                <button type="button" class="btn-ghost-danger btn-sm" title="Hedefi sil; kullanan iş varsa silinmez" data-ajax-action
+                                        data-url="@Url.Action("Delete", new { id = storage.Id })"
+                                        data-confirm-title="Depolama hedefi silinsin mi?"
+                                        data-confirm-message="@storage.Name hedefi listeden kaldırılır. Depodaki yedek dosyaları silinmez; geçmişteki yedekler indirilmeye ve geri yüklenmeye devam eder."
+                                        data-confirm-label="Hedefi sil">
+                                    @Icons.Render("trash", "h-4 w-4")
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

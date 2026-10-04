@@ -57,6 +57,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     public DbSet<SslCertificateMonitor> SslCertificateMonitors => Set<SslCertificateMonitor>();
 
+    public DbSet<BackupStorage> BackupStorages => Set<BackupStorage>();
+
+    public DbSet<BackupJob> BackupJobs => Set<BackupJob>();
+
+    public DbSet<BackupRun> BackupRuns => Set<BackupRun>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

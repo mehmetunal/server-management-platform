@@ -1,0 +1,22 @@
+@model BackupJobFormDto
+@{
+    ViewData["Title"] = "Yeni yedekleme işi";
+    ViewData["Page"] = "backup-job-form";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Yedekleme işlerine dön">@Icons.Render("chevron-left", "h-4 w-4") Yedekleme</a>
+        <h1 class="page-title">Yeni yedekleme işi</h1>
+        <p class="page-lead">Hangi sunucudan neyin yedekleneceğini, nereye yazılacağını ve ne kadar saklanacağını belirleyin. Kaydettikten sonra hemen bir deneme yedeği alabilirsiniz.</p>
+    </div>
+</div>
+
+<form asp-action="Create" method="post" data-backup-job-form novalidate autocomplete="off">
+    <partial name="_JobForm" model="Model" />
+
+    <div class="form-actions">
+        <a asp-action="Index" class="btn-secondary" title="Kaydetmeden listeye dön">İptal</a>
+        <button type="submit" class="btn-primary" title="İşi kaydet"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+    </div>
+</form>

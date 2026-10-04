@@ -1,0 +1,14 @@
+@model BackupRunListViewModel
+
+@if (Model.Runs.Items.Count == 0)
+{
+    <div class="empty-state">
+        <span class="empty-state-icon">@Icons.Render("archive", "h-6 w-6")</span>
+        <p>@(Model.HasFilter ? "Filtreye uyan kayıt bulunamadı." : "Henüz yedek alınmadı.")</p>
+    </div>
+}
+else
+{
+    <partial name="_RunTable" model="Model.Runs.Items" />
+    <partial name="_Pager" model="Model.ToPager()" />
+}

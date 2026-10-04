@@ -1,0 +1,110 @@
+@model BackupJobDetailsViewModel
+@{
+    var details = Model.Details;
+    var job = details.Job;
+    ViewData["Title"] = $"{job.Name} · Yedekleme";
+    ViewData["Page"] = "backup-job-details";
+    var canExecute = User.HasPermission(Permissions.BackupExecute);
+    var canManage = User.HasPermission(Permissions.BackupManage);
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Yedekleme işlerine dön">@Icons.Render("chevron-left", "h-4 w-4") Yedekleme</a>
+        <h1 class="page-title">@job.Name</h1>
+        <p class="page-lead">@BackupDisplay.SourceTypeText(job.SourceType) yedeği: @job.ServerName → @job.StorageName. Son yedekler aşağıda; çalışan yedek varsa liste kendiliğinden yenilenir.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        @if (canExecute)
+        {
+            <button type="button" class="btn-primary" title="Şimdi yedek al ve ilerlemeyi izle" data-ajax-action data-redirect data-url="@Url.Action("Run", new { id = job.Id })">
+                @Icons.Render("play", "h-4 w-4") Şimdi yedek al
+            </button>
+        }
+        @if (canManage)
+        {
+            <a asp-action="Edit" asp-route-id="@job.Id" class="btn-secondary" title="İşi düzenle">@Icons.Render("pencil", "h-4 w-4") Düzenle</a>
+            <button type="button" class="btn-ghost-danger" title="İşi sil; alınmış yedekler ve geçmiş korunur" data-ajax-action data-redirect
+                    data-url="@Url.Action("Delete", new { id = job.Id })"
+                    data-confirm-title="Yedekleme işi silinsin mi?"
+                    data-confirm-message="@job.Name işi silinir ve zamanlanmış yedekler durur. Alınmış yedek dosyaları silinmez; Geçmiş sayfasından indirilebilir ve geri yüklenebilir."
+                    data-confirm-label="İşi sil">
+                @Icons.Render("trash", "h-4 w-4") Sil
+            </button>
+        }
+    </div>
+</div>
+
+<div class="backup-details-grid">
+    <section class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title">Son yedekler</h2>
+            <a asp-controller="BackupRuns" asp-action="Index" asp-route-jobId="@job.Id" class="panel-link" title="Bu işin tüm geçmişini aç">Tümü</a>
+        </div>
+        <div data-ajax-list data-url="@Url.Action("Details", new { id = job.Id })">
+            <partial name="_JobRuns" model="Model" />
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Ayarlar</h2></div>
+        <dl class="panel-body detail-list">
+            <div><dt class="detail-term">Sunucu</dt><dd class="detail-value">@job.ServerName</dd></div>
+            <div><dt class="detail-term">Hedef</dt><dd class="detail-value">@job.StorageName</dd></div>
+            <div><dt class="detail-term">Tür</dt><dd class="detail-value">@BackupDisplay.SourceTypeText(job.SourceType)</dd></div>
+            @switch (job.SourceType)
+            {
+                case BackupSourceType.Files:
+                    <div>
+                        <dt class="detail-term">Yollar</dt>
+                        <dd class="detail-value">
+                            @foreach (var path in details.Paths)
+                            {
+                                <span class="block font-mono text-xs">@path</span>
+                            }
+                        </dd>
+                    </div>
+                    @if (details.Excludes.Count > 0)
+                    {
+                        <div>
+                            <dt class="detail-term">Hariç</dt>
+                            <dd class="detail-value">
+                                @foreach (var exclude in details.Excludes)
+                                {
+                                    <span class="block font-mono text-xs">@exclude</span>
+                                }
+                            </dd>
+                        </div>
+                    }
+                    break;
+                case BackupSourceType.DockerVolume:
+                    <div><dt class="detail-term">Volume</dt><dd class="detail-value font-mono">@details.VolumeName</dd></div>
+                    break;
+                case BackupSourceType.Database:
+                    <div><dt class="detail-term">Veritabanı</dt><dd class="detail-value">@BackupDisplay.EngineText(details.DatabaseEngine) · <span class="font-mono">@details.DatabaseName</span></dd></div>
+                    <div><dt class="detail-term">Kullanıcı</dt><dd class="detail-value font-mono">@details.DatabaseUser @(details.HasDatabasePassword ? "(parola kayıtlı)" : string.Empty)</dd></div>
+                    <div>
+                        <dt class="detail-term">Bağlantı</dt>
+                        <dd class="detail-value font-mono">
+                            @(string.IsNullOrEmpty(details.ContainerName)
+                                ? $"sunucuda {(details.DatabaseHost ?? "yerel")}{(details.DatabasePort is { } port ? $":{port}" : string.Empty)}"
+                                : $"container: {details.ContainerName}")
+                        </dd>
+                    </div>
+                    break;
+            }
+            <div><dt class="detail-term">Şifreleme</dt><dd class="detail-value">@(job.EncryptionEnabled ? "AES-256-GCM" : "Kapalı")</dd></div>
+            <div><dt class="detail-term">Zamanlama</dt><dd class="detail-value">@BackupDisplay.Schedule(job) @(job.IsEnabled ? string.Empty : "(iş kapalı)")</dd></div>
+            @if (job.IsEnabled && job.NextRunAt is not null)
+            {
+                <div><dt class="detail-term">Sonraki</dt><dd class="detail-value">@DateDisplay.Format(job.NextRunAt, "dd.MM.yyyy HH:mm")</dd></div>
+            }
+            <div><dt class="detail-term">Saklama</dt><dd class="detail-value">@BackupDisplay.Retention(job)</dd></div>
+            <div><dt class="detail-term">Oluşturan</dt><dd class="detail-value">@(details.CreatedBy ?? "—") · @DateDisplay.Format(details.CreatedAt, "dd.MM.yyyy HH:mm")</dd></div>
+            @if (details.UpdatedAt is not null)
+            {
+                <div><dt class="detail-term">Güncelleyen</dt><dd class="detail-value">@(details.UpdatedBy ?? "—") · @DateDisplay.Format(details.UpdatedAt, "dd.MM.yyyy HH:mm")</dd></div>
+            }
+        </dl>
+    </section>
+</div>

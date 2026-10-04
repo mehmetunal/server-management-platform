@@ -1,0 +1,72 @@
+@model IReadOnlyList<BackupRunListItemDto>
+@{
+    var showJob = ViewData["ShowJob"] as bool? ?? true;
+    var canRestore = User.HasPermission(Permissions.BackupRestore);
+}
+
+<div class="table-scroll" data-backup-rows data-running="@Model.Any(r => r.IsRunning).ToString().ToLowerInvariant()">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Başlangıç</th>
+                @if (showJob)
+                {
+                    <th>İş</th>
+                }
+                <th>İşlem</th>
+                <th>Durum</th>
+                <th>Boyut</th>
+                <th>Süre</th>
+                <th class="text-right"><span class="sr-only">İşlem</span></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var run in Model)
+            {
+                <tr>
+                    <td class="whitespace-nowrap text-sm" title="@DateDisplay.Format(run.StartedAt, "dd.MM.yyyy HH:mm:ss")">@DateDisplay.Relative(run.StartedAt)</td>
+                    @if (showJob)
+                    {
+                        <td class="text-sm">
+                            @if (run.JobId is Guid jobId)
+                            {
+                                <a asp-controller="BackupJobs" asp-action="Details" asp-route-id="@jobId" class="backup-link" title="İş ayrıntılarını aç">@run.JobName</a>
+                            }
+                            else
+                            {
+                                @run.JobName
+                            }
+                            <span class="block text-xs text-slate-500">@run.ServerName</span>
+                        </td>
+                    }
+                    <td class="text-sm">
+                        <span class="block">@BackupDisplay.OperationText(run.Operation)</span>
+                        <span class="text-xs text-slate-500">
+                            @(run.Operation == BackupOperation.Restore ? $"{run.ServerName} {run.RestoreTarget}" : $"{BackupDisplay.TriggerText(run.Trigger)} · {run.StorageName}")
+                        </span>
+                    </td>
+                    <td class="text-sm">
+                        <span class="@BackupDisplay.StatusBadgeClass(run.Status)" title="@run.FailureReason"><span class="badge-dot"></span>@BackupDisplay.StatusText(run.Status)</span>
+                        @if (run.Operation == BackupOperation.Backup && run.Status == BackupRunStatus.Succeeded && run.ArtifactDeletedAt is not null)
+                        {
+                            <span class="block text-xs text-slate-500" title="@DateDisplay.Format(run.ArtifactDeletedAt)">Dosya silindi</span>
+                        }
+                        else if (run.IsEncrypted && run.Operation == BackupOperation.Backup)
+                        {
+                            <span class="backup-meta" title="AES-256-GCM ile şifreli">@Icons.Render("lock", "h-3 w-3") Şifreli</span>
+                        }
+                    </td>
+                    <td class="whitespace-nowrap text-sm tabular-nums">@BackupDisplay.Size(run.SizeBytes)</td>
+                    <td class="whitespace-nowrap text-sm tabular-nums">@(run.IsRunning ? "Sürüyor" : DeploymentDisplay.Duration(run.StartedAt, run.CompletedAt))</td>
+                    <td class="text-right whitespace-nowrap">
+                        @if (canRestore && run.IsArtifactAvailable)
+                        {
+                            <a asp-controller="BackupRuns" asp-action="Restore" asp-route-id="@run.Id" class="btn-ghost btn-sm" title="Bu yedeği bir sunucuya geri yükle">@Icons.Render("upload", "h-4 w-4")</a>
+                        }
+                        <a asp-controller="BackupRuns" asp-action="Details" asp-route-id="@run.Id" class="btn-ghost btn-sm" title="Ayrıntıları ve logu aç">@Icons.Render("eye", "h-4 w-4") Log</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

@@ -11,4 +11,7 @@ public static class AuditEntityTypes
     public const string NotificationChannel = "NotificationChannel";
     public const string UptimeCheck = "UptimeCheck";
     public const string SslMonitor = "SslMonitor";
+    public const string BackupStorage = "BackupStorage";
+    public const string BackupJob = "BackupJob";
+    public const string BackupRun = "BackupRun";
 }

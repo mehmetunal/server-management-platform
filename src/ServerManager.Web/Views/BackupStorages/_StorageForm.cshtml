@@ -1,0 +1,72 @@
+@model BackupStorageFormDto
+@{
+    var provider = (BackupStorageProviderDto)ViewData[ServerManager.Web.Controllers.BackupStoragesController.ProviderKey]!;
+    var isEdit = Model.Id.HasValue;
+}
+
+<p class="alert-error mb-6" data-form-error hidden></p>
+<input type="hidden" asp-for="ProviderSystemName" />
+
+<div class="backup-form">
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Genel</h2></div>
+        <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div>
+                <label asp-for="Name" class="form-label">Hedef adı *</label>
+                <input asp-for="Name" class="form-control" maxlength="128" />
+                <span asp-validation-for="Name" class="field-validation-error"></span>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">@provider.DisplayName ayarları</h2></div>
+        <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+            @foreach (var field in provider.Fields)
+            {
+                var name = $"Settings[{field.Key}]";
+                var id = $"setting-{field.Key}";
+                var value = Model.Settings.GetValueOrDefault(field.Key) ?? (isEdit ? null : field.DefaultValue);
+                var stored = field.IsSecret && Model.StoredSecretKeys.Contains(field.Key);
+                var required = field.IsRequired && !stored;
+                <div class="@(field.Type == NotificationFieldType.Text && field.MaxLength > 200 ? "sm:col-span-2" : null)">
+                    <label for="@id" class="form-label">@field.Label@(required ? " *" : string.Empty)</label>
+                    @switch (field.Type)
+                    {
+                        case NotificationFieldType.Select:
+                            <select id="@id" name="@name" class="form-control">
+                                @foreach (var option in field.Options ?? [])
+                                {
+                                    <option value="@option.Value" selected="@(option.Value == value)">@option.Label</option>
+                                }
+                            </select>
+                            break;
+                        case NotificationFieldType.Secret:
+                            <input id="@id" name="@name" type="password" class="form-control" maxlength="@field.MaxLength" autocomplete="new-password"
+                                   placeholder="@(stored ? "•••••••• (kayıtlı)" : field.Placeholder)" />
+                            break;
+                        default:
+                            var inputType = field.Type switch
+                            {
+                                NotificationFieldType.Email => "email",
+                                NotificationFieldType.Url => "url",
+                                NotificationFieldType.Number => "number",
+                                _ => "text"
+                            };
+                            <input id="@id" name="@name" type="@inputType" value="@value" class="form-control" maxlength="@field.MaxLength" placeholder="@field.Placeholder" />
+                            break;
+                    }
+                    @if (stored)
+                    {
+                        <p class="form-hint">Kayıtlı değer korunur; değiştirmek için yenisini yazın.</p>
+                    }
+                    else if (field.Hint is not null)
+                    {
+                        <p class="form-hint">@field.Hint</p>
+                    }
+                    <span class="field-validation-valid" data-valmsg-for="@name"></span>
+                </div>
+            }
+        </div>
+    </section>
+</div>

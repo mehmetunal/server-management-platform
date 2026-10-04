@@ -10,4 +10,5 @@ public static class RateLimitPolicies
     public const string DeploymentAction = "deployment-action";
     public const string DeploymentLookup = "deployment-lookup";
     public const string AlertingAction = "alerting-action";
+    public const string BackupAction = "backup-action";
 }

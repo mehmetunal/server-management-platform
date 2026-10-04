@@ -17,6 +17,7 @@ public sealed class AlertEvaluationData
     private IReadOnlyList<AlertUptimeSnapshot>? _uptime;
     private IReadOnlyList<AlertSslSnapshot>? _ssl;
     private IReadOnlyList<AlertDeploymentSnapshot>? _deployments;
+    private IReadOnlyList<AlertBackupSnapshot>? _backups;
 
     public AlertEvaluationData(IAlertRepository repository, IReadOnlyList<AlertRule> rules, DateTime now, TimeSpan freshness, CancellationToken cancellationToken)
     {
@@ -50,4 +51,7 @@ public sealed class AlertEvaluationData
 
     public async Task<IReadOnlyList<AlertDeploymentSnapshot>> DeploymentsAsync() =>
         _deployments ??= await _repository.GetLatestFinishedDeploymentsAsync(_cancellationToken);
+
+    public async Task<IReadOnlyList<AlertBackupSnapshot>> BackupsAsync() =>
+        _backups ??= await _repository.GetLatestFinishedBackupsAsync(_cancellationToken);
 }

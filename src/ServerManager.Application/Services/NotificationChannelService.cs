@@ -21,8 +21,6 @@ namespace ServerManager.Application.Services;
 public class NotificationChannelService : INotificationChannelService
 {
     private const string NotFoundMessage = "Bildirim kanalı bulunamadı.";
-    private const string SettingsPrefix = "Settings";
-
     private readonly IAlertRepository _repository;
     private readonly INotificationChannelRegistry _registry;
     private readonly INotificationDispatcher _dispatcher;
@@ -195,7 +193,7 @@ public class NotificationChannelService : INotificationChannelService
         if (channel.Name != dto.Name) changes.Add($"Ad: {channel.Name} -> {dto.Name}");
         if (channel.MinimumSeverity != dto.MinimumSeverity) changes.Add($"En düşük önem: {channel.MinimumSeverity} -> {dto.MinimumSeverity}");
         if (channel.IsEnabled != dto.IsEnabled) changes.Add(dto.IsEnabled ? "Etkinleştirildi" : "Devre dışı bırakıldı");
-        if (stored is null || !SameSettings(stored, settings)) changes.Add("Ayarlar güncellendi");
+        if (stored is null || !ProviderSettingsBuilder.AreEqual(stored, settings)) changes.Add("Ayarlar güncellendi");
 
         channel.Name = dto.Name;
         channel.MinimumSeverity = dto.MinimumSeverity;
@@ -250,57 +248,8 @@ public class NotificationChannelService : INotificationChannelService
     public static (Dictionary<string, string> Settings, List<ServiceError> Errors) BuildSettings(
         INotificationChannelProvider provider,
         IReadOnlyDictionary<string, string?> input,
-        IReadOnlyDictionary<string, string>? stored)
-    {
-        var settings = new Dictionary<string, string>(StringComparer.Ordinal);
-        var errors = new List<ServiceError>();
-
-        foreach (var field in provider.Fields)
-        {
-            var key = $"{SettingsPrefix}[{field.Key}]";
-            var value = input.GetValueOrDefault(field.Key)?.Trim();
-            if (string.IsNullOrEmpty(value) && field.IsSecret && stored is not null && stored.TryGetValue(field.Key, out var existing))
-                value = existing;
-            if (string.IsNullOrEmpty(value))
-                value = field.IsSecret ? null : field.DefaultValue;
-
-            if (string.IsNullOrEmpty(value))
-            {
-                if (field.IsRequired)
-                    errors.Add(new ServiceError(key, $"{field.Label} zorunludur."));
-                continue;
-            }
-
-            if (value.Length > field.MaxLength)
-            {
-                errors.Add(new ServiceError(key, $"{field.Label} en fazla {field.MaxLength} karakter olabilir."));
-                continue;
-            }
-
-            var formatError = field.Type switch
-            {
-                NotificationFieldType.Number when !int.TryParse(value, out _) => $"{field.Label} bir sayı olmalıdır.",
-                NotificationFieldType.Select when field.Options is { Count: > 0 } options && options.All(o => o.Value != value) => $"{field.Label} için geçerli bir seçenek seçin.",
-                NotificationFieldType.Url when !Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https") => $"{field.Label} http(s):// ile başlayan geçerli bir adres olmalıdır.",
-                _ => null
-            };
-            if (formatError is not null)
-            {
-                errors.Add(new ServiceError(key, formatError));
-                continue;
-            }
-
-            settings[field.Key] = value;
-        }
-
-        if (errors.Count == 0)
-        {
-            errors.AddRange(provider.Validate(settings).Select(e =>
-                new ServiceError(string.IsNullOrEmpty(e.PropertyName) ? string.Empty : $"{SettingsPrefix}[{e.PropertyName}]", e.Message)));
-        }
-
-        return (settings, errors);
-    }
+        IReadOnlyDictionary<string, string>? stored) =>
+        ProviderSettingsBuilder.Build(provider.Fields, provider.Validate, input, stored);
 
     private Dictionary<string, string>? TryReadSettings(NotificationChannel channel)
     {
@@ -314,9 +263,6 @@ public class NotificationChannelService : INotificationChannelService
             return null;
         }
     }
-
-    private static bool SameSettings(IReadOnlyDictionary<string, string> left, IReadOnlyDictionary<string, string> right) =>
-        left.Count == right.Count && left.All(pair => right.TryGetValue(pair.Key, out var value) && value == pair.Value);
 
     private Task AuditAsync(string action, NotificationChannel channel, string? details, bool isSuccess, CancellationToken cancellationToken) =>
         _auditLogService.LogAsync(new AuditEntry(action, AuditEntityTypes.NotificationChannel, channel.Id.ToString(), channel.Name, details, isSuccess), cancellationToken);

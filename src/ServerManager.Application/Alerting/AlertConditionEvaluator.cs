@@ -102,6 +102,20 @@ public static class AlertConditionEvaluator
                     $"{d.ProjectName} deployment'ı başarısız ({d.ServerName}): {reason}");
             }).ToList();
 
+    public static IReadOnlyList<AlertCondition> ForBackups(AlertRule rule, IReadOnlyList<AlertBackupSnapshot> backups) =>
+        backups
+            .Where(b => rule.ServerId is null || b.ServerId == rule.ServerId)
+            .Select(b =>
+            {
+                var key = b.JobId.ToString();
+                if (b.Status != BackupRunStatus.Failed)
+                    return new AlertCondition(key, b.JobName, b.ServerId, b.ServerName, AlertConditionState.Ok, null, $"{b.JobName} son yedeği başarılı.");
+
+                var reason = string.IsNullOrWhiteSpace(b.FailureReason) ? "neden kaydedilmedi" : b.FailureReason;
+                return new AlertCondition(key, b.JobName, b.ServerId, b.ServerName, AlertConditionState.Firing, null,
+                    $"{b.JobName} yedeği başarısız ({b.ServerName}): {reason}");
+            }).ToList();
+
     private static IEnumerable<AlertServerSnapshot> Scope(AlertRule rule, IReadOnlyList<AlertServerSnapshot> servers) =>
         rule.ServerId is { } serverId ? servers.Where(s => s.Id == serverId) : servers;
 

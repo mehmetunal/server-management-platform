@@ -8,11 +8,13 @@ using Microsoft.Extensions.WebEncoders;
 using Serilog;
 using ServerManager.Application;
 using ServerManager.Application.Alerting;
+using ServerManager.Application.Backups;
 using ServerManager.Application.Interfaces;
 using ServerManager.Application.Interfaces.Monitoring;
 using ServerManager.Application.Monitoring;
 using ServerManager.Infrastructure;
 using ServerManager.Web.BackgroundJobs;
+using ServerManager.Web.Backups;
 using ServerManager.Web.Deployments;
 using ServerManager.Web.Extensions;
 using ServerManager.Web.Framework.Authorization;
@@ -53,6 +55,12 @@ try
     builder.Services.AddHostedService<TerminalIdleSweeper>();
     builder.Services.AddSingleton<DeploymentManager>();
     builder.Services.AddHostedService<DeploymentLifecycleWorker>();
+    builder.Services.PostConfigure<BackupOptions>(options =>
+        options.LocalRootPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, options.LocalRootPath)));
+    builder.Services.AddSingleton<BackupManager>();
+    builder.Services.AddHostedService<BackupLifecycleWorker>();
+    if (builder.Configuration.GetValue($"{BackupOptions.SectionName}:Enabled", true))
+        builder.Services.AddHostedService<BackupSchedulerWorker>();
     if (builder.Configuration.GetValue($"{MonitoringOptions.SectionName}:Enabled", true))
     {
         builder.Services.AddHostedService<MetricsCollectorWorker>();

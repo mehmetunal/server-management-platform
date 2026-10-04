@@ -1,7 +1,7 @@
 namespace ServerManager.Application.Notifications;
 
 /// <summary>
-/// Bildirim kanalı formunda gösterilen ayar alanı. <see cref="NotificationFieldType.Secret"/> alanlar arayüzde geri
+/// Eklenti ayar formunda (bildirim kanalı, yedek depolama) gösterilen alan. <see cref="NotificationFieldType.Secret"/> alanlar arayüzde geri
 /// gösterilmez; düzenlemede boş bırakılırsa kayıtlı değer korunur.
 /// </summary>
 public sealed record NotificationSettingField(

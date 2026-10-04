@@ -1,0 +1,201 @@
+@model BackupJobFormDto
+@{
+    var options = (BackupJobFormOptions)ViewData[ServerManager.Web.Controllers.BackupJobsController.FormOptionsKey]!;
+    var files = ((int)BackupSourceType.Files).ToString();
+    var volume = ((int)BackupSourceType.DockerVolume).ToString();
+    var database = ((int)BackupSourceType.Database).ToString();
+    var hourly = ((int)BackupScheduleType.Hourly).ToString();
+    var daily = ((int)BackupScheduleType.Daily).ToString();
+    var weekly = ((int)BackupScheduleType.Weekly).ToString();
+}
+
+<p class="alert-error mb-6" data-form-error hidden></p>
+
+<div class="backup-form">
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Genel</h2></div>
+        <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+                <label asp-for="Name" class="form-label">İş adı *</label>
+                <input asp-for="Name" class="form-control" maxlength="128" placeholder="ör. web01 nginx ayarları" />
+                <span asp-validation-for="Name" class="field-validation-error"></span>
+            </div>
+            <div>
+                <label asp-for="ServerId" class="form-label">Sunucu *</label>
+                <select asp-for="ServerId" class="form-control">
+                    <option value="">Sunucu seçin</option>
+                    @foreach (var server in options.Servers)
+                    {
+                        <option value="@server.Id" selected="@(server.Id == Model.ServerId)">@server.Name (@server.IpAddress)</option>
+                    }
+                </select>
+                <span asp-validation-for="ServerId" class="field-validation-error"></span>
+            </div>
+            <div>
+                <label asp-for="StorageId" class="form-label">Depolama hedefi *</label>
+                <select asp-for="StorageId" class="form-control">
+                    <option value="">Hedef seçin</option>
+                    @foreach (var storage in options.Storages)
+                    {
+                        <option value="@storage.Id" selected="@(storage.Id == Model.StorageId)">@storage.Name (@storage.ProviderDisplayName)</option>
+                    }
+                </select>
+                @if (options.Storages.Count == 0)
+                {
+                    <p class="form-hint">Kayıtlı hedef yok; önce <a asp-controller="BackupStorages" asp-action="Index" class="panel-link" title="Depolama hedefi ekle">depolama hedefi</a> ekleyin.</p>
+                }
+                <span asp-validation-for="StorageId" class="field-validation-error"></span>
+            </div>
+            <label class="check-card sm:col-span-2">
+                <input asp-for="IsEnabled" type="checkbox" class="form-check" />
+                <span>
+                    <span class="check-card-title">Etkin</span>
+                    <span class="check-card-text">Kapalı işler zamanlamayla çalışmaz; elle yedek alınabilir ve eski yedekler korunur.</span>
+                </span>
+            </label>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Ne yedeklenecek?</h2></div>
+        <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+                <label asp-for="SourceType" class="form-label">Yedek türü *</label>
+                <select asp-for="SourceType" class="form-control" data-backup-source asp-items="BackupDisplay.SourceTypeOptions(Model.SourceType)"></select>
+            </div>
+
+            <div class="sm:col-span-2" data-source-mode="@files">
+                <label asp-for="Paths" class="form-label">Klasör ve dosyalar *</label>
+                <textarea asp-for="Paths" class="form-control font-mono" rows="4" placeholder="/etc/nginx&#10;/var/www/site"></textarea>
+                <p class="form-hint">Her satıra bir mutlak yol. Arşivde tam yol saklanır; geri yüklemede özgün yerine veya seçtiğiniz klasöre açılır. Kök dizin (/) ve /proc, /sys, /dev seçilemez.</p>
+                <span asp-validation-for="Paths" class="field-validation-error"></span>
+            </div>
+            <div class="sm:col-span-2" data-source-mode="@files">
+                <label asp-for="Excludes" class="form-label">Hariç tutulacaklar</label>
+                <textarea asp-for="Excludes" class="form-control font-mono" rows="3" placeholder="*.log&#10;node_modules&#10;cache/*"></textarea>
+                <p class="form-hint">Her satıra bir tar kalıbı (ör. *.log, node_modules).</p>
+                <span asp-validation-for="Excludes" class="field-validation-error"></span>
+            </div>
+
+            <div class="sm:col-span-2" data-source-mode="@volume">
+                <label asp-for="VolumeName" class="form-label">Volume adı *</label>
+                <input asp-for="VolumeName" class="form-control font-mono" maxlength="255" placeholder="ör. myapp_db-data" />
+                <p class="form-hint">Sunucudaki Docker volume'unun içeriği arşivlenir. Tutarlı yedek için yazan container'ı kısa süre durdurmanız veya veritabanı yedeği kullanmanız önerilir.</p>
+                <span asp-validation-for="VolumeName" class="field-validation-error"></span>
+            </div>
+
+            <div data-source-mode="@database">
+                <label asp-for="DatabaseEngine" class="form-label">Veritabanı *</label>
+                <select asp-for="DatabaseEngine" class="form-control" asp-items="BackupDisplay.EngineOptions(Model.DatabaseEngine)"></select>
+            </div>
+            <div data-source-mode="@database">
+                <label asp-for="ContainerName" class="form-label">Container</label>
+                <input asp-for="ContainerName" class="form-control font-mono" maxlength="255" placeholder="ör. myapp-db-1" />
+                <p class="form-hint">Doluysa pg_dump / mysqldump container içinde çalışır. Boşsa sunucuda kurulu istemci kullanılır.</p>
+                <span asp-validation-for="ContainerName" class="field-validation-error"></span>
+            </div>
+            <div data-source-mode="@database">
+                <label asp-for="DatabaseName" class="form-label">Veritabanı adı *</label>
+                <input asp-for="DatabaseName" class="form-control font-mono" maxlength="128" />
+                <span asp-validation-for="DatabaseName" class="field-validation-error"></span>
+            </div>
+            <div data-source-mode="@database">
+                <label asp-for="DatabaseUser" class="form-label">Kullanıcı *</label>
+                <input asp-for="DatabaseUser" class="form-control font-mono" maxlength="128" autocomplete="off" />
+                <span asp-validation-for="DatabaseUser" class="field-validation-error"></span>
+            </div>
+            <div data-source-mode="@database">
+                <label asp-for="DatabasePassword" class="form-label">Parola</label>
+                <input asp-for="DatabasePassword" type="password" class="form-control" maxlength="256" autocomplete="new-password"
+                       placeholder="@(Model.HasStoredDatabasePassword ? "•••••••• (kayıtlı)" : string.Empty)" />
+                <p class="form-hint">Şifreli saklanır; komut satırına yazılmaz, sunucuya standart girdi ile verilir.</p>
+                @if (Model.HasStoredDatabasePassword)
+                {
+                    <label class="mt-2 flex items-center gap-2 text-sm">
+                        <input asp-for="ClearDatabasePassword" type="checkbox" class="form-check" />
+                        Kayıtlı parolayı kaldır
+                    </label>
+                }
+                <span asp-validation-for="DatabasePassword" class="field-validation-error"></span>
+            </div>
+            <div class="grid grid-cols-3 gap-3" data-source-mode="@database">
+                <div class="col-span-2">
+                    <label asp-for="DatabaseHost" class="form-label">Sunucu adresi</label>
+                    <input asp-for="DatabaseHost" class="form-control font-mono" maxlength="255" placeholder="127.0.0.1" />
+                </div>
+                <div>
+                    <label asp-for="DatabasePort" class="form-label">Port</label>
+                    <input asp-for="DatabasePort" type="number" min="1" max="65535" class="form-control" />
+                </div>
+                <p class="form-hint col-span-3">Yalnızca container boşken kullanılır; boşsa yerel bağlantı denenir.</p>
+                <span asp-validation-for="DatabaseHost" class="field-validation-error col-span-3"></span>
+                <span asp-validation-for="DatabasePort" class="field-validation-error col-span-3"></span>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Şifreleme</h2></div>
+        <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <label class="check-card sm:col-span-2">
+                <input asp-for="EncryptionEnabled" type="checkbox" class="form-check" data-backup-encryption />
+                <span>
+                    <span class="check-card-title">Yedeği şifrele (AES-256-GCM)</span>
+                    <span class="check-card-text">Dosya depolamaya yazılmadan önce panelde şifrelenir; depolama sağlayıcısı içeriği göremez.</span>
+                </span>
+            </label>
+            <div data-encryption-field>
+                <label asp-for="Passphrase" class="form-label">Şifreleme parolası@(Model.HasStoredPassphrase ? string.Empty : " *")</label>
+                <input asp-for="Passphrase" type="password" class="form-control" maxlength="256" autocomplete="new-password"
+                       placeholder="@(Model.HasStoredPassphrase ? "•••••••• (kayıtlı)" : "En az 12 karakter")" />
+                <span asp-validation-for="Passphrase" class="field-validation-error"></span>
+            </div>
+            <div data-encryption-field>
+                <label asp-for="PassphraseConfirm" class="form-label">Parola tekrar</label>
+                <input asp-for="PassphraseConfirm" type="password" class="form-control" maxlength="256" autocomplete="new-password" />
+                <span asp-validation-for="PassphraseConfirm" class="field-validation-error"></span>
+            </div>
+            <div class="alert-warning sm:col-span-2" data-encryption-field>
+                Parolayı panel dışında güvenli bir yerde (parola yöneticisi) saklayın. Panel veritabanı veya master key kaybolursa yedekler yalnızca bu parolayla
+                <span class="font-mono">tools/backup-decrypt.py</span> kullanılarak açılabilir. Parola değişirse eski yedekler eski parolayla açılmaya devam eder.
+            </div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Zamanlama ve saklama</h2></div>
+        <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div>
+                <label asp-for="ScheduleType" class="form-label">Zamanlama</label>
+                <select asp-for="ScheduleType" class="form-control" data-backup-schedule asp-items="BackupDisplay.ScheduleTypeOptions(Model.ScheduleType)"></select>
+                <p class="form-hint">Saatler @options.TimeZone saat dilimine göredir.</p>
+            </div>
+            <div data-schedule-mode="@hourly">
+                <label asp-for="ScheduleIntervalHours" class="form-label">Kaç saatte bir</label>
+                <input asp-for="ScheduleIntervalHours" type="number" min="@BackupSchedule.MinIntervalHours" max="@BackupSchedule.MaxIntervalHours" class="form-control" />
+                <span asp-validation-for="ScheduleIntervalHours" class="field-validation-error"></span>
+            </div>
+            <div data-schedule-mode="@weekly">
+                <label asp-for="ScheduleDayOfWeek" class="form-label">Gün</label>
+                <select asp-for="ScheduleDayOfWeek" class="form-control" asp-items="BackupDisplay.DayOptions(Model.ScheduleDayOfWeek)"></select>
+            </div>
+            <div data-schedule-mode="@daily @weekly">
+                <label asp-for="ScheduleTime" class="form-label">Saat</label>
+                <input asp-for="ScheduleTime" type="time" class="form-control" />
+                <span asp-validation-for="ScheduleTime" class="field-validation-error"></span>
+            </div>
+            <div>
+                <label asp-for="KeepLast" class="form-label">Saklanacak yedek sayısı</label>
+                <input asp-for="KeepLast" type="number" min="@BackupRetention.MinKeepLast" max="@BackupRetention.MaxKeepLast" class="form-control" />
+                <p class="form-hint">Her başarılı yedekten sonra en yeni bu kadar yedek tutulur, daha eskilerin dosyası silinir.</p>
+                <span asp-validation-for="KeepLast" class="field-validation-error"></span>
+            </div>
+            <div>
+                <label asp-for="KeepDays" class="form-label">Ayrıca son kaç günü sakla</label>
+                <input asp-for="KeepDays" type="number" min="0" max="@BackupRetention.MaxKeepDays" class="form-control" />
+                <p class="form-hint">0 ise yalnızca sayı kuralı uygulanır. Geçmiş kayıtları silinmez; yalnızca eski dosyalar silinir.</p>
+                <span asp-validation-for="KeepDays" class="field-validation-error"></span>
+            </div>
+        </div>
+    </section>
+</div>

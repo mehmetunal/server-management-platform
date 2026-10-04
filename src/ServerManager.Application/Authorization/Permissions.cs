@@ -39,6 +39,11 @@ public static class Permissions
     public const string AlertAcknowledge = "alert.acknowledge";
     public const string AlertManage = "alert.manage";
 
+    public const string BackupView = "backup.view";
+    public const string BackupExecute = "backup.execute";
+    public const string BackupManage = "backup.manage";
+    public const string BackupRestore = "backup.restore";
+
     public const string PluginManage = "plugin.manage";
 
     public const string UserManage = "user.manage";
@@ -75,6 +80,10 @@ public static class Permissions
         AlertView,
         AlertAcknowledge,
         AlertManage,
+        BackupView,
+        BackupExecute,
+        BackupManage,
+        BackupRestore,
         PluginManage,
         UserManage,
         AuditView
@@ -110,6 +119,10 @@ public static class Permissions
         [AlertView] = "Alarmlar, uptime kontrolleri ve SSL sertifikalarını görüntüleme",
         [AlertAcknowledge] = "Alarmı üstlenme (görüldü olarak işaretleme)",
         [AlertManage] = "Alarm kuralları, bildirim kanalları, uptime ve SSL kontrollerini yönetme",
+        [BackupView] = "Yedekleme işleri, depolama hedefleri ve yedek geçmişini görüntüleme",
+        [BackupExecute] = "Yedeklemeyi elle başlatma ve süren yedeklemeyi iptal etme",
+        [BackupManage] = "Yedekleme işi ve depolama hedefi ekleme, düzenleme, silme (veritabanı parolası ve şifreleme parolası dahil); yedek dosyası silme",
+        [BackupRestore] = "Yedeği geri yükleme ve şifresi çözülmüş yedeği indirme",
         [PluginManage] = "Eklenti kurma, etkinleştirme ve devre dışı bırakma",
         [UserManage] = "Kullanıcı yönetimi",
         [AuditView] = "Audit log görüntüleme"

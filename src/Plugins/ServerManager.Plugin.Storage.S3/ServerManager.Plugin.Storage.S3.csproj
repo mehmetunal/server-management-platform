@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PluginSystemName>Storage.S3</PluginSystemName>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ServerManager.Infrastructure\ServerManager.Infrastructure.csproj" Private="false" />
+    <ProjectReference Include="..\..\ServerManager.Web.Framework\ServerManager.Web.Framework.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ServerManager.Plugin.Storage.S3.Tests" />
+  </ItemGroup>
+
+  <!-- Yalnızca uygulamada bulunmayan AWS kütüphaneleri eklenti klasörüne kopyalanır. -->
+  <Target Name="KeepOnlyAwsPackagesInPluginOutput" AfterTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)"
+                               Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' And '%(ReferenceCopyLocalPaths.NuGetPackageId)' != 'AWSSDK.S3' And '%(ReferenceCopyLocalPaths.NuGetPackageId)' != 'AWSSDK.Core'" />
+    </ItemGroup>
+  </Target>
+
+</Project>

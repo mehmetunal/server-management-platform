@@ -1,0 +1,9 @@
+@use "backup-shared";
+
+.backup-filters {
+  @apply lg:grid-cols-6;
+}
+
+.backup-filter-actions {
+  @apply flex gap-2 sm:col-span-2 lg:col-span-1;
+}
