@@ -64,6 +64,9 @@ public class ServerService : IServerService
             : ServiceResult<ServerDetailsDto>.Success(server.ToDetailsDto());
     }
 
+    public Task<string?> GetRemovedNameAsync(Guid id, CancellationToken cancellationToken = default) =>
+        _serverRepository.GetRemovedNameAsync(id, cancellationToken);
+
     public async Task<ServiceResult<UpdateServerDto>> GetForEditAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var server = await _serverRepository.GetWithDetailsAsync(id, cancellationToken);

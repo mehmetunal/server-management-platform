@@ -62,7 +62,11 @@ public class ServersController : Controller
     public async Task<IActionResult> Details(Guid id, CancellationToken cancellationToken)
     {
         var model = await _pageBuilder.BuildAsync(id, ServerPageViewModel.OverviewTab, MetricRange.OneHour, cancellationToken);
-        return model is null ? NotFound() : View(model);
+        if (model is not null)
+            return View(model);
+
+        var removedName = await _serverService.GetRemovedNameAsync(id, cancellationToken);
+        return removedName is null ? NotFound() : View("Removed", removedName);
     }
 
     [HttpGet]

@@ -63,7 +63,7 @@ public class BackupJobService : IBackupJobService
 
     public async Task<ServiceResult<BackupJobDetailsDto>> GetDetailsAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var job = await _repository.GetJobAsync(id, cancellationToken);
+        var job = await _repository.GetJobIncludingDeletedAsync(id, cancellationToken);
         if (job is null)
             return ServiceResult<BackupJobDetailsDto>.NotFound(NotFoundMessage);
 
@@ -327,7 +327,8 @@ public class BackupJobService : IBackupJobService
         EncryptionEnabled = job.EncryptionEnabled,
         KeepLast = job.KeepLast,
         KeepDays = job.KeepDays,
-        IsEnabled = job.IsEnabled
+        IsEnabled = job.IsEnabled,
+        IsDeleted = job.IsDeleted
     };
 
     private static void Trim(BackupJobFormDto dto)

@@ -9,6 +9,9 @@ public interface IServerRepository : IRepository<Server>
 {
     Task<Server?> GetWithDetailsAsync(Guid id, CancellationToken cancellationToken = default);
 
+    /// <summary>Yumuşak silinmiş sunucunun adı. Kayıt yoksa veya hâlâ aktifse null.</summary>
+    Task<string?> GetRemovedNameAsync(Guid id, CancellationToken cancellationToken = default);
+
     Task<PagedResult<Server>> SearchAsync(ServerFilterDto filter, CancellationToken cancellationToken = default);
 
     Task<bool> GroupExistsAsync(Guid groupId, CancellationToken cancellationToken = default);

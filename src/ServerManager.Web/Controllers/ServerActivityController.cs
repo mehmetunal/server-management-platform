@@ -44,4 +44,9 @@ public class ServerActivityController : Controller
 
         return View(new ServerActivityViewModel { Page = page, List = list });
     }
+
+    /// <summary>Eski bağlantılar kayıt ayrıntısını bu adreste arıyordu; asıl sayfa audit log'dadır.</summary>
+    [HttpGet]
+    public IActionResult Details(long id) =>
+        RedirectToAction("Details", "AuditLogs", new { id });
 }

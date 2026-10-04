@@ -1,0 +1,12 @@
+@model string
+@{
+    ViewData["Title"] = "Sunucu silindi";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Sunucu listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Sunucular</a>
+        <h1 class="page-title">@Model</h1>
+        <p class="page-lead">Bu sunucu silindi. Denetim geçmişi durur; bağlantı, metrik ve işlem sayfaları kapalıdır.</p>
+    </div>
+</div>

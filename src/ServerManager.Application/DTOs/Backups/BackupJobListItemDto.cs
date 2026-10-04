@@ -41,4 +41,6 @@ public sealed class BackupJobListItemDto
     public int KeepDays { get; init; }
 
     public bool IsEnabled { get; init; }
+
+    public bool IsDeleted { get; init; }
 }

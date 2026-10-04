@@ -22,6 +22,13 @@ public class ServerRepository : Repository<Server>, IServerRepository
             .AsSplitQuery()
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
 
+    public Task<string?> GetRemovedNameAsync(Guid id, CancellationToken cancellationToken = default) =>
+        _dbSet.IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(s => s.Id == id && s.IsDeleted)
+            .Select(s => s.Name)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public async Task<PagedResult<Server>> SearchAsync(ServerFilterDto filter, CancellationToken cancellationToken = default)
     {
         var page = Paging.NormalizePage(filter.Page);

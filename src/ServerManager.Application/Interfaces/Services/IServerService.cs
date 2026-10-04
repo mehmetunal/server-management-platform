@@ -9,6 +9,9 @@ public interface IServerService
 
     Task<ServiceResult<ServerDetailsDto>> GetDetailsAsync(Guid id, CancellationToken cancellationToken = default);
 
+    /// <summary>Yumuşak silinmiş sunucunun adı. Denetim geçmişindeki bağlantı 404 vermesin diye.</summary>
+    Task<string?> GetRemovedNameAsync(Guid id, CancellationToken cancellationToken = default);
+
     Task<ServiceResult<UpdateServerDto>> GetForEditAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<ServiceResult<Guid>> CreateAsync(CreateServerDto dto, CancellationToken cancellationToken = default);

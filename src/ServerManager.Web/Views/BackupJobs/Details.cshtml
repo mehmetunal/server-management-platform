@@ -12,16 +12,18 @@
     <div>
         <a asp-action="Index" class="back-link" title="Yedekleme işlerine dön">@Icons.Render("chevron-left", "h-4 w-4") Yedekleme</a>
         <h1 class="page-title">@job.Name</h1>
-        <p class="page-lead">@BackupDisplay.SourceTypeText(job.SourceType) yedeği: @job.ServerName → @job.StorageName. Son yedekler aşağıda; çalışan yedek varsa liste kendiliğinden yenilenir.</p>
+        <p class="page-lead">@(job.IsDeleted
+            ? "Bu iş silindi. Alınmış yedekler ve geçmiş durur; yeni yedek alınamaz ve iş düzenlenemez."
+            : $"{BackupDisplay.SourceTypeText(job.SourceType)} yedeği: {job.ServerName} → {job.StorageName}. Son yedekler aşağıda; çalışan yedek varsa liste kendiliğinden yenilenir.")</p>
     </div>
     <div class="flex flex-wrap gap-2">
-        @if (canExecute)
+        @if (canExecute && !job.IsDeleted)
         {
             <button type="button" class="btn-primary" title="Şimdi yedek al ve ilerlemeyi izle" data-ajax-action data-redirect data-url="@Url.Action("Run", new { id = job.Id })">
                 @Icons.Render("play", "h-4 w-4") Şimdi yedek al
             </button>
         }
-        @if (canManage)
+        @if (canManage && !job.IsDeleted)
         {
             <a asp-action="Edit" asp-route-id="@job.Id" class="btn-secondary" title="İşi düzenle">@Icons.Render("pencil", "h-4 w-4") Düzenle</a>
             <button type="button" class="btn-ghost-danger" title="İşi sil; alınmış yedekler ve geçmiş korunur" data-ajax-action data-redirect
