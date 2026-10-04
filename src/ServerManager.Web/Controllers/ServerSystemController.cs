@@ -66,7 +66,7 @@ public class ServerSystemController : Controller
     [HttpPost]
     [HasPermission(Permissions.SystemManage)]
     [EnableRateLimiting(RateLimitPolicies.SystemAction)]
-    public async Task<IActionResult> SignalProcess(Guid id, int pid, ProcessSignal signal, bool kill, string? name, CancellationToken cancellationToken)
+    public async Task<IActionResult> SignalProcess(Guid id, int pid, bool kill, string? name, ProcessSignal signal = ProcessSignal.Terminate, CancellationToken cancellationToken = default)
     {
         var result = await _systemService.SignalProcessAsync(id, pid, kill ? ProcessSignal.Kill : signal, name, cancellationToken);
         return result.IsSuccess ? this.ApiSuccess(result.Message) : this.ApiFailure(result, "Process sonlandırılamadı.");

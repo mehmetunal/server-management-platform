@@ -2465,9 +2465,9 @@ Testler veritabanına veya gerçek sunuculara bağlanmaz. `global.json` içinde 
 | Rol | İzinler |
 | --- | --- |
 | SuperAdmin | Tümü (eklenti yönetimi `plugin.manage` yalnızca SuperAdmin'dedir) |
-| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker, terminal, dosya ve deployment izinleri, alarm görüntüleme/üstlenme/yönetim, yedekleme, güvenlik merkezi, audit log görüntüleme/dışa aktarma |
-| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal, sunucu terminali, dosya görüntüleme/oluşturma/düzenleme/yükleme/indirme, deployment görüntüleme/çalıştırma, alarm görüntüleme/üstlenme, yedek görüntüleme/çalıştırma, güvenlik görüntüleme/tarama |
-| Developer | Dashboard, sunucu görüntüleme, Docker görüntüleme/yeniden başlatma, dosya görüntüleme/indirme, deployment görüntüleme/çalıştırma, alarm görüntüleme |
+| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker, terminal, dosya ve deployment izinleri, sistem bilgisi görüntüleme/yönetim, alarm görüntüleme/üstlenme/yönetim, yedekleme, güvenlik merkezi, audit log görüntüleme/dışa aktarma |
+| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal, sunucu terminali, sistem bilgisi görüntüleme/yönetim, dosya görüntüleme/oluşturma/düzenleme/yükleme/indirme, deployment görüntüleme/çalıştırma, alarm görüntüleme/üstlenme, yedek görüntüleme/çalıştırma, güvenlik görüntüleme/tarama |
+| Developer | Dashboard, sunucu görüntüleme, sistem bilgisi görüntüleme, Docker görüntüleme/yeniden başlatma, dosya görüntüleme/indirme, deployment görüntüleme/çalıştırma, alarm görüntüleme |
 | Viewer | Dashboard, sunucu görüntüleme, Docker görüntüleme, deployment görüntüleme, alarm görüntüleme |
 
 İzinler `AspNetRoleClaims` tablosunda `permission` claim'i olarak tutulur. Seeder yalnızca eksik izinleri ekler; elle eklenmiş izinleri kaldırmaz. Eklentiler kendi izinlerini ve varsayılan rol dağılımını getirir; bunlar eklenti kurulurken ve her açılışta eksikse eklenir (Dokploy için bkz. [Dokploy](#dokploy)).
@@ -2946,6 +2946,25 @@ Her kullanıcı sağ üstteki menüden **Hesabım** sayfasında parolasını de�
 - **Bütünlüğü doğrula:** Tüm kayıtlar Id sırasıyla kontrol edilir. Bir kayıt değiştirilmiş, silinmiş, araya kayıt eklenmiş ya da imzası kaldırılmışsa zincirin kırıldığı ilk kayıt numarası gösterilir. Doğrulama sonucu da audit log'a yazılır.
 
 > Not: `Security:MasterKey` değiştirilirse eski kayıtların imzaları yeni anahtarla doğrulanamaz. Anahtar rotasyonundan önce doğrulamayı çalıştırıp sonucu ve CSV dökümünü saklayın.
+
+### Sunucu sistem sekmeleri
+
+Sunucu sayfasındaki **Services**, **Processes**, **Logs**, **Network** ve **Storage** sekmeleri bilgileri SSH ile anlık okur; ajan veya ek paket gerekmez. `UseSudo` açıksa önce `sudo -n` ile denenir, yetki yoksa normal kullanıcıyla okunur.
+
+| İzin | Kapsam | Varsayılan roller |
+| --- | --- | --- |
+| `system.view` | Servis, process, log, ağ ve disk bilgilerini görüntüleme | SuperAdmin, Admin, Operator, Developer |
+| `system.manage` | Servis başlatma/durdurma/yeniden başlatma, process sonlandırma | SuperAdmin, Admin, Operator |
+
+- **Services:** systemd (`systemctl`) veya OpenRC (`rc-status`) otomatik algılanır. Çalışma durumu ve açılışta başlama bilgisi gösterilir; durum ve ada göre süzülebilir. Durdurma işlemi servis adının yazılmasını ister. Servis yöneticisi olmayan sunucularda (ör. container) açıklama gösterilir.
+- **Processes:** procps `ps` varsa CPU'ya göre, BusyBox'ta belleğe göre sıralı en fazla 500 process listelenir. Sonlandırma varsayılan olarak SIGTERM gönderir; onay penceresindeki seçenekle SIGKILL gönderilebilir. PID 1 sonlandırılamaz.
+- **Logs:** journald varsa `journalctl` (birim ve önem filtresiyle), yoksa `/var/log` altındaki dosyalar okunur. Yalnızca `/var/log/` altındaki, `..` içermeyen yollar kabul edilir. Satır sayısı 10–2000 arasıdır; metin filtresi sunucudan dönen satırlara uygulanır.
+- **Network:** arayüzler (durum, MAC, MTU, adresler, alınan/gönderilen bayt), rotalar, DNS sunucuları ve dinlenen portlar (`ss` veya `netstat`).
+- **Storage:** dosya sistemlerinin doluluk ve inode kullanımı (sanal dosya sistemleri gizlenir) ile `lsblk` varsa diskler ve bölümler.
+
+Servis kontrolü ve process sonlandırma audit log'a yazılır (`system.service_control`, `system.process_signal`). Bu işlemler kullanıcı başına dakikada 20 istekle sınırlıdır.
+
+**Backups**, **Alerts** ve **Activity** sekmeleri ilgili modülün listesini yalnızca bu sunucuya süzerek gösterir: sunucunun yedekleme işleri ve yedek geçmişi (`backup.view`), sunucuya ait alarmlar (`alert.view`) ve sunucu üzerinde yapılan işlemlerin audit kayıtları (`audit.view`). Sekmeler yalnızca ilgili izni olan kullanıcılara görünür.
 
 ### Eklentiler
 
