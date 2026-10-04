@@ -20,4 +20,7 @@ public sealed class PluginDescriptor
     public int DisplayOrder { get; init; }
 
     public string AssemblyFileName { get; init; } = string.Empty;
+
+    /// <summary>Content klasöründeki logo dosyası (ör. logo.svg). Yol içeremez.</summary>
+    public string? Logo { get; init; }
 }

@@ -19,6 +19,7 @@ public static class AuditEntityTypes
     public const string CommandRun = "CommandRun";
     public const string ServerTemplate = "ServerTemplate";
     public const string CloudAccount = "CloudAccount";
+    public const string Settings = "Settings";
 
     public static IReadOnlyDictionary<string, string> DisplayNames { get; } = new Dictionary<string, string>(StringComparer.Ordinal)
     {
@@ -38,7 +39,8 @@ public static class AuditEntityTypes
         [ServerGroup] = "Sunucu grubu",
         [CommandRun] = "Toplu komut",
         [ServerTemplate] = "Sunucu şablonu",
-        [CloudAccount] = "Bulut hesabı"
+        [CloudAccount] = "Bulut hesabı",
+        [Settings] = "Ayarlar"
     };
 
     public static string DisplayName(string? entityType) =>

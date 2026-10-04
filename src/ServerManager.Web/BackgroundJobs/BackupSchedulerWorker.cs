@@ -32,12 +32,12 @@ public sealed class BackupSchedulerWorker : BackgroundService
         {
             await Task.Delay(StartupDelay, stoppingToken);
 
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(Math.Max(10, _options.SchedulerIntervalSeconds)));
-            do
+            while (!stoppingToken.IsCancellationRequested)
             {
-                await RunOnceAsync(stoppingToken);
+                if (_options.Enabled)
+                    await RunOnceAsync(stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(Math.Max(10, _options.SchedulerIntervalSeconds)), stoppingToken);
             }
-            while (await timer.WaitForNextTickAsync(stoppingToken));
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {

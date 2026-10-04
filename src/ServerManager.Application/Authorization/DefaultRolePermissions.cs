@@ -51,7 +51,8 @@ public static class DefaultRolePermissions
             Permissions.CloudView,
             Permissions.CloudManage,
             Permissions.CloudProvision,
-            Permissions.SettingsView
+            Permissions.SettingsView,
+            Permissions.SettingsManage
         ],
         [Roles.Operator] =
         [

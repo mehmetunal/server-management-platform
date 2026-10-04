@@ -69,6 +69,7 @@ public class PluginService : IPluginService
                     Version = plugin.Descriptor.Version,
                     Author = plugin.Descriptor.Author,
                     Description = plugin.Descriptor.Description,
+                    LogoFile = ResolveLogoFile(plugin),
                     IsLoaded = plugin.IsLoaded,
                     LoadError = plugin.LoadError,
                     IsInstalled = record is not null,
@@ -220,6 +221,18 @@ public class PluginService : IPluginService
             plugin.Descriptor.FriendlyName,
             details,
             isSuccess), cancellationToken);
+
+    private static string? ResolveLogoFile(LoadedPlugin plugin)
+    {
+        var file = plugin.Descriptor.Logo;
+        if (string.IsNullOrWhiteSpace(file) || file.Length > 64 || !file.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '_' or '-'))
+            return null;
+
+        var contentRoot = Path.GetFullPath(Path.Combine(plugin.Directory, "Content"));
+        var fullPath = Path.GetFullPath(Path.Combine(contentRoot, file));
+        var prefix = contentRoot.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        return fullPath.StartsWith(prefix, StringComparison.Ordinal) && File.Exists(fullPath) ? file : null;
+    }
 
     private DateTime UtcNow => _timeProvider.GetUtcNow().UtcDateTime;
 }

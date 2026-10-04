@@ -1,0 +1,119 @@
+@model DokkuPanelModel<DokkuOverviewDto>
+@{
+    var overview = Model.Data;
+    var canManage = User.HasPermission(DokkuPermissions.Manage);
+}
+
+@if (overview.InstallRunning)
+{
+    <div class="alert-info mb-6" data-dokku-installing>
+        <p>Dokku kurulumu sürüyor. Çıktı birkaç saniyede bir yenilenir.</p>
+    </div>
+}
+else if (overview.InstallSucceeded == false && !string.IsNullOrEmpty(overview.InstallMessage))
+{
+    <div class="alert-error mb-6">
+        <p>@overview.InstallMessage</p>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(overview.InstallLog))
+{
+    <section class="panel mb-6">
+        <div class="panel-header"><h2 class="panel-title">Kurulum çıktısı</h2></div>
+        <div class="panel-body">
+            <pre class="dokku-log">@overview.InstallLog</pre>
+        </div>
+    </section>
+}
+
+@if (!string.IsNullOrEmpty(overview.HostError))
+{
+    <section class="panel">
+        <div class="empty-state">
+            <span class="empty-state-icon text-red-500">@Icons.Render("warning", "h-6 w-6")</span>
+            <p class="empty-state-title">Dokku durumu okunamadı</p>
+            <p class="max-w-xl">@overview.HostError</p>
+        </div>
+    </section>
+}
+else if (!overview.IsInstalled)
+{
+    <section class="panel">
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("rocket", "h-6 w-6")</span>
+            <p class="empty-state-title">Bu sunucuda Dokku kurulu değil</p>
+            <p class="max-w-xl">Kurulum, Docker bulunan bir sunucuda resmi bootstrap betiğini sudo ile çalıştırır. Sürüm panel ayarındaki Dokku:Version değeridir.</p>
+            @if (canManage && !overview.InstallRunning)
+            {
+                <button type="button" class="btn-primary mt-3" data-dokku-install data-url="@Url.Action("StartInstall", new { id = Model.ServerId })" title="Resmi Dokku kurulum betiğini bu sunucuda başlat">
+                    @Icons.Render("download", "h-4 w-4") Dokku kur
+                </button>
+            }
+        </div>
+    </section>
+}
+else
+{
+    <section class="panel mb-6">
+        <div class="panel-header">
+            <h2 class="panel-title">Dokku</h2>
+            <span class="badge-success"><span class="badge-dot"></span>Kurulu</span>
+        </div>
+        <dl class="dokku-facts">
+            <div class="dokku-fact">
+                <dt>Sürüm</dt>
+                <dd class="font-mono">@(overview.Version ?? "—")</dd>
+            </div>
+            <div class="dokku-fact">
+                <dt>Uygulama</dt>
+                <dd>@overview.Apps.Count</dd>
+            </div>
+        </dl>
+    </section>
+
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Uygulamalar</h2></div>
+        @if (overview.Apps.Count == 0)
+        {
+            <div class="empty-state">
+                <p>Henüz uygulama yok. Uygulamalar <span class="font-mono">dokku apps:create</span> ile sunucuda oluşturulur.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Uygulama</th>
+                            <th>Dağıtım</th>
+                            <th>Süreç</th>
+                            <th>Adres</th>
+                            <th class="text-right">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var app in overview.Apps)
+                        {
+                            <tr>
+                                <td class="font-medium">@app.Name</td>
+                                <td>@(app.Deployed is null ? "—" : app.Deployed == true ? "Dağıtıldı" : "Yok")</td>
+                                <td>@(app.Running is null ? "—" : app.Running == true ? "Çalışıyor" : "Durdu")</td>
+                                <td class="max-w-xs truncate" title="@app.Domains">@(app.Domains ?? "—")</td>
+                                <td class="text-right">
+                                    @if (canManage)
+                                    {
+                                        <button type="button" class="btn-secondary btn-sm" data-dokku-restart data-app="@app.Name" data-url="@Url.Action("Restart", new { id = Model.ServerId, app = app.Name })" title="@app.Name sürecini yeniden başlat">
+                                            @Icons.Render("refresh", "h-4 w-4") Yeniden başlat
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+}

@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PluginSystemName>Storage.AzureBlob</PluginSystemName>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ServerManager.Infrastructure\ServerManager.Infrastructure.csproj" Private="false" />
+    <ProjectReference Include="..\..\ServerManager.Web.Framework\ServerManager.Web.Framework.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ServerManager.Plugin.Storage.AzureBlob.Tests" />
+  </ItemGroup>
+
+  <Target Name="KeepOnlyAzurePackagesInPluginOutput" AfterTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)"
+                               Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' And !$([System.String]::Copy('%(ReferenceCopyLocalPaths.NuGetPackageId)').StartsWith('Azure.')) And '%(ReferenceCopyLocalPaths.NuGetPackageId)' != 'System.ClientModel' And '%(ReferenceCopyLocalPaths.NuGetPackageId)' != 'System.Memory.Data' And '%(ReferenceCopyLocalPaths.NuGetPackageId)' != 'System.IO.Hashing'" />
+    </ItemGroup>
+  </Target>
+
+</Project>

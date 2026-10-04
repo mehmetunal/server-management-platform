@@ -1,0 +1,28 @@
+@model DokkuPageViewModel
+@{
+    ViewData["Title"] = $"{Model.ServerName} · Dokku";
+    ViewData["Page"] = "dokku";
+    ViewData[PluginContent.PagePluginKey] = DokkuPlugin.SystemName;
+}
+
+<partial name="_ServerHeader" model="Model.Page" />
+
+<div class="dokku-toolbar">
+    <div>
+        <h2 class="dokku-heading">Dokku</h2>
+        <p class="page-lead">Uygulamalar SSH ile okunur. Kurulum resmi Dokku betiğini çalıştırır ve birkaç dakika sürebilir.</p>
+    </div>
+    <button type="button" class="btn-secondary" data-panel-refresh title="Dokku durumunu sunucudan yeniden yükle">
+        <span class="spinner" data-spinner hidden></span>
+        @Icons.Render("refresh", "h-4 w-4") Yenile
+    </button>
+</div>
+
+<div data-remote-panel data-url="@Url.Action("StatusPanel", new { id = Model.ServerId })">
+    <section class="panel">
+        <div class="empty-state">
+            <span class="spinner h-6 w-6"></span>
+            <p>Dokku durumu sunucudan alınıyor…</p>
+        </div>
+    </section>
+</div>

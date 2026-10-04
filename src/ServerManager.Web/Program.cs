@@ -7,11 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.WebEncoders;
 using Serilog;
 using ServerManager.Application;
-using ServerManager.Application.Alerting;
 using ServerManager.Application.Backups;
 using ServerManager.Application.Interfaces;
 using ServerManager.Application.Interfaces.Monitoring;
-using ServerManager.Application.Monitoring;
 using ServerManager.Infrastructure;
 using ServerManager.Web.BackgroundJobs;
 using ServerManager.Web.Backups;
@@ -65,20 +63,13 @@ try
     builder.Services.AddHostedService<CommandRunLifecycleWorker>();
     builder.Services.AddHostedService<SecurityScanWorker>();
     builder.Services.AddHostedService<CloudSyncWorker>();
-    if (builder.Configuration.GetValue($"{BackupOptions.SectionName}:Enabled", true))
-        builder.Services.AddHostedService<BackupSchedulerWorker>();
-    if (builder.Configuration.GetValue($"{MonitoringOptions.SectionName}:Enabled", true))
-    {
-        builder.Services.AddHostedService<MetricsCollectorWorker>();
-        builder.Services.AddHostedService<MetricsMaintenanceWorker>();
-    }
-    if (builder.Configuration.GetValue($"{AlertingOptions.SectionName}:Enabled", true))
-    {
-        builder.Services.AddHostedService<AlertEvaluationWorker>();
-        builder.Services.AddHostedService<UptimeCheckWorker>();
-        builder.Services.AddHostedService<SslCheckWorker>();
-        builder.Services.AddHostedService<AlertingMaintenanceWorker>();
-    }
+    builder.Services.AddHostedService<BackupSchedulerWorker>();
+    builder.Services.AddHostedService<MetricsCollectorWorker>();
+    builder.Services.AddHostedService<MetricsMaintenanceWorker>();
+    builder.Services.AddHostedService<AlertEvaluationWorker>();
+    builder.Services.AddHostedService<UptimeCheckWorker>();
+    builder.Services.AddHostedService<SslCheckWorker>();
+    builder.Services.AddHostedService<AlertingMaintenanceWorker>();
     builder.Services.Configure<WebEncoderOptions>(options =>
         options.TextEncoderSettings = new TextEncoderSettings(UnicodeRanges.All));
 

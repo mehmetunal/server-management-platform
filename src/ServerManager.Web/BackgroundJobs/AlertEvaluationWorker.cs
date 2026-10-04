@@ -21,19 +21,20 @@ public sealed class AlertEvaluationWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var interval = TimeSpan.FromSeconds(Math.Max(MinimumIntervalSeconds, _options.EvaluationIntervalSeconds));
-        _logger.LogInformation("Alarm değerlendirici başladı. Interval: {IntervalSeconds} sn", interval.TotalSeconds);
+        _logger.LogInformation(
+            "Alarm değerlendirici başladı. Interval: {IntervalSeconds} sn",
+            Math.Max(MinimumIntervalSeconds, _options.EvaluationIntervalSeconds));
 
         try
         {
             await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken);
 
-            using var timer = new PeriodicTimer(interval);
-            do
+            while (!stoppingToken.IsCancellationRequested)
             {
-                await RunOnceAsync(stoppingToken);
+                if (_options.Enabled)
+                    await RunOnceAsync(stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(Math.Max(MinimumIntervalSeconds, _options.EvaluationIntervalSeconds)), stoppingToken);
             }
-            while (await timer.WaitForNextTickAsync(stoppingToken));
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {

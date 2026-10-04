@@ -1,3 +1,11 @@
+.plugin-identity {
+  @apply flex items-start gap-3;
+}
+
+.plugin-logo {
+  @apply h-9 w-9 shrink-0 rounded-lg bg-white object-contain p-1 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700;
+}
+
 .plugin-name {
   @apply font-medium text-slate-900 dark:text-slate-100;
 }

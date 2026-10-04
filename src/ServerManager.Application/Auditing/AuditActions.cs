@@ -123,6 +123,8 @@ public static class AuditActions
     public const string AgentTokenCreate = "agent.token_create";
     public const string AgentTokenRevoke = "agent.token_revoke";
 
+    public const string SettingsUpdate = "settings.update";
+
     public static readonly IReadOnlyDictionary<string, string> DisplayNames = new Dictionary<string, string>
     {
         [Login] = "Giriş",
@@ -229,6 +231,7 @@ public static class AuditActions
         [CloudImport] = "Bulut sunucusunu içe aktarma",
         [CloudProvision] = "Bulutta sunucu oluşturma",
         [AgentTokenCreate] = "Agent anahtarı oluşturma",
-        [AgentTokenRevoke] = "Agent anahtarı iptali"
+        [AgentTokenRevoke] = "Agent anahtarı iptali",
+        [SettingsUpdate] = "Sistem ayarı güncelleme"
     };
 }

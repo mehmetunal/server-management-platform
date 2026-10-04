@@ -134,6 +134,7 @@ public static class DependencyInjection
         services.AddScoped<ICommandRunRepository, CommandRunRepository>();
         services.AddScoped<IServerTemplateRepository, ServerTemplateRepository>();
         services.AddScoped<ICloudAccountRepository, CloudAccountRepository>();
+        services.AddScoped<IPanelSettingRepository, PanelSettingRepository>();
         services.AddScoped<IServerScriptExecutor, SshServerScriptExecutor>();
 
         services.AddScoped<IAccountService, AccountService>();
@@ -169,6 +170,7 @@ public static class DependencyInjection
         var seeder = scope.ServiceProvider.GetRequiredService<IdentitySeeder>();
         await seeder.SeedAsync();
 
+        await scope.ServiceProvider.GetRequiredService<IPanelSettingsService>().ApplyStoredAsync();
         await scope.ServiceProvider.GetRequiredService<IPluginService>().InitializeAsync();
     }
 

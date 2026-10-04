@@ -3,6 +3,16 @@
 
 > Bu proje; birden fazla Linux sunucunun tek bir web panelinden güvenli şekilde tanımlanmasını, izlenmesini ve yönetilmesini amaçlayan profesyonel bir Server Management Platform'dur.
 
+## Dokümanlar
+
+| Doküman | Kim için | Ne anlatır |
+| --- | --- | --- |
+| [Son kullanıcı kılavuzu](docs/son-kullanici.md) | Paneli kullanan herkes | Ekranların ne işe yaradığı, günlük dilde. Kurulum ve teknik terim yok. |
+| [Kullanma kılavuzu](docs/kullanim-kilavuzu.md) | Operatör ve yönetici | Menü menü nasıl yapılır: sunucu ekleme, izleme, Docker, yedek, alarm, dağıtım. |
+| [Teknik doküman](docs/teknik-dokuman.md) | Geliştirici ve kurulum sorumlusu | Mimari, güvenlik, veri, eklentiler ve yapılandırma. |
+
+Bu dosyanın 1–82. bölümleri ürün hedefi ve yol haritasıdır. Çalışan sistemin kurulumu ve ayrıntılı davranışı [Geliştirme Ortamı](#geliştirme-ortamı) bölümünden başlar; teknik doküman oradaki ayrıntıya bağlanır.
+
 ---
 
 ## 1. Proje Amacı
@@ -1376,7 +1386,7 @@ src/
 │
 └── Plugins/                          # nopCommerce tarzı eklentiler (Modül / Eklenti)
     ├── ServerManager.Plugin.DevOps.Dokploy/
-    └── ServerManager.Plugin.DevOps.Dokku/      # örnek: ileride eklenecek
+    └── ServerManager.Plugin.DevOps.Dokku/
 ```
 
 Repository pattern kullanılmalı; database erişimi repository katmanında tutulmalıdır.
@@ -2650,6 +2660,27 @@ Durum ve ayarlar:
 | `MaxStoredOutputKilobytes` | `512` | Kurulum kaydında saklanan çıktı (son kısım) |
 | `InstallationHistoryCount` | `10` | Durum sayfasında gösterilen kurulum sayısı |
 
+### Dokku
+
+> Eklenti: `DevOps.Dokku` (`src/Plugins/ServerManager.Plugin.DevOps.Dokku`). Varsayılan olarak `Plugins:InstallOnStartup` listesindedir. Devre dışı bırakılırsa sunucu sekmesi kapanır; sunucudaki Dokku kurulumu silinmez.
+
+Sunucu detayındaki **Dokku** sekmesi sürümü ve uygulamaları SSH ile okur (`dokku version`, `apps:list`, `ps:report`, `domains:report`). Kurulu değilse **Dokku kur** resmi bootstrap betiğini (`https://dokku.com/install/<sürüm>/bootstrap.sh`) sudo ile çalıştırır; çıktı sayfada yenilenir, uygulama yeniden başlasa bile sunucudaki betik kendi başına sürebilir. Uygulama satırındaki **Yeniden başlat** `dokku ps:restart` çağırır.
+
+| İzin | Kapsam | Varsayılan roller |
+| --- | --- | --- |
+| `dokku.view` | Sekme, sürüm ve uygulama listesi | SuperAdmin, Admin, Operator, Developer, Viewer |
+| `dokku.manage` | Kurulum ve uygulama yeniden başlatma | SuperAdmin, Admin |
+
+- Komutlar sudo ile çalışır. Uygulama adı ve sürüm kabuğa yazılmadan önce doğrulanır (`v1.2.3`, `my-app`).
+- Kurulum kaydı veritabanına yazılmaz; süren çıktı yalnızca o süreçte tutulur. Sonuç audit log'a `dokku.install_start` ve `dokku.install_complete` olarak yazılır. Yeniden başlatma `dokku.app_restart` olur.
+- İşlemler kullanıcı başına dakikada 20 istekle sınırlandırılır.
+
+| Anahtar (`Dokku:`) | Varsayılan | Açıklama |
+| --- | --- | --- |
+| `Version` | `v0.38.31` | Kurulacak Dokku etiketi |
+| `CommandTimeoutSeconds` | `60` | Durum ve yeniden başlatma zaman aşımı |
+| `InstallTimeoutMinutes` | `20` | Bootstrap betiğinin zaman aşımı |
+
 ### Deployment
 
 Git deposundaki bir uygulamayı kayıtlı bir sunucuya SSH üzerinden (agentless) dağıtır. Menüde **Projeler** ve **Deployment'lar** sayfaları, sunucu detayında **Deployments** sekmesi bulunur. Bu özellik çekirdeğin parçasıdır; Dokploy gibi üçüncü taraf araçlar eklenti olarak ayrı kalır.
@@ -2823,6 +2854,7 @@ Menüde **Yedekleme** altında üç sekme bulunur: **İşler** (yedekleme işler
 | --- | --- | --- |
 | Yerel disk | Klasör adı | Panel sunucusunda `Backup:LocalRootPath` altında bir klasör; kök dışına çıkılamaz. Yazma önce `.partial` dosyasına yapılır, tamamlanınca yeniden adlandırılır |
 | S3 uyumlu (`Storage.S3` eklentisi) | Endpoint (AWS için boş), bölge, bucket, önek, erişim anahtarı, gizli anahtar, path-style | Amazon S3, Cloudflare R2, MinIO, Backblaze B2, SeaweedFS. 16 MiB parçalarla multipart yükleme; küçük yedekler tek istekle gider. Gizli anahtar `Security:MasterKey` ile şifrelenir ve geri gösterilmez |
+| Azure Blob (`Storage.AzureBlob` eklentisi) | Hesap adı, hesap anahtarı, isteğe bağlı hizmet adresi, kapsayıcı, önek | Azure Blob Storage. Adres boşsa `https://<hesap>.blob.core.windows.net` kullanılır. Azurite için adres `http://127.0.0.1:10000/devstoreaccount1` olur. Başarısız yüklemede yarım blob silinir. Anahtar şifrelenir ve geri gösterilmez |
 
 - **Test et** düğmesi hedefe küçük bir dosya yazar, okur ve siler.
 - Nesne adı `{önek}{işKimliği}/{yyyyMMdd-HHmmss}-{kısaKimlik}.tar.gz` (veritabanında `.sql.gz`), şifreliyse sonuna `.smbk` eklenir.
@@ -3038,7 +3070,7 @@ Panelin SSH ile ulaşamadığı sunucular (NAT arkası, kapalı SSH) için sunuc
 
 ### Ayarlar
 
-**Ayarlar** sayfası (`/Settings`, `settings.view`, SuperAdmin ve Admin) sürüm, çalışma ortamı, süreç süresi ve veritabanı şema sürümünü gösterir. İzleme, alarm, yedekleme, güvenlik taraması, bulut eşitleme ve agent aralıkları çalışan yapılandırmadan okunur. Sayfa değer değiştirmez; bağlantı dizesi, ana anahtar ve API anahtarları gösterilmez.
+**Ayarlar** sayfası (`/Settings`, `settings.view`, SuperAdmin ve Admin) sürüm, çalışma ortamı, süreç süresi ve veritabanı şema sürümünü gösterir. `settings.manage` (SuperAdmin ve Admin) izleme, alarm, yedekleme, güvenlik taraması ve bulut aralıklarını kaydeder. Kayıt `PanelSettings` tablosuna yazılır ve çalışan sürecin seçenek nesnesine uygulanır; toplayıcı, alarm, yedek zamanlayıcı, uptime ve SSL bir sonraki turda yeni değeri kullanır. Agent aralığı kurulum betiğine gömülüdür, bu sayfadan değişmez. Bağlantı dizesi, ana anahtar ve API anahtarları gösterilmez ve kaydedilmez. Değişiklik `settings.update` olarak audit log'a yazılır.
 
 ### Eklentiler
 
@@ -3061,7 +3093,7 @@ Sistem nopCommerce'teki plugin mantığıyla genişler: Dokploy, Dokku ve diğer
 | Anahtar (`Plugins:`) | Varsayılan | Açıklama |
 | --- | --- | --- |
 | `Directory` | `Plugins` | Eklenti klasörlerinin bulunduğu dizin (uygulama kök dizinine göre) |
-| `InstallOnStartup` | `["DevOps.Dokploy", "Git.GitHub", "Notifications.Email", "Notifications.Telegram", "Notifications.Discord", "Storage.S3"]` | Daha önce hiç kurulmamışsa açılışta otomatik kurulan eklentiler; sonradan devre dışı bırakılan eklenti yeniden etkinleştirilmez |
+| `InstallOnStartup` | `["DevOps.Dokploy", "DevOps.Dokku", "Git.GitHub", "Notifications.Email", "Notifications.Telegram", "Notifications.Discord", "Storage.S3", "Storage.AzureBlob"]` | Daha önce hiç kurulmamışsa açılışta otomatik kurulan eklentiler; sonradan devre dışı bırakılan eklenti yeniden etkinleştirilmez |
 
 Tablo gerektirmeyen eklentilerde (bildirim kanalları gibi) migration adımı atlanır.
 
@@ -3073,7 +3105,8 @@ Tablo gerektirmeyen eklentilerde (bildirim kanalları gibi) migration adımı at
 | `Notifications.Telegram` | Bildirim | Hazır (bkz. [Bildirim kanalları](#bildirim-kanalları)) |
 | `Notifications.Discord` | Bildirim | Hazır (bkz. [Bildirim kanalları](#bildirim-kanalları)) |
 | `Storage.S3` | Yedekleme | Hazır (bkz. [Yedekleme](#yedekleme)) |
-| `DevOps.Dokku` | DevOps | Planlandı |
+| `Storage.AzureBlob` | Yedekleme | Hazır (bkz. [Yedekleme](#yedekleme)) |
+| `DevOps.Dokku` | DevOps | Hazır (bkz. [Dokku](#dokku)) |
 | `Git.GitLab` | Git | Planlandı |
 
 ### GitHub App
@@ -3144,7 +3177,7 @@ Aşağıdaki adımlar örnek bir **Dokku** eklentisi üzerinden anlatılır; yen
 }
 ```
 
-`SystemName` yalnızca harf, rakam ve nokta içerir, sonradan değiştirilmez (kurulum kaydı, statik dosya adresi `/plugins/devops.dokku/` ve audit kayıtları buna bağlıdır).
+`SystemName` yalnızca harf, rakam ve nokta içerir, sonradan değiştirilmez (kurulum kaydı, statik dosya adresi `/plugins/devops.dokku/` ve audit kayıtları buna bağlıdır). İsteğe bağlı `Logo` alanı `Content` içindeki dosya adıdır (ör. `logo.svg`); Eklentiler sayfasında adın yanında gösterilir. Yol, `..` veya başka bir klasör kabul edilmez.
 
 **3. Kimlik sabitleri ve sağlayıcılar** — izin ve audit adları kalıcıdır, değiştirilmez:
 

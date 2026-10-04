@@ -8,20 +8,24 @@
   </Folder>
   <Folder Name="/src/Plugins/">
     <Project Path="src/Plugins/ServerManager.Plugin.DevOps.Dokploy/ServerManager.Plugin.DevOps.Dokploy.csproj" />
+    <Project Path="src/Plugins/ServerManager.Plugin.DevOps.Dokku/ServerManager.Plugin.DevOps.Dokku.csproj" />
     <Project Path="src/Plugins/ServerManager.Plugin.Git.GitHub/ServerManager.Plugin.Git.GitHub.csproj" />
     <Project Path="src/Plugins/ServerManager.Plugin.Notifications.Email/ServerManager.Plugin.Notifications.Email.csproj" />
     <Project Path="src/Plugins/ServerManager.Plugin.Notifications.Telegram/ServerManager.Plugin.Notifications.Telegram.csproj" />
     <Project Path="src/Plugins/ServerManager.Plugin.Notifications.Discord/ServerManager.Plugin.Notifications.Discord.csproj" />
     <Project Path="src/Plugins/ServerManager.Plugin.Storage.S3/ServerManager.Plugin.Storage.S3.csproj" />
+    <Project Path="src/Plugins/ServerManager.Plugin.Storage.AzureBlob/ServerManager.Plugin.Storage.AzureBlob.csproj" />
     <Project Path="src/Plugins/ServerManager.Plugin.Cloud.Hetzner/ServerManager.Plugin.Cloud.Hetzner.csproj" />
     <Project Path="src/Plugins/ServerManager.Plugin.Cloud.DigitalOcean/ServerManager.Plugin.Cloud.DigitalOcean.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ServerManager.Application.Tests/ServerManager.Application.Tests.csproj" />
     <Project Path="tests/ServerManager.Plugin.DevOps.Dokploy.Tests/ServerManager.Plugin.DevOps.Dokploy.Tests.csproj" />
+    <Project Path="tests/ServerManager.Plugin.DevOps.Dokku.Tests/ServerManager.Plugin.DevOps.Dokku.Tests.csproj" />
     <Project Path="tests/ServerManager.Plugin.Git.GitHub.Tests/ServerManager.Plugin.Git.GitHub.Tests.csproj" />
     <Project Path="tests/ServerManager.Plugin.Notifications.Tests/ServerManager.Plugin.Notifications.Tests.csproj" />
     <Project Path="tests/ServerManager.Plugin.Storage.S3.Tests/ServerManager.Plugin.Storage.S3.Tests.csproj" />
+    <Project Path="tests/ServerManager.Plugin.Storage.AzureBlob.Tests/ServerManager.Plugin.Storage.AzureBlob.Tests.csproj" />
     <Project Path="tests/ServerManager.Plugin.Cloud.Tests/ServerManager.Plugin.Cloud.Tests.csproj" />
   </Folder>
 </Solution>

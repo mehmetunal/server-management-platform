@@ -1,0 +1,11 @@
+{
+  "SystemName": "Storage.AzureBlob",
+  "FriendlyName": "Azure Blob Storage",
+  "Group": "Yedekleme",
+  "Version": "1.0.0",
+  "Author": "Server Manager",
+  "Description": "Yedekleri Azure Blob Storage veya Azurite kapsayıcılarında saklar.",
+  "DisplayOrder": 41,
+  "AssemblyFileName": "ServerManager.Plugin.Storage.AzureBlob.dll",
+  "Logo": "logo.svg"
+}

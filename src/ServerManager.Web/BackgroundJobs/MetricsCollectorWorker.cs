@@ -21,21 +21,20 @@ public sealed class MetricsCollectorWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var interval = TimeSpan.FromSeconds(Math.Max(MinimumIntervalSeconds, _options.IntervalSeconds));
         _logger.LogInformation(
             "Metrik toplayıcı başladı. Interval: {IntervalSeconds} sn, MaxConcurrency: {MaxConcurrency}",
-            interval.TotalSeconds, MaxConcurrency);
+            Math.Max(MinimumIntervalSeconds, _options.IntervalSeconds), MaxConcurrency);
 
         try
         {
             await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
 
-            using var timer = new PeriodicTimer(interval);
-            do
+            while (!stoppingToken.IsCancellationRequested)
             {
-                await RunCycleAsync(stoppingToken);
+                if (_options.Enabled)
+                    await RunCycleAsync(stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(Math.Max(MinimumIntervalSeconds, _options.IntervalSeconds)), stoppingToken);
             }
-            while (await timer.WaitForNextTickAsync(stoppingToken));
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {

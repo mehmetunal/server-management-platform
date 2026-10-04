@@ -14,6 +14,9 @@ public sealed record PluginDto
 
     public string? Description { get; init; }
 
+    /// <summary>Content klasöründe bulunan güvenli logo dosya adı. Yoksa null.</summary>
+    public string? LogoFile { get; init; }
+
     public bool IsLoaded { get; init; }
 
     public string? LoadError { get; init; }

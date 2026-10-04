@@ -66,6 +66,7 @@ public static class Permissions
     public const string CloudProvision = "cloud.provision";
 
     public const string SettingsView = "settings.view";
+    public const string SettingsManage = "settings.manage";
 
     public static readonly IReadOnlyList<string> All =
     [
@@ -115,7 +116,8 @@ public static class Permissions
         CloudView,
         CloudManage,
         CloudProvision,
-        SettingsView
+        SettingsView,
+        SettingsManage
     ];
 
     public static readonly IReadOnlyDictionary<string, string> DisplayNames = new Dictionary<string, string>
@@ -166,6 +168,7 @@ public static class Permissions
         [CloudView] = "Bulut sağlayıcı hesaplarını, sunucu listesini ve maliyetleri görüntüleme",
         [CloudManage] = "Bulut sağlayıcı hesabı ekleme, düzenleme, silme ve eşitleme",
         [CloudProvision] = "Bulut sağlayıcıda yeni sunucu oluşturma",
-        [SettingsView] = "Sistem ayarlarını ve uygulama bilgisini görüntüleme"
+        [SettingsView] = "Sistem ayarlarını ve uygulama bilgisini görüntüleme",
+        [SettingsManage] = "İzleme, alarm, yedekleme, tarama ve bulut aralıklarını değiştirme"
     };
 }

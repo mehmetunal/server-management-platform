@@ -75,6 +75,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     public DbSet<SecurityScan> SecurityScans => Set<SecurityScan>();
 
+    public DbSet<PanelSetting> PanelSettings => Set<PanelSetting>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

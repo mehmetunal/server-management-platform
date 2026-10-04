@@ -38,7 +38,8 @@ public sealed class UptimeCheckWorker : BackgroundService
             using var timer = new PeriodicTimer(TickInterval);
             do
             {
-                await StartDueChecksAsync(semaphore, stoppingToken);
+                if (_options.Enabled)
+                    await StartDueChecksAsync(semaphore, stoppingToken);
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));
         }

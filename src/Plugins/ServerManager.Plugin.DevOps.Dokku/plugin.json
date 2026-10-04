@@ -1,0 +1,11 @@
+{
+  "SystemName": "DevOps.Dokku",
+  "FriendlyName": "Dokku",
+  "Group": "DevOps",
+  "Version": "1.0.0",
+  "Author": "Server Manager",
+  "Description": "Sunucudaki Dokku sürümünü ve uygulamaları gösterir; resmi kurulum betiğiyle kurar ve uygulamayı yeniden başlatır.",
+  "DisplayOrder": 2,
+  "AssemblyFileName": "ServerManager.Plugin.DevOps.Dokku.dll",
+  "Logo": "logo.svg"
+}

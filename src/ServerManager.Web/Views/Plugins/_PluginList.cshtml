@@ -30,6 +30,12 @@ else
                         {
                             <tr>
                                 <td>
+                                    <div class="plugin-identity">
+                                        @if (!string.IsNullOrEmpty(plugin.LogoFile))
+                                        {
+                                            <img src="/@PluginContent.BasePath(plugin.SystemName)/@plugin.LogoFile" alt="" class="plugin-logo" width="36" height="36" />
+                                        }
+                                        <div class="min-w-0">
                                     <p class="plugin-name">@plugin.FriendlyName</p>
                                     <p class="plugin-system-name">@plugin.SystemName@(plugin.Author is null ? "" : $" · {plugin.Author}")</p>
                                     @if (!string.IsNullOrEmpty(plugin.Description))
@@ -40,6 +46,8 @@ else
                                     {
                                         <p class="plugin-error">@plugin.LoadError</p>
                                     }
+                                        </div>
+                                    </div>
                                 </td>
                                 <td class="whitespace-nowrap">
                                     @plugin.Version

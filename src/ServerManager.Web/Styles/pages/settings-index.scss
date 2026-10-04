@@ -18,8 +18,35 @@
   @apply mt-1 truncate text-xs text-slate-500;
 }
 
-.settings-sections {
+.settings-sections,
+.settings-form {
   @apply grid gap-6 lg:grid-cols-2;
+}
+
+.settings-fields {
+  @apply divide-y divide-slate-200 dark:divide-slate-800;
+}
+
+.settings-field {
+  @apply px-5 py-3;
+}
+
+.settings-hint,
+.settings-note {
+  @apply mt-1 text-xs text-slate-500;
+}
+
+.settings-note {
+  @apply px-5 pb-4;
+}
+
+.settings-form > .alert-error,
+.settings-actions {
+  @apply lg:col-span-2;
+}
+
+.settings-actions {
+  @apply flex justify-end;
 }
 
 .settings-list {

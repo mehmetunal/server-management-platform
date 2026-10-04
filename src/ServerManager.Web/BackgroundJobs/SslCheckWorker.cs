@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+using ServerManager.Application.Alerting;
 using ServerManager.Application.Interfaces.Services;
 
 namespace ServerManager.Web.BackgroundJobs;
@@ -7,11 +9,13 @@ public sealed class SslCheckWorker : BackgroundService
     private static readonly TimeSpan TickInterval = TimeSpan.FromMinutes(5);
 
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly AlertingOptions _options;
     private readonly ILogger<SslCheckWorker> _logger;
 
-    public SslCheckWorker(IServiceScopeFactory scopeFactory, ILogger<SslCheckWorker> logger)
+    public SslCheckWorker(IServiceScopeFactory scopeFactory, IOptions<AlertingOptions> options, ILogger<SslCheckWorker> logger)
     {
         _scopeFactory = scopeFactory;
+        _options = options.Value;
         _logger = logger;
     }
 
@@ -24,7 +28,8 @@ public sealed class SslCheckWorker : BackgroundService
             using var timer = new PeriodicTimer(TickInterval);
             do
             {
-                await RunOnceAsync(stoppingToken);
+                if (_options.Enabled)
+                    await RunOnceAsync(stoppingToken);
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));
         }

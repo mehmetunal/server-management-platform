@@ -1,57 +1,126 @@
-@model SystemInfoDto
+@model SettingsPageViewModel
 @{
     ViewData["Title"] = "Ayarlar";
     ViewData["Page"] = "settings-index";
-    var uptime = DateTime.UtcNow - DateTime.SpecifyKind(Model.StartedAtUtc, DateTimeKind.Utc);
+    var info = Model.Info;
+    var canManage = User.HasPermission(Permissions.SettingsManage);
+    var uptime = DateTime.UtcNow - DateTime.SpecifyKind(info.StartedAtUtc, DateTimeKind.Utc);
+    var agent = info.Sections.FirstOrDefault(s => s.Title == "Agent");
 }
 
 <div class="page-header">
     <div>
         <h1 class="page-title">Ayarlar</h1>
-        <p class="page-lead">Uygulamanın sürümü, veritabanı durumu ve çalışan yapılandırma. Değerler appsettings dosyasından okunur; bu sayfadan değiştirilmez. Bağlantı dizeleri ve anahtarlar gösterilmez.</p>
+        <p class="page-lead">@(canManage
+            ? "İzleme, alarm, yedek, tarama ve bulut aralıklarını buradan değiştirirsiniz. Bağlantı ve anahtarlar burada yoktur."
+            : "Çalışan yapılandırma. Aralıkları değiştirmek için ayar yönetimi yetkisi gerekir.")</p>
     </div>
 </div>
 
 <div class="settings-summary">
-        <div class="panel settings-tile">
+    <div class="panel settings-tile">
         <p class="settings-tile-label">Sürüm</p>
-        <p class="settings-tile-value">@Model.Version</p>
-        <p class="settings-tile-hint">.NET @Model.Runtime</p>
+        <p class="settings-tile-value">@info.Version</p>
+        <p class="settings-tile-hint">.NET @info.Runtime</p>
     </div>
     <div class="panel settings-tile">
         <p class="settings-tile-label">Ortam</p>
-        <p class="settings-tile-value">@Model.EnvironmentName</p>
-        <p class="settings-tile-hint">@Model.OperatingSystem</p>
+        <p class="settings-tile-value">@info.EnvironmentName</p>
+        <p class="settings-tile-hint">@info.OperatingSystem</p>
     </div>
     <div class="panel settings-tile">
         <p class="settings-tile-label">Çalışma süresi</p>
         <p class="settings-tile-value">@Uptime(uptime)</p>
-        <p class="settings-tile-hint" title="@DateDisplay.Format(Model.StartedAtUtc, "dd.MM.yyyy HH:mm:ss")">@DateDisplay.Relative(Model.StartedAtUtc) başladı</p>
+        <p class="settings-tile-hint" title="@DateDisplay.Format(info.StartedAtUtc, "dd.MM.yyyy HH:mm:ss")">@DateDisplay.Relative(info.StartedAtUtc) başladı</p>
     </div>
     <div class="panel settings-tile">
         <p class="settings-tile-label">Veritabanı</p>
-        <p class="settings-tile-value">@(Model.Database.IsConnected ? "Bağlı" : "Yok")</p>
-        <p class="settings-tile-hint">@(Model.Database.SchemaVersion is { } version ? $"Şema {version}" : Model.Database.Message)</p>
+        <p class="settings-tile-value">@(info.Database.IsConnected ? "Bağlı" : "Yok")</p>
+        <p class="settings-tile-hint">@(info.Database.SchemaVersion is { } version ? $"Şema {version}" : info.Database.Message)</p>
     </div>
 </div>
 
-<div class="settings-sections">
-    @foreach (var group in Model.Sections)
-    {
-        <section class="panel">
-            <div class="panel-header"><h2 class="panel-title">@group.Title</h2></div>
-            <dl class="settings-list">
-                @foreach (var item in group.Items)
-                {
-                    <div>
-                        <dt>@item.Label</dt>
-                        <dd>@item.Value</dd>
-                    </div>
-                }
-            </dl>
-        </section>
-    }
-</div>
+@if (canManage)
+{
+    <form asp-action="Save" method="post" class="settings-form" data-settings-form novalidate>
+        @Html.AntiForgeryToken()
+        <p class="alert-error lg:col-span-2" data-form-error hidden></p>
+        @foreach (var group in Model.Groups)
+        {
+            <section class="panel">
+                <div class="panel-header"><h2 class="panel-title">@group.Title</h2></div>
+                <div class="settings-fields">
+                    @foreach (var field in group.Fields)
+                    {
+                        var inputId = field.Key.Replace(':', '-');
+                        <div class="settings-field">
+                            <label class="form-label" for="@inputId">@field.Label</label>
+                            @if (field.Kind == "Boolean")
+                            {
+                                <select id="@inputId" name="@field.Key" class="form-control" title="@field.Hint">
+                                    <option value="true" selected="@(field.Value == "true")">Açık</option>
+                                    <option value="false" selected="@(field.Value == "false")">Kapalı</option>
+                                </select>
+                            }
+                            else if (field.Kind == "TimeZone")
+                            {
+                                <input id="@inputId" name="@field.Key" value="@field.Value" class="form-control" maxlength="64" autocomplete="off" spellcheck="false" title="@field.Hint" />
+                            }
+                            else
+                            {
+                                <input id="@inputId" name="@field.Key" value="@field.Value" class="form-control" type="number"
+                                       min="@field.Minimum" max="@field.Maximum" step="@(field.Kind == "Number" ? "0.1" : "1")"
+                                       inputmode="decimal" title="@field.Hint" />
+                            }
+                            <p class="settings-hint">@field.Hint</p>
+                            <span class="field-validation-valid" data-valmsg-for="@field.Key"></span>
+                        </div>
+                    }
+                </div>
+            </section>
+        }
+        <div class="settings-actions lg:col-span-2">
+            <button type="submit" class="btn-primary" title="Ayarları kaydet; çalışan işler bir sonraki turda yeni değeri kullanır">Kaydet</button>
+        </div>
+    </form>
+}
+else
+{
+    <div class="settings-sections">
+        @foreach (var group in info.Sections)
+        {
+            <section class="panel">
+                <div class="panel-header"><h2 class="panel-title">@group.Title</h2></div>
+                <dl class="settings-list">
+                    @foreach (var item in group.Items)
+                    {
+                        <div>
+                            <dt>@item.Label</dt>
+                            <dd>@item.Value</dd>
+                        </div>
+                    }
+                </dl>
+            </section>
+        }
+    </div>
+}
+
+@if (canManage && agent is not null)
+{
+    <section class="panel mt-6">
+        <div class="panel-header"><h2 class="panel-title">Agent</h2></div>
+        <dl class="settings-list">
+            @foreach (var item in agent.Items)
+            {
+                <div>
+                    <dt>@item.Label</dt>
+                    <dd>@item.Value</dd>
+                </div>
+            }
+        </dl>
+        <p class="settings-note">Agent aralığı kurulum betiğine gömülüdür. Token, sunucunun metrik sayfasından üretilir.</p>
+    </section>
+}
 
 @functions {
     private static string Uptime(TimeSpan elapsed)
