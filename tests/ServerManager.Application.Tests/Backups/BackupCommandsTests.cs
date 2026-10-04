@@ -76,7 +76,8 @@ public class BackupCommandsTests
             Excludes = ["*.log"]
         });
 
-        Assert.Contains("tar -czf - --warning=no-file-changed", export);
+        Assert.Contains("tar -czf - $TW --exclude=", export);
+        Assert.Contains("grep -q GNU", export);
         Assert.Contains("etc/nginx", export);
         Assert.Contains("srv/my app", export);
         Assert.Contains("--exclude=", export);

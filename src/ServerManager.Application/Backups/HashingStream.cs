@@ -18,7 +18,7 @@ public sealed class HashingStream : Stream
 
     public long BytesTransferred { get; private set; }
 
-    /// <summary>Akış bittikten sonra bir kez hesaplanır; sonrasında veri eklenmez.</summary>
+    /// <summary>Akış bittikten sonra bir kez hesaplanır; sonrasında veri eklenmez. Akış kapatıldıktan sonra da okunabilir.</summary>
     public string Sha256Hex => _hex ??= Convert.ToHexStringLower(_hash.GetHashAndReset());
 
     public override bool CanRead => _inner.CanRead;
@@ -83,6 +83,7 @@ public sealed class HashingStream : Stream
     {
         if (disposing)
         {
+            _ = Sha256Hex;
             _hash.Dispose();
             if (!_leaveOpen)
                 _inner.Dispose();
@@ -93,6 +94,7 @@ public sealed class HashingStream : Stream
 
     public override async ValueTask DisposeAsync()
     {
+        _ = Sha256Hex;
         _hash.Dispose();
         if (!_leaveOpen)
             await _inner.DisposeAsync();

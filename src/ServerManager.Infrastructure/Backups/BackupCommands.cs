@@ -17,8 +17,11 @@ public static class BackupCommands
 
     private const string ReadPassword = "IFS= read -r SM_DB_PASSWORD || true\n";
 
-    /// <summary>GNU tar 1 ile çıkarsa (okunurken değişen dosyalar) yedek yine geçerlidir.</summary>
-    private const string TarResult = "rc=$?\nif [ \"$rc\" -eq 1 ]; then exit 0; fi\nexit \"$rc\"\n";
+    /// <summary>GNU tar'a özgü seçenekler yalnızca GNU tar varsa eklenir; BusyBox (Alpine) tar da desteklenir.</summary>
+    private const string DetectTar = "TW=\nif tar --version 2>/dev/null | grep -q GNU; then TW=--warning=no-file-changed; fi\n";
+
+    /// <summary>GNU tar 1 ile çıkarsa (okunurken değişen dosyalar) yedek yine geçerlidir; BusyBox'ta 1 hatadır.</summary>
+    private const string TarResult = "rc=$?\nif [ \"$rc\" -eq 1 ] && [ -n \"$TW\" ]; then exit 0; fi\nexit \"$rc\"\n";
 
     public static bool NeedsPasswordInput(BackupSourceSpec spec) => spec.Type == BackupSourceType.Database;
 
@@ -48,16 +51,18 @@ public static class BackupCommands
         var names = string.Join(' ', spec.Paths.Select(p => ShellQuote.Quote(BackupPaths.ToArchiveName(p))));
         return Shell(
             checks +
+            DetectTar +
             "cd / || exit 2\n" +
-            $"tar -czf - --warning=no-file-changed{excludes} -- {names}\n" +
+            $"tar -czf - $TW{excludes} -- {names}\n" +
             TarResult);
     }
 
     private static string ExportVolume(BackupSourceSpec spec) =>
         Shell(
             VolumeMountpoint(spec.VolumeName!, create: false) +
+            DetectTar +
             "cd \"$M\" || exit 2\n" +
-            "tar -czf - --warning=no-file-changed .\n" +
+            "tar -czf - $TW .\n" +
             TarResult);
 
     private static string ExportDatabase(BackupSourceSpec spec)
@@ -113,7 +118,7 @@ public static class BackupCommands
             : $"docker volume inspect {name} >/dev/null 2>&1 || {{ echo {ShellQuote.Quote("Volume bulunamadı: " + volume)} >&2; exit {SourceMissingExitCode}; }}\n";
         return ensure +
                $"M=$(docker volume inspect --format '{{{{.Mountpoint}}}}' {name}) || exit 2\n" +
-               $"if [ ! -d \"$M\" ]; then echo {ShellQuote.Quote("Volume klasörüne erişilemiyor (rootless Docker veya Docker Desktop desteklenmez): ")}\"$M\" >&2; exit 2; fi\n";
+               $"if [ ! -d \"$M\" ]; then echo {ShellQuote.Quote("Volume klasörüne erişilemiyor; sunucuda sudo (root) yetkisi gerekir, rootless Docker ve Docker Desktop desteklenmez: ")}\"$M\" >&2; exit 2; fi\n";
     }
 
     /// <summary>

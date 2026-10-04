@@ -22,6 +22,19 @@ public class BackupStreamsTests
     }
 
     [Fact]
+    public async Task Hash_is_available_after_the_stream_is_disposed()
+    {
+        var data = Encoding.UTF8.GetBytes("upload");
+        var hashing = new HashingStream(new MemoryStream(data));
+        await hashing.CopyToAsync(Stream.Null, Ct);
+
+        await hashing.DisposeAsync();
+
+        Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(data)), hashing.Sha256Hex);
+        Assert.Equal(data.Length, hashing.BytesTransferred);
+    }
+
+    [Fact]
     public async Task Producer_stream_delivers_everything_the_producer_wrote()
     {
         var data = RandomNumberGenerator.GetBytes(10 * 1024 * 1024 + 3);
