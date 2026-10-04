@@ -1,0 +1,69 @@
+@model ServerSystemPageViewModel
+@{
+    var page = Model.Page;
+    var server = page.Server;
+    var tabTitle = page.ActiveTab switch
+    {
+        ServerPageViewModel.ServicesTab => "Services",
+        ServerPageViewModel.ProcessesTab => "Processes",
+        ServerPageViewModel.LogsTab => "Logs",
+        ServerPageViewModel.NetworkTab => "Network",
+        _ => "Storage"
+    };
+    ViewData["Title"] = $"{server.Name} · {tabTitle}";
+    ViewData["Page"] = "server-system";
+    var log = Model.LogRequest;
+}
+
+<partial name="_ServerHeader" model="page" />
+
+<div class="system-toolbar">
+    @if (log is not null)
+    {
+        <form method="get" action="@Url.Action("LogsPanel", new { id = server.Id })" class="system-log-form" data-log-form data-page-url="@Url.Action("Logs", new { id = server.Id })">
+            <select name="source" class="form-control" aria-label="Kaynak" title="Log kaynağı" data-log-source>
+                <option value="@((int)LogSource.Journal)" selected="@(log.Source == LogSource.Journal)">journald</option>
+                <option value="@((int)LogSource.File)" selected="@(log.Source == LogSource.File)">Dosya (/var/log)</option>
+            </select>
+            <input type="text" name="unit" value="@log.Unit" class="form-control" placeholder="Servis (ör. nginx)" aria-label="Servis" title="Yalnızca bu systemd servisinin logları" data-log-journal-only />
+            <select name="priority" class="form-control" aria-label="Öncelik" title="Bu seviye ve daha önemli kayıtlar" data-log-journal-only>
+                <option value="">Tüm seviyeler</option>
+                @foreach (var (value, label) in ServerSystemDisplay.Priorities)
+                {
+                    <option value="@value" selected="@(log.Priority == value)">@label</option>
+                }
+            </select>
+            <select name="path" class="form-control" aria-label="Dosya" title="/var/log altındaki dosya" data-log-file-only data-log-path data-selected="@log.Path">
+                <option value="">Dosya seçin</option>
+                @if (!string.IsNullOrEmpty(log.Path))
+                {
+                    <option value="@log.Path" selected>@log.Path</option>
+                }
+            </select>
+            <select name="lines" class="form-control" aria-label="Satır sayısı" title="Son kaç satır okunsun">
+                @foreach (var count in ServerSystemDisplay.LineOptions)
+                {
+                    <option value="@count" selected="@(log.Lines == count)">Son @count satır</option>
+                }
+            </select>
+            <input type="search" name="filter" value="@log.Filter" class="form-control" placeholder="Satırlarda ara" aria-label="Satırlarda ara" title="Okunan satırlar panelde süzülür" />
+            <button type="submit" class="btn-primary" title="Logları bu ölçütlerle yeniden oku">@Icons.Render("search", "h-4 w-4") Göster</button>
+        </form>
+    }
+    <div class="system-toolbar-actions">
+        <span class="text-xs text-slate-500" data-panel-updated></span>
+        <button type="button" class="btn-secondary" data-panel-refresh title="Bilgiyi sunucudan yeniden oku">
+            <span class="spinner" data-spinner hidden></span>
+            @Icons.Render("refresh", "h-4 w-4") Yenile
+        </button>
+    </div>
+</div>
+
+<div data-remote-panel data-url="@Model.PanelUrl">
+    <section class="panel">
+        <div class="empty-state">
+            <span class="spinner h-6 w-6"></span>
+            <p>@Model.LoadingText</p>
+        </div>
+    </section>
+</div>

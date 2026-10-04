@@ -11,15 +11,3 @@
 .alert-filter-actions {
   @apply flex items-center gap-2 whitespace-nowrap sm:col-span-2;
 }
-
-.alert-title {
-  @apply flex flex-wrap items-center gap-2;
-}
-
-.alert-message {
-  @apply mt-1 max-w-xl text-xs text-slate-500 dark:text-slate-400;
-}
-
-.alert-row-firing td:first-child {
-  @apply border-l-2 border-l-red-500;
-}

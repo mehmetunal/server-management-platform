@@ -13,6 +13,18 @@
     var canViewFiles = User.HasPermission(Permissions.FileView);
     var canViewDeployments = User.HasPermission(Permissions.DeploymentView);
     var canViewSecurity = User.HasPermission(Permissions.SecurityView);
+    var canViewSystem = User.HasPermission(Permissions.SystemView);
+    var canViewBackups = User.HasPermission(Permissions.BackupView);
+    var canViewAlerts = User.HasPermission(Permissions.AlertView);
+    var canViewActivity = User.HasPermission(Permissions.AuditView);
+    var systemTabs = new (string Key, string Action, string Title, string Tooltip)[]
+    {
+        (ServerPageViewModel.ServicesTab, "Services", "Services", "Sistem servisleri (systemd / OpenRC)"),
+        (ServerPageViewModel.ProcessesTab, "Processes", "Processes", "Çalışan process'ler"),
+        (ServerPageViewModel.LogsTab, "Logs", "Logs", "Journal ve /var/log kayıtları"),
+        (ServerPageViewModel.NetworkTab, "Network", "Network", "Ağ arayüzleri, rotalar ve dinlenen portlar"),
+        (ServerPageViewModel.StorageTab, "Storage", "Storage", "Dosya sistemleri ve diskler")
+    };
     var pluginTabs = TabRegistry.GetTabs().Where(t => User.HasPermission(t.Permission)).ToList();
     var activePluginTab = pluginTabs.FirstOrDefault(t => t.Key == Model.ActiveTab);
     var tabLead = ViewData["PageLead"] as string ?? Model.ActiveTab switch
@@ -22,11 +34,18 @@
         ServerPageViewModel.TerminalTab => "Tarayıcıdan sunucuya SSH terminali açın; çalıştırılan komutlar kayıt altına alınır.",
         ServerPageViewModel.FilesTab => "Sunucudaki dosyalara SFTP ile göz atın, yükleyin, indirin ve düzenleyin.",
         ServerPageViewModel.DeploymentsTab => "Bu sunucuya Git deposundan dağıtılan projeler ve deployment geçmişi.",
+        ServerPageViewModel.ServicesTab => "Sunucudaki sistem servislerini listeleyin; yetkiniz varsa başlatın, durdurun veya yeniden başlatın.",
+        ServerPageViewModel.ProcessesTab => "Çalışan process'leri kaynak kullanımına göre inceleyin; gerekirse sonlandırma sinyali gönderin.",
+        ServerPageViewModel.LogsTab => "systemd journal veya /var/log altındaki dosyalardan son satırları okuyun ve filtreleyin.",
+        ServerPageViewModel.NetworkTab => "Ağ arayüzleri, IP adresleri, rotalar, DNS sunucuları ve dinlenen portlar.",
+        ServerPageViewModel.StorageTab => "Bağlı dosya sistemlerinin doluluk ve inode kullanımı ile blok aygıtları.",
+        ServerPageViewModel.BackupsTab => "Bu sunucunun yedekleme işleri ve yedek geçmişi.",
+        ServerPageViewModel.AlertsTab => "Bu sunucu için tetiklenen alarmlar; onaylayabilir veya sessize alabilirsiniz.",
+        ServerPageViewModel.ActivityTab => "Bu sunucu üzerinde yapılan işlemlerin audit kayıtları.",
         ServerPageViewModel.SecurityTab => "SSH ayarları, açık portlar, güvenlik duvarı, güncellemeler ve kullanıcı hesaplarının salt okunur denetimi. Panel hiçbir düzeltmeyi kendiliğinden uygulamaz.",
         _ when activePluginTab is not null => activePluginTab.Lead,
         _ => "Sunucunun bağlantı bilgileri, donanımı ve son izleme verileri."
     };
-    var disabledTabs = new[] { "Services", "Processes", "Logs", "Network", "Storage", "Backups", "Alerts", "Activity" };
 }
 
 <div data-region="server-header" data-live-server="@server.Id" data-hub-url="@Url.Content("~" + MonitoringHub.Path)">
@@ -130,13 +149,28 @@
         {
             <a asp-controller="ServerSecurity" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.SecurityTab ? "is-active" : "")" title="Güvenlik taraması ve bulgular">Security</a>
         }
+        @if (canViewSystem)
+        {
+            foreach (var tab in systemTabs)
+            {
+                <a asp-controller="ServerSystem" asp-action="@tab.Action" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == tab.Key ? "is-active" : "")" title="@tab.Tooltip">@tab.Title</a>
+            }
+        }
+        @if (canViewBackups)
+        {
+            <a asp-controller="ServerBackups" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.BackupsTab ? "is-active" : "")" title="Bu sunucunun yedekleme işleri ve geçmişi">Backups</a>
+        }
+        @if (canViewAlerts)
+        {
+            <a asp-controller="ServerAlerts" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.AlertsTab ? "is-active" : "")" title="Bu sunucuya ait alarmlar">Alerts</a>
+        }
+        @if (canViewActivity)
+        {
+            <a asp-controller="ServerActivity" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.ActivityTab ? "is-active" : "")" title="Bu sunucudaki işlemlerin audit kayıtları">Activity</a>
+        }
         @foreach (var tab in pluginTabs)
         {
             <a href="@Url.Action(tab.Action, tab.Controller, new { id = server.Id })" class="tab @(Model.ActiveTab == tab.Key ? "is-active" : "")" title="@tab.Tooltip">@tab.Title</a>
-        }
-        @foreach (var tab in disabledTabs)
-        {
-            <span class="tab is-disabled" title="Sonraki fazda etkinleşecek">@tab</span>
         }
     </nav>
     <p class="tab-lead">@tabLead</p>

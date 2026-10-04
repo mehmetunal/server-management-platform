@@ -13,6 +13,14 @@ public sealed class ServerPageViewModel
     public const string FilesTab = "files";
     public const string DeploymentsTab = "deployments";
     public const string SecurityTab = "security";
+    public const string ServicesTab = "services";
+    public const string ProcessesTab = "processes";
+    public const string LogsTab = "logs";
+    public const string NetworkTab = "network";
+    public const string StorageTab = "storage";
+    public const string BackupsTab = "backups";
+    public const string AlertsTab = "alerts";
+    public const string ActivityTab = "activity";
 
     /// <summary>Çekirdek sekme sabitlerinden biri ya da bir eklentinin <see cref="ServerTab.Key"/> değeri.</summary>
     public string ActiveTab { get; init; } = OverviewTab;

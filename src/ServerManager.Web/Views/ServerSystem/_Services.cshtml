@@ -1,0 +1,100 @@
+@model ServerServicesPanelModel
+@{
+    var list = Model.Services;
+    var canManage = User.HasPermission(Permissions.SystemManage) && list.Manager != ServiceManagerKind.None;
+    var running = list.Units.Count(u => u.IsRunning);
+    var failed = list.Units.Count(u => u.IsFailed);
+}
+
+@if (list.Manager == ServiceManagerKind.None)
+{
+    <section class="panel">
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("cog", "h-6 w-6")</span>
+            <p class="font-medium text-slate-700 dark:text-slate-200">Servis yöneticisi bulunamadı</p>
+            <p class="max-w-xl">Sunucuda çalışan systemd veya OpenRC yok (ör. container içinde çalışan bir sistem). Servisler Processes sekmesinden izlenebilir.</p>
+        </div>
+    </section>
+}
+else
+{
+    <section class="panel">
+        <div class="panel-header">
+            <div>
+                <h2 class="panel-title">@list.Units.Count servis</h2>
+                <p class="text-xs text-slate-500">@ServerSystemDisplay.ManagerText(list.Manager) · @running çalışıyor@(failed > 0 ? $" · {failed} hatalı" : "")</p>
+            </div>
+            <div class="system-panel-filters">
+                <input type="search" class="form-control" placeholder="Servis ara" aria-label="Servis ara" data-table-search />
+                <select class="form-control" aria-label="Durum" data-table-state>
+                    <option value="">Tüm durumlar</option>
+                    <option value="running">Çalışanlar</option>
+                    <option value="failed">Hatalılar</option>
+                    <option value="stopped">Durmuşlar</option>
+                </select>
+            </div>
+        </div>
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Servis</th>
+                        <th>Durum</th>
+                        <th class="hidden md:table-cell">Açılışta</th>
+                        <th class="hidden lg:table-cell">Açıklama</th>
+                        @if (canManage)
+                        {
+                            <th class="text-right">İşlemler</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var unit in list.Units)
+                    {
+                        var state = unit.IsFailed ? "failed" : unit.IsRunning ? "running" : "stopped";
+                        <tr data-row data-search="@($"{unit.Name} {unit.Description}".ToLowerInvariant())" data-state="@state">
+                            <td class="font-mono text-sm">@unit.Name</td>
+                            <td><span class="@ServerSystemDisplay.ServiceBadge(unit)">@ServerSystemDisplay.ServiceStateText(unit)</span></td>
+                            <td class="hidden text-sm md:table-cell">@ServerSystemDisplay.EnabledText(unit.Enabled)</td>
+                            <td class="hidden max-w-md truncate text-sm text-slate-500 lg:table-cell" title="@unit.Description">@(unit.Description ?? "—")</td>
+                            @if (canManage)
+                            {
+                                <td class="whitespace-nowrap text-right">
+                                    @if (!unit.IsRunning)
+                                    {
+                                        <button type="button" class="btn-ghost btn-sm px-2" title="Servisi başlat"
+                                                data-ajax-action data-url="@Url.Action("ControlService", new { id = Model.ServerId })"
+                                                data-field-manager="@((int)list.Manager)" data-field-name="@unit.Name" data-field-action="@((int)ServiceAction.Start)">
+                                            @Icons.Render("play", "h-4 w-4")
+                                        </button>
+                                    }
+                                    <button type="button" class="btn-ghost btn-sm px-2" title="Servisi yeniden başlat"
+                                            data-ajax-action data-url="@Url.Action("ControlService", new { id = Model.ServerId })"
+                                            data-field-manager="@((int)list.Manager)" data-field-name="@unit.Name" data-field-action="@((int)ServiceAction.Restart)"
+                                            data-confirm-title="Servis yeniden başlatılsın mı?"
+                                            data-confirm-message="@unit.Name yeniden başlatılır; servis kısa süre yanıt vermeyebilir."
+                                            data-confirm-label="Yeniden başlat" data-confirm-tone="neutral">
+                                        @Icons.Render("refresh", "h-4 w-4")
+                                    </button>
+                                    @if (unit.IsRunning)
+                                    {
+                                        <button type="button" class="btn-ghost-danger btn-sm px-2" title="Servisi durdur"
+                                                data-ajax-action data-url="@Url.Action("ControlService", new { id = Model.ServerId })"
+                                                data-field-manager="@((int)list.Manager)" data-field-name="@unit.Name" data-field-action="@((int)ServiceAction.Stop)"
+                                                data-confirm-title="Servis durdurulsun mu?"
+                                                data-confirm-message="@unit.Name durdurulur. SSH (sshd) veya ağ servisini durdurmak sunucuya erişimi kesebilir."
+                                                data-confirm-name="@unit.Name"
+                                                data-confirm-label="Durdur">
+                                            @Icons.Render("stop", "h-4 w-4")
+                                        </button>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="panel-note" data-table-empty hidden>Filtreye uyan servis yok.</p>
+    </section>
+}

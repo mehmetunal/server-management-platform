@@ -1,0 +1,29 @@
+@model ServerBackupsViewModel
+@{
+    var server = Model.Page.Server;
+    ViewData["Title"] = $"{server.Name} · Backups";
+    ViewData["Page"] = "server-backups";
+}
+
+<partial name="_ServerHeader" model="Model.Page" />
+
+<div class="server-tab-header">
+    <h2 class="panel-title">Yedekleme işleri</h2>
+    @if (User.HasPermission(Permissions.BackupManage))
+    {
+        <a asp-controller="BackupJobs" asp-action="Create" asp-route-serverId="@server.Id" class="btn-primary btn-sm" title="Bu sunucu için yeni yedekleme işi tanımla">@Icons.Render("plus", "h-4 w-4") Yeni iş</a>
+    }
+</div>
+<div class="mb-6" data-job-list data-url="@Url.Action("Jobs", new { id = server.Id })">
+    <partial name="~/Views/BackupJobs/_JobList.cshtml" model="Model.Jobs" />
+</div>
+
+<div class="server-tab-header">
+    <h2 class="panel-title">Yedek geçmişi</h2>
+    <a asp-controller="BackupRuns" asp-action="Index" asp-route-serverId="@server.Id" class="btn-ghost btn-sm" title="Tüm geçmişi filtrelerle aç">Tümü</a>
+</div>
+<section class="panel">
+    <div data-ajax-list data-url="@Url.Action("Runs", new { id = server.Id })">
+        <partial name="~/Views/BackupRuns/_RunList.cshtml" model="Model.Runs" />
+    </div>
+</section>

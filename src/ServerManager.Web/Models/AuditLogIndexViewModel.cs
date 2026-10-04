@@ -28,6 +28,7 @@ public sealed class AuditLogIndexViewModel
             ["user"] = Filter.User,
             ["ip"] = Filter.Ip,
             ["entityType"] = Filter.EntityType,
+            ["entityId"] = Filter.EntityId,
             ["from"] = Filter.From?.ToString("yyyy-MM-dd"),
             ["to"] = Filter.To?.ToString("yyyy-MM-dd")
         }

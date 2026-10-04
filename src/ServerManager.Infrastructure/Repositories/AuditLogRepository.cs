@@ -152,6 +152,9 @@ public class AuditLogRepository : Repository<AuditLog>, IAuditLogRepository
         if (!string.IsNullOrWhiteSpace(filter.EntityType))
             query = query.Where(a => a.EntityType == filter.EntityType);
 
+        if (!string.IsNullOrWhiteSpace(filter.EntityId))
+            query = query.Where(a => a.EntityId == filter.EntityId);
+
         if (filter.From.HasValue)
         {
             var from = AppTimeZone.ToUtc(filter.From.Value.Date);

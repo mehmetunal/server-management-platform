@@ -1,0 +1,34 @@
+@model ServerActivityViewModel
+@inject AuditActionCatalog AuditCatalog
+@{
+    var server = Model.Page.Server;
+    var filter = Model.List.Filter;
+    ViewData["Title"] = $"{server.Name} · Activity";
+    ViewData["Page"] = "server-activity";
+}
+
+<partial name="_ServerHeader" model="Model.Page" />
+
+<section class="panel">
+    <form method="get" asp-action="Index" asp-route-id="@server.Id" class="panel-toolbar server-tab-filters" data-list-filter>
+        <div class="search-field lg:col-span-2">
+            <span class="search-field-icon">@Icons.Render("search", "h-4 w-4")</span>
+            <input type="search" name="search" value="@filter.Search" class="form-control" placeholder="Kullanıcı, IP veya detay ara…" data-live-search aria-label="Kayıt ara" />
+        </div>
+        <select name="@AuditLogIndexViewModel.ActionQueryKey" class="form-control" aria-label="İşlem" data-auto-submit asp-items="AuditDisplay.ActionOptions(AuditCatalog, filter.Action)">
+            <option value="">Tüm işlemler</option>
+        </select>
+        <select name="isSuccess" class="form-control" aria-label="Sonuç" data-auto-submit>
+            <option value="">Tüm sonuçlar</option>
+            <option value="true" selected="@(filter.IsSuccess == true)">Başarılı</option>
+            <option value="false" selected="@(filter.IsSuccess == false)">Başarısız</option>
+        </select>
+        <div class="server-tab-filter-actions">
+            <a asp-action="Index" asp-route-id="@server.Id" class="btn-ghost btn-sm" data-list-link title="Tüm filtreleri kaldır">Temizle</a>
+        </div>
+    </form>
+
+    <div data-ajax-list>
+        <partial name="~/Views/AuditLogs/_AuditLogList.cshtml" model="Model.List" />
+    </div>
+</section>

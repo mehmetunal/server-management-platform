@@ -1,0 +1,44 @@
+@model ServerLogsPanelModel
+@{
+    var snapshot = Model.Snapshot;
+}
+
+<section class="panel" data-log-panel data-has-journal="@(snapshot.HasJournal ? "true" : "false")" data-source="@((int)snapshot.Source)">
+    <template data-log-files>
+        @foreach (var file in snapshot.Files)
+        {
+            <option value="@file">@file</option>
+        }
+    </template>
+    <div class="panel-header">
+        <div>
+            <h2 class="panel-title font-mono">@snapshot.SourceLabel</h2>
+            <p class="text-xs text-slate-500">
+                @snapshot.Lines.Count satır
+                @if (!string.IsNullOrWhiteSpace(Model.Request.Filter))
+                {
+                    <span>· "@Model.Request.Filter" içerenler</span>
+                }
+            </p>
+        </div>
+        @if (snapshot.Lines.Count > 0)
+        {
+            <button type="button" class="btn-ghost btn-sm" title="Gösterilen satırları panoya kopyala" data-log-copy>@Icons.Render("copy", "h-4 w-4") Kopyala</button>
+        }
+    </div>
+    @if (snapshot.Notice is not null)
+    {
+        <p class="alert-info mx-5 mt-4">@snapshot.Notice</p>
+    }
+    @if (snapshot.Lines.Count == 0)
+    {
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("document", "h-6 w-6")</span>
+            <p>@(snapshot.Source == LogSource.File && snapshot.SourceLabel == "Dosya seçilmedi" ? "Okunacak log dosyasını yukarıdan seçin." : "Gösterilecek satır yok.")</p>
+        </div>
+    }
+    else
+    {
+        <pre class="system-log" data-log-output>@string.Join("\n", snapshot.Lines)</pre>
+    }
+</section>

@@ -1,0 +1,89 @@
+@model StorageSnapshot
+
+<section class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">Dosya sistemleri</h2>
+        <span class="text-xs text-slate-500">Sanal dosya sistemleri (proc, sysfs, snap vb.) gizlenir</span>
+    </div>
+    @if (Model.FileSystems.Count == 0)
+    {
+        <p class="panel-body text-sm text-slate-500">Disk bilgisi okunamadı.</p>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Bağlama noktası</th>
+                        <th class="hidden md:table-cell">Aygıt</th>
+                        <th class="hidden md:table-cell">Tür</th>
+                        <th class="text-right">Boyut</th>
+                        <th class="text-right">Kullanılan</th>
+                        <th class="text-right">Boş</th>
+                        <th class="w-48">Doluluk</th>
+                        <th class="hidden text-right lg:table-cell">Inode</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var fs in Model.FileSystems)
+                    {
+                        <tr>
+                            <td class="font-mono text-sm">@fs.MountPoint</td>
+                            <td class="hidden max-w-[16rem] truncate font-mono text-xs md:table-cell" title="@fs.Device">@fs.Device</td>
+                            <td class="hidden text-sm md:table-cell">@(fs.Type ?? "—")</td>
+                            <td class="text-right tabular-nums">@ServerSystemDisplay.Kilobytes(fs.SizeKilobytes)</td>
+                            <td class="text-right tabular-nums">@ServerSystemDisplay.Kilobytes(fs.UsedKilobytes)</td>
+                            <td class="text-right tabular-nums">@ServerSystemDisplay.Kilobytes(fs.AvailableKilobytes)</td>
+                            <td>
+                                <div class="system-usage">
+                                    <div class="usage-track h-1.5 flex-1"><div class="usage-bar @MetricDisplay.UsageBarClass(fs.UsePercent, ServerSystemDisplay.DiskWarningPercent, ServerSystemDisplay.DiskCriticalPercent)" style="width: @MetricDisplay.BarWidth(fs.UsePercent)"></div></div>
+                                    <span class="system-usage-value">%@fs.UsePercent</span>
+                                </div>
+                            </td>
+                            <td class="hidden text-right text-sm tabular-nums lg:table-cell">@(fs.InodeUsePercent is null ? "—" : $"%{fs.InodeUsePercent}")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+<section class="panel mt-6">
+    <div class="panel-header"><h2 class="panel-title">Diskler ve bölümler</h2></div>
+    @if (!Model.BlockDevicesAvailable)
+    {
+        <p class="panel-body text-sm text-slate-500">lsblk bulunamadı (container veya BusyBox sistemlerinde olağandır).</p>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Ad</th>
+                        <th>Tür</th>
+                        <th class="text-right">Boyut</th>
+                        <th>Dosya sistemi</th>
+                        <th>Bağlama noktası</th>
+                        <th class="hidden md:table-cell">Model</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var device in Model.BlockDevices)
+                    {
+                        <tr>
+                            <td class="font-mono text-sm">@device.Name</td>
+                            <td class="text-sm">@device.Type</td>
+                            <td class="text-right tabular-nums">@(device.SizeBytes is null ? "—" : MetricDisplay.Bytes(device.SizeBytes.Value))</td>
+                            <td class="text-sm">@(device.FileSystem ?? "—")</td>
+                            <td class="font-mono text-xs">@(device.MountPoint ?? "—")</td>
+                            <td class="hidden text-sm md:table-cell">@(device.Model ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

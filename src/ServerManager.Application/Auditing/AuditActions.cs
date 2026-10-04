@@ -101,6 +101,9 @@ public static class AuditActions
     public const string AuditExport = "audit.export";
     public const string AuditVerify = "audit.verify";
 
+    public const string SystemServiceControl = "system.service_control";
+    public const string SystemProcessSignal = "system.process_signal";
+
     public static readonly IReadOnlyDictionary<string, string> DisplayNames = new Dictionary<string, string>
     {
         [Login] = "Giriş",
@@ -190,6 +193,8 @@ public static class AuditActions
         [UserTwoFactorReset] = "Kullanıcının iki adımlı doğrulaması sıfırlandı",
         [SecurityScan] = "Güvenlik taraması",
         [AuditExport] = "Audit log dışa aktarma",
-        [AuditVerify] = "Audit log bütünlük doğrulaması"
+        [AuditVerify] = "Audit log bütünlük doğrulaması",
+        [SystemServiceControl] = "Sunucu servisi başlatma / durdurma / yeniden başlatma",
+        [SystemProcessSignal] = "Process sonlandırma"
     };
 }

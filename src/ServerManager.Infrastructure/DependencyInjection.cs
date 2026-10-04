@@ -23,6 +23,7 @@ using ServerManager.Application.Interfaces.Repositories;
 using ServerManager.Application.Monitoring;
 using ServerManager.Application.Security;
 using ServerManager.Application.Interfaces.Security;
+using ServerManager.Application.Interfaces.ServerSystem;
 using ServerManager.Application.Interfaces.Services;
 using ServerManager.Application.Interfaces.Ssh;
 using ServerManager.Application.Validators.Users;
@@ -35,6 +36,7 @@ using ServerManager.Infrastructure.Persistence;
 using ServerManager.Infrastructure.Plugins;
 using ServerManager.Infrastructure.Repositories;
 using ServerManager.Infrastructure.Security;
+using ServerManager.Infrastructure.ServerSystem;
 using ServerManager.Infrastructure.Ssh;
 
 namespace ServerManager.Infrastructure;
@@ -106,6 +108,7 @@ public static class DependencyInjection
         services.AddSingleton<IBackupSourceRunner, SshBackupSourceRunner>();
         services.AddSingleton<IBackupStorageProvider, LocalBackupStorageProvider>();
         services.AddSingleton<ISecurityScanner, SshSecurityScanner>();
+        services.AddSingleton<IServerSystemInspector, SshServerSystemInspector>();
         services.AddSingleton<IPluginMigrator>(provider =>
             new FluentPluginMigrator(connectionString, provider.GetRequiredService<ILoggerFactory>()));
 

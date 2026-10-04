@@ -13,4 +13,5 @@ public static class RateLimitPolicies
     public const string BackupAction = "backup-action";
     public const string SecurityScan = "security-scan";
     public const string AuditAction = "audit-action";
+    public const string SystemAction = "system-action";
 }

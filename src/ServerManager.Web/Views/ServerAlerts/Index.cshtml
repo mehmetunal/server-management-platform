@@ -1,0 +1,43 @@
+@model ServerAlertsViewModel
+@{
+    var server = Model.Page.Server;
+    var filter = Model.List.Filter;
+    ViewData["Title"] = $"{server.Name} · Alerts";
+    ViewData["Page"] = "server-alerts";
+}
+
+<partial name="_ServerHeader" model="Model.Page" />
+
+<section class="panel">
+    <form method="get" asp-action="Index" asp-route-id="@server.Id" class="panel-toolbar server-tab-filters" data-list-filter>
+        <div class="search-field lg:col-span-2">
+            <span class="search-field-icon">@Icons.Render("search", "h-4 w-4")</span>
+            <input type="search" name="search" value="@filter.Search" class="form-control" placeholder="Kural, hedef veya mesaj ara…" data-live-search aria-label="Alarm ara" />
+        </div>
+        <select name="status" class="form-control" data-auto-submit aria-label="Durum">
+            <option value="">Tüm durumlar</option>
+            @foreach (var option in AlertingDisplay.EventStatusOptions(filter.Status))
+            {
+                <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+            }
+        </select>
+        <select name="severity" class="form-control" data-auto-submit aria-label="Önem">
+            <option value="">Tüm önem dereceleri</option>
+            @foreach (var option in AlertingDisplay.SeverityOptions(filter.Severity))
+            {
+                <option value="@option.Value" selected="@option.Selected">@option.Text</option>
+            }
+        </select>
+        <div class="server-tab-filter-actions">
+            <a asp-action="Index" asp-route-id="@server.Id" class="btn-ghost btn-sm" data-list-link title="Tüm filtreleri kaldır">Temizle</a>
+            @if (User.HasPermission(Permissions.AlertManage))
+            {
+                <a asp-controller="AlertRules" asp-action="Index" class="btn-ghost btn-sm" title="Alarm kurallarını yönet">Kurallar</a>
+            }
+        </div>
+    </form>
+
+    <div data-ajax-list data-auto-refresh="30">
+        <partial name="~/Views/Alerts/_AlertList.cshtml" model="Model.List" />
+    </div>
+</section>

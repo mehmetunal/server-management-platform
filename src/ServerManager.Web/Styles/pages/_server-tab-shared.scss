@@ -1,0 +1,11 @@
+.server-tab-header {
+  @apply mb-3 flex items-center justify-between gap-3;
+}
+
+.server-tab-filters {
+  @apply lg:grid-cols-5;
+}
+
+.server-tab-filter-actions {
+  @apply flex items-center gap-2 whitespace-nowrap;
+}

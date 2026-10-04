@@ -45,6 +45,7 @@ public static class DependencyInjection
         services.AddScoped<IBackupJobService, BackupJobService>();
         services.AddScoped<IBackupRunService, BackupRunService>();
         services.AddScoped<ISecurityService, SecurityService>();
+        services.AddScoped<IServerSystemService, ServerSystemService>();
         services.AddSingleton<AuditActionCatalog>();
         services.AddSingleton<DangerousCommandDetector>();
         services.AddSingleton<TerminalCommandQueue>();

@@ -1,0 +1,121 @@
+@model NetworkSnapshot
+
+<div class="system-grid">
+    <section class="panel">
+        <div class="panel-header">
+            <h2 class="panel-title">Ağ arayüzleri</h2>
+            @if (Model.Hostname is not null)
+            {
+                <span class="text-xs text-slate-500">Hostname: <span class="font-mono">@Model.Hostname</span></span>
+            }
+        </div>
+        @if (Model.Interfaces.Count == 0)
+        {
+            <p class="panel-body text-sm text-slate-500">Arayüz bilgisi okunamadı (ip komutu yok).</p>
+        }
+        else
+        {
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Arayüz</th>
+                            <th>Durum</th>
+                            <th>Adresler</th>
+                            <th class="hidden md:table-cell">MAC</th>
+                            <th class="text-right">Alınan</th>
+                            <th class="text-right">Gönderilen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Interfaces)
+                        {
+                            <tr>
+                                <td class="font-mono text-sm">@item.Name@(item.Mtu is null ? "" : "")</td>
+                                <td><span class="@ServerSystemDisplay.InterfaceBadge(item.State)">@(item.State ?? "—")</span></td>
+                                <td class="font-mono text-xs">
+                                    @if (item.Addresses.Count == 0)
+                                    {
+                                        <span class="text-slate-400">—</span>
+                                    }
+                                    @foreach (var address in item.Addresses)
+                                    {
+                                        <span class="block">@address</span>
+                                    }
+                                </td>
+                                <td class="hidden font-mono text-xs md:table-cell">@(item.MacAddress ?? "—")</td>
+                                <td class="text-right tabular-nums">@(item.ReceivedBytes is null ? "—" : MetricDisplay.Bytes(item.ReceivedBytes.Value))</td>
+                                <td class="text-right tabular-nums">@(item.TransmittedBytes is null ? "—" : MetricDisplay.Bytes(item.TransmittedBytes.Value))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="panel-note">Alınan / gönderilen değerler sunucu açıldığından beri toplam trafiktir.</p>
+        }
+    </section>
+
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Yönlendirme ve DNS</h2></div>
+        <div class="panel-body space-y-4">
+            <div>
+                <p class="detail-term">Yönlendirme tablosu</p>
+                @if (Model.Routes.Count == 0)
+                {
+                    <p class="text-sm text-slate-500">Okunamadı.</p>
+                }
+                else
+                {
+                    <pre class="system-log system-log-compact">@string.Join("\n", Model.Routes)</pre>
+                }
+            </div>
+            <div>
+                <p class="detail-term">DNS sunucuları</p>
+                <p class="font-mono text-sm">@(Model.DnsServers.Count == 0 ? "—" : string.Join(", ", Model.DnsServers))</p>
+            </div>
+        </div>
+    </section>
+</div>
+
+<section class="panel mt-6">
+    <div class="panel-header">
+        <h2 class="panel-title">Dinleyen portlar</h2>
+        <span class="text-xs text-slate-500">Güvenlik değerlendirmesi için Security sekmesine bakın</span>
+    </div>
+    @if (!Model.PortsAvailable)
+    {
+        <p class="panel-body text-sm text-slate-500">ss veya netstat bulunamadı.</p>
+    }
+    else if (Model.Ports.Count == 0)
+    {
+        <p class="panel-body text-sm text-slate-500">Dinleyen port yok.</p>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th class="text-right">Port</th>
+                        <th>Protokol</th>
+                        <th>Adres</th>
+                        <th>Erişim</th>
+                        <th>Servis / process</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var port in Model.Ports)
+                    {
+                        <tr>
+                            <td class="text-right font-mono tabular-nums">@port.Port</td>
+                            <td class="text-sm uppercase">@port.Protocol</td>
+                            <td class="font-mono text-xs">@port.Address</td>
+                            <td class="text-sm">@SecurityDisplay.ExposureText(port.Exposure)</td>
+                            <td class="text-sm">@PortCatalog.ServiceName(port.Port, port.Process)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

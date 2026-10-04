@@ -54,6 +54,9 @@ public static class Permissions
     public const string SecurityView = "security.view";
     public const string SecurityScan = "security.scan";
 
+    public const string SystemView = "system.view";
+    public const string SystemManage = "system.manage";
+
     public static readonly IReadOnlyList<string> All =
     [
         DashboardView,
@@ -93,7 +96,9 @@ public static class Permissions
         AuditView,
         AuditExport,
         SecurityView,
-        SecurityScan
+        SecurityScan,
+        SystemView,
+        SystemManage
     ];
 
     public static readonly IReadOnlyDictionary<string, string> DisplayNames = new Dictionary<string, string>
@@ -135,6 +140,8 @@ public static class Permissions
         [AuditView] = "Audit log görüntüleme",
         [AuditExport] = "Audit log'u CSV olarak dışa aktarma ve bütünlüğünü doğrulama",
         [SecurityView] = "Güvenlik merkezi ve sunucu güvenlik taramalarını görüntüleme",
-        [SecurityScan] = "Sunucuda güvenlik taraması başlatma (yalnızca okuma yapar)"
+        [SecurityScan] = "Sunucuda güvenlik taraması başlatma (yalnızca okuma yapar)",
+        [SystemView] = "Sunucu servisleri, process'ler, loglar, ağ ve disk bilgisini görüntüleme",
+        [SystemManage] = "Sunucu servisini başlatma, durdurma, yeniden başlatma ve process sonlandırma"
     };
 }

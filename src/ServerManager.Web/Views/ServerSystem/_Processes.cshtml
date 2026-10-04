@@ -1,0 +1,86 @@
+@model ServerProcessesPanelModel
+@{
+    var list = Model.Processes;
+    var canManage = User.HasPermission(Permissions.SystemManage);
+}
+
+<section class="panel">
+    <div class="panel-header">
+        <div>
+            <h2 class="panel-title">@list.TotalCount process</h2>
+            <p class="text-xs text-slate-500">
+                @(list.HasCpuUsage ? "CPU kullanımına göre sıralı" : "Bellek kullanımına göre sıralı (BusyBox ps CPU yüzdesi vermez)")
+                @if (list.TotalCount > list.Processes.Count)
+                {
+                    <span>· ilk @list.Processes.Count gösteriliyor</span>
+                }
+            </p>
+        </div>
+        <div class="system-panel-filters">
+            <input type="search" class="form-control" placeholder="Komut, kullanıcı veya PID ara" aria-label="Process ara" data-table-search />
+        </div>
+    </div>
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th class="text-right">PID</th>
+                    <th>Kullanıcı</th>
+                    @if (list.HasCpuUsage)
+                    {
+                        <th class="text-right">CPU</th>
+                        <th class="text-right">RAM</th>
+                    }
+                    <th class="text-right">Bellek</th>
+                    @if (list.HasCpuUsage)
+                    {
+                        <th class="hidden text-right md:table-cell">Süre</th>
+                    }
+                    <th>Komut</th>
+                    @if (canManage)
+                    {
+                        <th class="text-right">İşlemler</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var process in list.Processes)
+                {
+                    <tr data-row data-search="@($"{process.Pid} {process.User} {process.Command}".ToLowerInvariant())">
+                        <td class="text-right font-mono text-xs tabular-nums">@process.Pid</td>
+                        <td class="text-sm">@process.User</td>
+                        @if (list.HasCpuUsage)
+                        {
+                            <td class="text-right tabular-nums">@ServerSystemDisplay.Percent(process.CpuPercent)</td>
+                            <td class="text-right tabular-nums">@ServerSystemDisplay.Percent(process.MemoryPercent)</td>
+                        }
+                        <td class="text-right tabular-nums">@ServerSystemDisplay.Kilobytes(process.ResidentKilobytes)</td>
+                        @if (list.HasCpuUsage)
+                        {
+                            <td class="hidden text-right text-sm tabular-nums md:table-cell">@MetricDisplay.Uptime(process.ElapsedSeconds)</td>
+                        }
+                        <td class="system-command" title="@process.Command"><span class="font-medium">@process.Name</span> <span class="text-slate-500">@process.Command</span></td>
+                        @if (canManage)
+                        {
+                            <td class="whitespace-nowrap text-right">
+                                @if (process.Pid > 1)
+                                {
+                                    <button type="button" class="btn-ghost-danger btn-sm px-2" title="Process'i sonlandır (SIGTERM; seçenekle SIGKILL)"
+                                            data-ajax-action data-url="@Url.Action("SignalProcess", new { id = Model.ServerId })"
+                                            data-field-pid="@process.Pid" data-field-name="@process.Name" data-field-signal="@((int)ProcessSignal.Terminate)"
+                                            data-confirm-title="Process sonlandırılsın mı?"
+                                            data-confirm-message="@process.Name (PID @process.Pid, kullanıcı @process.User) sonlandırılır. Kaydedilmemiş veriler kaybolabilir."
+                                            data-confirm-check="Zorla sonlandır (SIGKILL)" data-check-field="kill"
+                                            data-confirm-label="Sonlandır">
+                                        @Icons.Render("x", "h-4 w-4")
+                                    </button>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="panel-note" data-table-empty hidden>Aramaya uyan process yok.</p>
+</section>
