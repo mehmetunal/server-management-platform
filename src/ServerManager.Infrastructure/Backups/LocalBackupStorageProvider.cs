@@ -79,19 +79,38 @@ public sealed partial class LocalBackupStorageProvider : IBackupStorageProvider
             return ServiceResult.Failure("Yedek dosyası yolu geçersiz.");
 
         var partial = path + PartialExtension;
+        var contentFailed = false;
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             await using (var file = new FileStream(partial, FileMode.CreateNew, FileAccess.Write, FileShare.None, CopyBufferSize, useAsync: true))
             {
-                await content.CopyToAsync(file, CopyBufferSize, cancellationToken);
+                var buffer = new byte[CopyBufferSize];
+                while (true)
+                {
+                    int read;
+                    try
+                    {
+                        read = await content.ReadAsync(buffer, cancellationToken);
+                    }
+                    catch
+                    {
+                        contentFailed = true;
+                        throw;
+                    }
+
+                    if (read == 0)
+                        break;
+                    await file.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                }
+
                 await file.FlushAsync(cancellationToken);
             }
 
             File.Move(partial, path);
             return ServiceResult.Success();
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException && !cancellationToken.IsCancellationRequested)
+        catch (Exception ex) when (!contentFailed && ex is IOException or UnauthorizedAccessException && !cancellationToken.IsCancellationRequested)
         {
             TryDelete(partial);
             return ServiceResult.Failure($"Yedek dosyası yazılamadı: {ex.Message}");

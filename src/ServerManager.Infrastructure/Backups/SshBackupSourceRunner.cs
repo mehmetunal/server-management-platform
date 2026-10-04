@@ -9,6 +9,8 @@ namespace ServerManager.Infrastructure.Backups;
 
 public sealed class SshBackupSourceRunner : IBackupSourceRunner
 {
+    private static readonly TimeSpan PrecheckTimeout = TimeSpan.FromMinutes(1);
+
     private readonly IRemoteCommandRunner _runner;
 
     public SshBackupSourceRunner(IRemoteCommandRunner runner)
@@ -24,6 +26,17 @@ public sealed class SshBackupSourceRunner : IBackupSourceRunner
         CancellationToken cancellationToken = default) =>
         RunAsync(connection, async (executor, ct) =>
         {
+            if (BackupCommands.Precheck(source) is { } precheck)
+            {
+                var checkOutput = await executor.ExecuteAsync(new RemoteCommand(precheck, PrecheckTimeout, Elevate: true), ct);
+                if (!checkOutput.IsSuccess)
+                {
+                    return Contains(checkOutput.Stderr, "no such volume")
+                        ? ServiceResult.Failure($"Volume bulunamadı: {source.VolumeName}")
+                        : ServiceResult.Failure(BackupErrorTranslator.Translate(checkOutput, "Yedekleme"));
+                }
+            }
+
             var command = new RemoteCommand(
                 BackupCommands.Export(source),
                 timeout,
@@ -58,6 +71,9 @@ public sealed class SshBackupSourceRunner : IBackupSourceRunner
                 ? ServiceResult.Success()
                 : ServiceResult.Failure(BackupErrorTranslator.Translate(output, "Geri yükleme"));
         }, cancellationToken);
+
+    private static bool Contains(string? text, string value) =>
+        text?.Contains(value, StringComparison.OrdinalIgnoreCase) == true;
 
     private async Task<ServiceResult> RunAsync(
         ServerConnection connection,

@@ -24,6 +24,8 @@ public static class BackupErrorTranslator
             return "sudo parola istiyor; sunucu ayarlarında sudo parolasını girin.";
         if (Contains(stderr, "incorrect password attempt") || Contains(stderr, "Sorry, try again"))
             return "sudo parolası hatalı.";
+        if (Contains(stderr, "is not allowed to execute"))
+            return "Sunucu kullanıcısının sudo yetkisi bu işlem için yetmiyor. Dosya yedeği ve sunucuda kurulu veritabanı istemcisi için tam sudo (sh) gerekir; volume ve container veritabanı yedekleri yalnızca docker yetkisiyle çalışır.";
         if (Contains(stderr, "docker.sock") && Contains(stderr, "permission denied"))
             return "Docker'a erişim izni yok; sunucu ayarlarında sudo kullanımını açın.";
         if (Contains(stderr, "No such container"))
@@ -40,8 +42,8 @@ public static class BackupErrorTranslator
             return "Sunucuda disk alanı kalmadı.";
         if (Contains(stderr, "docker: not found") || Contains(stderr, "docker: command not found"))
             return "Sunucuda Docker kurulu değil.";
-        if (Contains(stderr, "unrecognized option") && Contains(stderr, "warning"))
-            return "Sunucudaki tar GNU tar değil; GNU tar kurulu olmalıdır.";
+        if (Contains(stderr, "Unable to find image") && (Contains(stderr, "pull access denied") || Contains(stderr, "Error response from daemon")))
+            return $"Volume yardımcı imajı ({BackupCommands.VolumeHelperImage}) indirilemedi; sunucunun Docker Hub erişimi olmalıdır.";
         if (Contains(stderr, "not in gzip format") || Contains(stderr, "unexpected end of file"))
             return "Yedek dosyası açılamadı (gzip verisi bozuk veya eksik).";
 

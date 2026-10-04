@@ -36,13 +36,19 @@ public class BackupCommandsTests
         Assert.Contains("read -r SM_DB_PASSWORD", import);
     }
 
-    [Fact]
-    public void Container_password_is_passed_by_name_without_value()
+    [Theory]
+    [InlineData(BackupDatabaseEngine.PostgreSql, "PGPASSWORD")]
+    [InlineData(BackupDatabaseEngine.MySql, "MYSQL_PWD")]
+    public void Container_database_commands_are_a_single_docker_exec(BackupDatabaseEngine engine, string variable)
     {
-        var export = BackupCommands.Export(Database(BackupDatabaseEngine.PostgreSql));
+        var export = BackupCommands.Export(Database(engine));
+        var import = BackupCommands.Import(Database(engine));
 
-        Assert.Contains("docker exec -e PGPASSWORD ", export);
-        Assert.DoesNotContain("-e PGPASSWORD=", export);
+        Assert.StartsWith("docker exec -i 'app-db' sh -c ", export);
+        Assert.StartsWith("docker exec -i 'app-db' sh -c ", import);
+        Assert.Contains($"export {variable}=", export);
+        Assert.DoesNotContain("-e " + variable, export);
+        Assert.Null(BackupCommands.Precheck(Database(engine)));
     }
 
     [Fact]
@@ -54,6 +60,7 @@ public class BackupCommandsTests
         Assert.Contains("--clean --if-exists --no-owner --no-privileges", export);
         Assert.Contains("| gzip -c", export);
         Assert.DoesNotContain("docker exec", export);
+        Assert.StartsWith("sh -c '", export);
     }
 
     [Fact]
@@ -85,13 +92,16 @@ public class BackupCommandsTests
     }
 
     [Fact]
-    public void Volume_restore_creates_missing_volume_and_never_deletes()
+    public void Volume_commands_use_a_helper_container_without_logs_or_network()
     {
-        var import = BackupCommands.Import(new BackupSourceSpec { Type = BackupSourceType.DockerVolume, VolumeName = "app_data" });
+        var spec = new BackupSourceSpec { Type = BackupSourceType.DockerVolume, VolumeName = "app_data" };
 
-        Assert.Contains("docker volume create", import);
-        Assert.Contains("tar -xzpf -", import);
-        Assert.DoesNotContain("rm ", import);
+        var export = BackupCommands.Export(spec);
+        var import = BackupCommands.Import(spec);
+
+        Assert.Equal("docker run --rm --network none --log-driver none -v 'app_data:/volume:ro' --entrypoint tar alpine:3 -czf - -C /volume .", export);
+        Assert.Equal("docker run -i --rm --network none --log-driver none -v 'app_data:/volume' --entrypoint tar alpine:3 -xzpf - -C /volume", import);
+        Assert.Equal("docker volume inspect --format '{{.Name}}' 'app_data'", BackupCommands.Precheck(spec));
     }
 
     [Fact]

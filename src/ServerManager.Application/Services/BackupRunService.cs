@@ -415,6 +415,8 @@ public class BackupRunService : IBackupRunService
             exportResult = ServiceResult.Failure(ex is BackupFormatException ? ex.Message : "Yedek akışı okunamadı.");
         }
 
+        // Yükleme dışa aktarma bitmeden durduysa asıl neden depolamadır; aksi halde sunucu tarafındaki hata gösterilir.
+        var uploadStoppedFirst = transferCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested;
         if (exportResult.IsSuccess)
             await pipe.Writer.CompleteAsync();
         else
@@ -439,7 +441,7 @@ public class BackupRunService : IBackupRunService
 
         if (!exportResult.IsSuccess)
         {
-            if (!uploadResult.IsSuccess && (exportError is OperationCanceledException || transferCts.IsCancellationRequested))
+            if (!uploadResult.IsSuccess && uploadStoppedFirst)
                 return ServiceResult.Failure(uploadResult.Message ?? "Yedek depolamaya yüklenemedi.");
 
             if (exportError is not null and not OperationCanceledException and not BackupFormatException)
@@ -547,11 +549,16 @@ public class BackupRunService : IBackupRunService
             job.LastRunStatus = run.Status;
         }
 
-        if (result.IsSuccess && job is not null && !job.IsDeleted)
-            await ApplyRetentionAsync(job, log);
-
         run.Log = log.ToString();
         await _repository.SaveChangesAsync(CancellationToken.None);
+
+        // Yeni yedek "başarılı" olarak kaydedildikten sonra çalışır; aksi halde sayılmaz ve fazladan bir eski yedek kalır.
+        if (result.IsSuccess && job is not null && !job.IsDeleted)
+        {
+            await ApplyRetentionAsync(job, log);
+            run.Log = log.ToString();
+            await _repository.SaveChangesAsync(CancellationToken.None);
+        }
 
         var size = run.SizeBytes is { } bytes ? $" | Boyut: {BackupRunLog.FormatSize(bytes)}" : string.Empty;
         await AuditAsync(AuditActions.BackupComplete, run, $"Sonuç: {message}{size}", result.IsSuccess, actor, CancellationToken.None);
