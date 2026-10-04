@@ -20,7 +20,12 @@ public static class ServerMappings
         Location = server.Location,
         Tags = server.Tags.Select(t => t.Name).OrderBy(t => t).ToList(),
         LastConnectionTestAt = server.LastConnectionTestAt,
-        LastConnectionSucceeded = server.LastConnectionSucceeded
+        LastConnectionSucceeded = server.LastConnectionSucceeded,
+        GroupId = server.GroupId,
+        GroupName = server.Group?.Name,
+        GroupColor = server.Group?.Color,
+        MonthlyCost = server.MonthlyCost,
+        CostCurrency = server.CostCurrency
     };
 
     public static ServerDetailsDto ToDetailsDto(this Server server) => new()
@@ -53,7 +58,12 @@ public static class ServerMappings
         CreatedAt = server.CreatedAt,
         CreatedBy = server.CreatedBy,
         UpdatedAt = server.UpdatedAt,
-        UpdatedBy = server.UpdatedBy
+        UpdatedBy = server.UpdatedBy,
+        GroupId = server.GroupId,
+        GroupName = server.Group?.Name,
+        GroupColor = server.Group?.Color,
+        MonthlyCost = server.MonthlyCost,
+        CostCurrency = server.CostCurrency
     };
 
     public static UpdateServerDto ToUpdateDto(this Server server) => new()
@@ -76,6 +86,9 @@ public static class ServerMappings
         HasPassword = server.Credential?.EncryptedPassword is not null,
         HasPrivateKey = server.Credential?.EncryptedPrivateKey is not null,
         HasPassphrase = server.Credential?.EncryptedPassphrase is not null,
-        HasSudoPassword = server.Credential?.EncryptedSudoPassword is not null
+        HasSudoPassword = server.Credential?.EncryptedSudoPassword is not null,
+        GroupId = server.GroupId,
+        MonthlyCost = server.MonthlyCost,
+        CostCurrency = server.CostCurrency
     };
 }

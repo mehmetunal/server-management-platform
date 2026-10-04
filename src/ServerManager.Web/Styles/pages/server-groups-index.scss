@@ -1,0 +1,27 @@
+.group-grid {
+  @apply grid gap-4 sm:grid-cols-2 xl:grid-cols-3;
+}
+
+.group-card {
+  @apply flex flex-col gap-3 p-4;
+}
+
+.group-card-head {
+  @apply flex items-center justify-between gap-2;
+}
+
+.group-card-text {
+  @apply text-sm text-slate-500 dark:text-slate-400;
+}
+
+.group-card-stats {
+  @apply grid grid-cols-3 gap-2 text-sm;
+
+  dt {
+    @apply text-xs text-slate-500;
+  }
+
+  dd {
+    @apply font-semibold text-slate-900 dark:text-white;
+  }
+}

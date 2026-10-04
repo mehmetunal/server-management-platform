@@ -8,6 +8,10 @@
     var canAlerts = User.HasPermission(Permissions.AlertView);
     var canBackups = User.HasPermission(Permissions.BackupView);
     var canSecurity = User.HasPermission(Permissions.SecurityView);
+    var canDocker = canServers && User.HasPermission(Permissions.DockerView);
+    var canTerminal = canServers && User.HasPermission(Permissions.TerminalView);
+    var canFiles = canServers && User.HasPermission(Permissions.FileView);
+    var canSystem = canServers && User.HasPermission(Permissions.SystemView);
 }
 <aside class="app-sidebar" data-sidebar>
     <div class="flex h-16 shrink-0 items-center gap-3 border-b border-slate-800 px-5">
@@ -29,15 +33,30 @@
         {
             <a asp-controller="Servers" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "Servers")" title="Sunucuları listele, ekle ve yönet">@Icons.Render("server") Sunucular</a>
         }
-        <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("squares") Gruplar <span class="nav-soon">Yakında</span></span>
+        @if (canServers)
+        {
+            <a asp-controller="ServerGroups" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "ServerGroups")" title="Sunucuları gruplara ayır ve gruba göre yönet">@Icons.Render("squares") Gruplar</a>
+        }
         <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("cloud") Sağlayıcılar <span class="nav-soon">Yakında</span></span>
 
         <partial name="_PluginMenuItems" model="MenuGroups.Infrastructure" />
         <p class="nav-group">Konteynerler</p>
-        <span class="nav-link is-disabled" title="Sunucu sayfasındaki Docker sekmesinden kullanılabilir">@Icons.Render("cube") Docker <span class="nav-soon">Yakında</span></span>
-        <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("photo") İmajlar <span class="nav-soon">Yakında</span></span>
-        <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("database") Volume'lar <span class="nav-soon">Yakında</span></span>
-        <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("globe") Ağlar <span class="nav-soon">Yakında</span></span>
+        @if (canDocker)
+        {
+            <a asp-controller="ServerPicker" asp-action="Docker" class="nav-link @NavigationHelper.ActiveActionClass(ViewContext, "ServerPicker", "Docker")" title="Sunucu seçip Docker container'larını yönet">@Icons.Render("cube") Docker</a>
+        }
+        @if (canDocker)
+        {
+            <a asp-controller="ServerPicker" asp-action="Images" class="nav-link @NavigationHelper.ActiveActionClass(ViewContext, "ServerPicker", "Images")" title="Sunucu seçip Docker imajlarını yönet">@Icons.Render("photo") İmajlar</a>
+        }
+        @if (canDocker)
+        {
+            <a asp-controller="ServerPicker" asp-action="Volumes" class="nav-link @NavigationHelper.ActiveActionClass(ViewContext, "ServerPicker", "Volumes")" title="Sunucu seçip Docker volume'larını yönet">@Icons.Render("database") Volume'lar</a>
+        }
+        @if (canDocker)
+        {
+            <a asp-controller="ServerPicker" asp-action="Networks" class="nav-link @NavigationHelper.ActiveActionClass(ViewContext, "ServerPicker", "Networks")" title="Sunucu seçip Docker ağlarını yönet">@Icons.Render("globe") Ağlar</a>
+        }
 
         <partial name="_PluginMenuItems" model="MenuGroups.Containers" />
         <p class="nav-group">Deployment</p>
@@ -49,15 +68,33 @@
 
         <partial name="_PluginMenuItems" model="MenuGroups.Deployment" />
         <p class="nav-group">Operasyon</p>
-        <span class="nav-link is-disabled" title="Sunucu sayfasındaki Terminal sekmesinden kullanılabilir">@Icons.Render("terminal") Terminal <span class="nav-soon">Yakında</span></span>
-        <span class="nav-link is-disabled" title="Sunucu sayfasındaki Files sekmesinden kullanılabilir">@Icons.Render("folder") Dosyalar <span class="nav-soon">Yakında</span></span>
-        <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("cog") Servisler <span class="nav-soon">Yakında</span></span>
-        <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("list") Process'ler <span class="nav-soon">Yakında</span></span>
-        <span class="nav-link is-disabled" title="Sonraki fazlarda eklenecek">@Icons.Render("document") Loglar <span class="nav-soon">Yakında</span></span>
+        @if (canTerminal)
+        {
+            <a asp-controller="ServerPicker" asp-action="Terminal" class="nav-link @NavigationHelper.ActiveActionClass(ViewContext, "ServerPicker", "Terminal")" title="Sunucu seçip SSH terminali aç">@Icons.Render("terminal") Terminal</a>
+        }
+        @if (canFiles)
+        {
+            <a asp-controller="ServerPicker" asp-action="Files" class="nav-link @NavigationHelper.ActiveActionClass(ViewContext, "ServerPicker", "Files")" title="Sunucu seçip dosyalara SFTP ile göz at">@Icons.Render("folder") Dosyalar</a>
+        }
+        @if (canSystem)
+        {
+            <a asp-controller="ServerPicker" asp-action="Services" class="nav-link @NavigationHelper.ActiveActionClass(ViewContext, "ServerPicker", "Services")" title="Sunucu seçip sistem servislerini yönet">@Icons.Render("cog") Servisler</a>
+        }
+        @if (canSystem)
+        {
+            <a asp-controller="ServerPicker" asp-action="Processes" class="nav-link @NavigationHelper.ActiveActionClass(ViewContext, "ServerPicker", "Processes")" title="Sunucu seçip çalışan process'leri incele">@Icons.Render("list") Process'ler</a>
+        }
+        @if (canSystem)
+        {
+            <a asp-controller="ServerPicker" asp-action="Logs" class="nav-link @NavigationHelper.ActiveActionClass(ViewContext, "ServerPicker", "Logs")" title="Sunucu seçip journal ve /var/log kayıtlarını oku">@Icons.Render("document") Loglar</a>
+        }
 
         <partial name="_PluginMenuItems" model="MenuGroups.Operations" />
         <p class="nav-group">İzleme</p>
-        <span class="nav-link is-disabled" title="Sunucu sayfasındaki Metrics sekmesinden kullanılabilir">@Icons.Render("chart") Metrikler <span class="nav-soon">Yakında</span></span>
+        @if (canServers)
+        {
+            <a asp-controller="ServerPicker" asp-action="Metrics" class="nav-link @NavigationHelper.ActiveActionClass(ViewContext, "ServerPicker", "Metrics")" title="Sunucu seçip kaynak kullanım grafiklerini gör">@Icons.Render("chart") Metrikler</a>
+        }
         @if (canAlerts)
         {
             <a asp-controller="Uptime" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "Uptime")" title="Web siteleri ve portların erişilebilirlik kontrolleri">@Icons.Render("signal") Uptime</a>

@@ -25,6 +25,8 @@ public class ServerConfiguration : IEntityTypeConfiguration<Server>
         builder.Property(s => s.DeletedBy).HasMaxLength(256);
         builder.Property(s => s.CreatedBy).HasMaxLength(256);
         builder.Property(s => s.UpdatedBy).HasMaxLength(256);
+        builder.Property(s => s.MonthlyCost).HasPrecision(12, 2);
+        builder.Property(s => s.CostCurrency).HasMaxLength(3);
 
         builder.Property(s => s.AuthenticationType).HasConversion<int>();
         builder.Property(s => s.Environment).HasConversion<int>();

@@ -18,6 +18,7 @@ public class ServerRepository : Repository<Server>, IServerRepository
         _dbSet
             .Include(s => s.Credential)
             .Include(s => s.Tags)
+            .Include(s => s.Group)
             .AsSplitQuery()
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
 
@@ -45,6 +46,9 @@ public class ServerRepository : Repository<Server>, IServerRepository
         if (filter.Environment.HasValue)
             query = query.Where(s => s.Environment == filter.Environment.Value);
 
+        if (filter.GroupId.HasValue)
+            query = query.Where(s => s.GroupId == filter.GroupId.Value);
+
         if (!string.IsNullOrWhiteSpace(filter.Tag))
         {
             var tag = filter.Tag.Trim().ToLowerInvariant();
@@ -54,6 +58,7 @@ public class ServerRepository : Repository<Server>, IServerRepository
         var totalCount = await query.CountAsync(cancellationToken);
         var items = await query
             .Include(s => s.Tags)
+            .Include(s => s.Group)
             .OrderBy(s => s.Name)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -62,6 +67,9 @@ public class ServerRepository : Repository<Server>, IServerRepository
 
         return new PagedResult<Server>(items, totalCount, page, pageSize);
     }
+
+    public Task<bool> GroupExistsAsync(Guid groupId, CancellationToken cancellationToken = default) =>
+        _context.ServerGroups.AnyAsync(g => g.Id == groupId, cancellationToken);
 
     public Task<bool> NameExistsAsync(string name, Guid? excludeId = null, CancellationToken cancellationToken = default) =>
         _dbSet.AnyAsync(s => s.Name == name && (excludeId == null || s.Id != excludeId), cancellationToken);

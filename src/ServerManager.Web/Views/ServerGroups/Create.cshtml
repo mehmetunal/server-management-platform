@@ -1,0 +1,22 @@
+@model ServerGroupFormViewModel
+@{
+    ViewData["Title"] = "Grup ekle";
+    ViewData["Page"] = "server-group-form";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Grup listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Sunucu grupları</a>
+        <h1 class="page-title">Grup ekle</h1>
+        <p class="page-lead">Grubu adlandırın ve içine alınacak sunucuları seçin.</p>
+    </div>
+</div>
+
+<form asp-action="Create" method="post" data-group-form novalidate autocomplete="off">
+    <partial name="_GroupForm" model="Model" />
+
+    <div class="form-actions">
+        <a asp-action="Index" class="btn-secondary" title="Kaydetmeden listeye dön">İptal</a>
+        <button type="submit" class="btn-primary" title="Grubu kaydet"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+    </div>
+</form>

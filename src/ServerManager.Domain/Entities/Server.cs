@@ -51,6 +51,14 @@ public class Server : BaseEntity
 
     public string? DeletedBy { get; set; }
 
+    public Guid? GroupId { get; set; }
+
+    public ServerGroup? Group { get; set; }
+
+    public decimal? MonthlyCost { get; set; }
+
+    public string? CostCurrency { get; set; }
+
     public ServerCredential? Credential { get; set; }
 
     public ICollection<ServerTag> Tags { get; set; } = new List<ServerTag>();

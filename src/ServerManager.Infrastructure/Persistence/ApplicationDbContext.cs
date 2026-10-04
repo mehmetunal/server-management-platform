@@ -21,6 +21,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     public DbSet<ServerTag> ServerTags => Set<ServerTag>();
 
+    public DbSet<ServerGroup> ServerGroups => Set<ServerGroup>();
+
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     public DbSet<ServerMetric> ServerMetrics => Set<ServerMetric>();

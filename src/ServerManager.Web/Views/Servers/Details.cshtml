@@ -22,6 +22,8 @@
                 <div><dt class="detail-term">Lokasyon</dt><dd class="detail-value">@(server.Location ?? "—")</dd></div>
                 <div><dt class="detail-term">İşletim sistemi</dt><dd class="detail-value">@(server.OperatingSystem ?? "—")</dd></div>
                 <div><dt class="detail-term">Ortam</dt><dd class="detail-value">@ServerDisplay.EnvironmentText(server.Environment)</dd></div>
+                <div><dt class="detail-term">Grup</dt><dd class="detail-value">@(server.GroupName ?? "—")</dd></div>
+                <div><dt class="detail-term">Aylık maliyet</dt><dd class="detail-value">@CostDisplay.Optional(server.MonthlyCost, server.CostCurrency)</dd></div>
                 <div class="sm:col-span-2">
                     <dt class="detail-term">Etiketler</dt>
                     <dd class="detail-value flex flex-wrap gap-1">

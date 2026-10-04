@@ -1,7 +1,7 @@
 @model ServerIndexViewModel
 @{
     var canCreate = User.HasPermission(Permissions.ServerCreate);
-    var hasFilter = !string.IsNullOrWhiteSpace(Model.Filter.Search) || Model.Filter.Status.HasValue || Model.Filter.Environment.HasValue || !string.IsNullOrWhiteSpace(Model.Filter.Tag);
+    var hasFilter = !string.IsNullOrWhiteSpace(Model.Filter.Search) || Model.Filter.Status.HasValue || Model.Filter.Environment.HasValue || !string.IsNullOrWhiteSpace(Model.Filter.Tag) || Model.Filter.GroupId.HasValue;
 }
 
 @if (Model.Servers.Items.Count == 0)
@@ -48,6 +48,10 @@ else
                         <td>
                             <a asp-action="Details" asp-route-id="@server.Id" class="server-name" title="Sunucu ayrıntılarını aç">@server.Name</a>
                             <p class="text-xs text-slate-500">@(server.OperatingSystem ?? server.Hostname)</p>
+                            @if (server.GroupName is not null)
+                            {
+                                <a asp-action="Index" asp-route-groupId="@server.GroupId" class="@ServerGroupDisplay.BadgeClass(server.GroupColor) mt-1" data-list-link title="Bu gruptaki sunucuları listele">@server.GroupName</a>
+                            }
                         </td>
                         <td class="font-mono text-xs">@server.IpAddress:@server.SshPort</td>
                         <td><span class="@ServerDisplay.EnvironmentBadgeClass(server.Environment)">@ServerDisplay.EnvironmentText(server.Environment)</span></td>

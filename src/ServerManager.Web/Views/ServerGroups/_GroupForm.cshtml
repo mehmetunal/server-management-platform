@@ -1,0 +1,66 @@
+@model ServerGroupFormViewModel
+@{
+    var form = Model.Form;
+}
+
+<p class="alert-error mb-6" data-form-error hidden></p>
+
+<div class="group-form">
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">Genel</h2></div>
+        <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div>
+                <label for="Name" class="form-label">Grup adı *</label>
+                <input id="Name" name="Name" value="@form.Name" class="form-control" maxlength="64" placeholder="Web sunucuları" />
+                <span class="field-validation-error" data-valmsg-for="Name"></span>
+            </div>
+            <div>
+                <label for="Color" class="form-label">Renk</label>
+                <select id="Color" name="Color" class="form-control">
+                    @foreach (var color in ServerGroupColors.All)
+                    {
+                        <option value="@color" selected="@(color == form.Color)">@ServerGroupDisplay.ColorName(color)</option>
+                    }
+                </select>
+                <span class="field-validation-error" data-valmsg-for="Color"></span>
+            </div>
+            <div class="sm:col-span-2">
+                <label for="Description" class="form-label">Açıklama</label>
+                <textarea id="Description" name="Description" class="form-control" rows="2" maxlength="500">@form.Description</textarea>
+                <span class="field-validation-error" data-valmsg-for="Description"></span>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-header">
+            <div>
+                <h2 class="panel-title">Sunucular</h2>
+                <p class="mt-1 text-xs text-slate-500">Bir sunucu yalnızca bir grupta olabilir; başka gruptaki sunucuyu seçerseniz bu gruba taşınır.</p>
+            </div>
+            <input type="search" class="form-control w-56" placeholder="Sunucu ara…" aria-label="Sunucu ara" data-server-search />
+        </div>
+        <div class="panel-body">
+            @if (Model.Servers.Count == 0)
+            {
+                <p class="text-sm text-slate-500">Henüz sunucu yok.</p>
+            }
+            else
+            {
+                <div class="group-server-list">
+                    @foreach (var server in Model.Servers)
+                    {
+                        <label class="check-card" data-server-option data-search="@($"{server.Name} {server.IpAddress}".ToLowerInvariant())">
+                            <input type="checkbox" name="ServerIds" value="@server.Id" checked="@form.ServerIds.Contains(server.Id)" />
+                            <span>
+                                <span class="check-card-title">@server.Name</span>
+                                <span class="block font-mono text-xs text-slate-500">@server.IpAddress</span>
+                            </span>
+                        </label>
+                    }
+                </div>
+            }
+            <span class="field-validation-error" data-valmsg-for="ServerIds"></span>
+        </div>
+    </section>
+</div>

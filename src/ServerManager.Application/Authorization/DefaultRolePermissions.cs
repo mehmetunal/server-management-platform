@@ -44,7 +44,14 @@ public static class DefaultRolePermissions
             Permissions.SecurityView,
             Permissions.SecurityScan,
             Permissions.SystemView,
-            Permissions.SystemManage
+            Permissions.SystemManage,
+            Permissions.CommandView,
+            Permissions.CommandRun,
+            Permissions.TemplateManage,
+            Permissions.CloudView,
+            Permissions.CloudManage,
+            Permissions.CloudProvision,
+            Permissions.SettingsView
         ],
         [Roles.Operator] =
         [
@@ -72,7 +79,9 @@ public static class DefaultRolePermissions
             Permissions.SecurityView,
             Permissions.SecurityScan,
             Permissions.SystemView,
-            Permissions.SystemManage
+            Permissions.SystemManage,
+            Permissions.CommandView,
+            Permissions.CloudView
         ],
         [Roles.Developer] =
         [

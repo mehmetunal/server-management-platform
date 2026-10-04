@@ -1,0 +1,11 @@
+.group-form {
+  @apply space-y-6;
+}
+
+.group-server-list {
+  @apply grid max-h-[28rem] gap-2 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3;
+
+  [hidden] {
+    @apply hidden;
+  }
+}

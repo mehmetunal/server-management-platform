@@ -54,6 +54,16 @@ public sealed class ServerDetailsDto
 
     public IReadOnlyList<string> Tags { get; init; } = [];
 
+    public Guid? GroupId { get; init; }
+
+    public string? GroupName { get; init; }
+
+    public string? GroupColor { get; init; }
+
+    public decimal? MonthlyCost { get; init; }
+
+    public string? CostCurrency { get; init; }
+
     public DateTime CreatedAt { get; init; }
 
     public string? CreatedBy { get; init; }

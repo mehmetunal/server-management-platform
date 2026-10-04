@@ -1,0 +1,35 @@
+.picker-filters {
+  @apply lg:grid-cols-5;
+}
+
+.picker-filter-actions {
+  @apply flex items-center gap-2 whitespace-nowrap;
+}
+
+.picker-grid {
+  @apply grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3;
+}
+
+.picker-card {
+  @apply flex flex-col gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-brand-400 dark:border-slate-800 dark:hover:border-brand-500;
+}
+
+.picker-card-head {
+  @apply flex items-start justify-between gap-2;
+}
+
+.picker-card-title {
+  @apply truncate font-semibold text-slate-900 hover:text-brand-600 dark:text-white dark:hover:text-brand-400;
+}
+
+.picker-card-meta {
+  @apply flex flex-wrap items-center gap-2 text-xs text-slate-500;
+}
+
+.picker-card-os {
+  @apply truncate text-xs text-slate-500 dark:text-slate-400;
+}
+
+.picker-card-open {
+  @apply mt-auto justify-center;
+}

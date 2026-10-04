@@ -35,6 +35,13 @@
                 <option value="@tag" selected="@(tag == Model.Filter.Tag)">@tag</option>
             }
         </select>
+        <select name="groupId" class="form-control" data-auto-submit aria-label="Grup">
+            <option value="">Tüm gruplar</option>
+            @foreach (var group in Model.Groups)
+            {
+                <option value="@group.Id" selected="@(group.Id == Model.Filter.GroupId)">@group.Name</option>
+            }
+        </select>
         <div class="server-filter-actions">
             <button type="submit" class="btn-secondary btn-sm" title="Listeyi arama ve filtrelere göre süz">@Icons.Render("search", "h-4 w-4") Filtrele</button>
             <a asp-action="Index" class="btn-ghost btn-sm" data-list-link title="Tüm filtreleri kaldır">Filtreleri temizle</a>

@@ -1,0 +1,20 @@
+@model IReadOnlyList<ServerGroupListItemDto>
+@{
+    ViewData["Title"] = "Sunucu grupları";
+    ViewData["Page"] = "server-groups-index";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Sunucu grupları</h1>
+        <p class="page-lead">Sunucuları proje, müşteri veya rol bazında gruplayın. Gruplar sunucu listesinde filtre, toplu komutta hedef seçimi ve maliyet raporunda kırılım olarak kullanılır.</p>
+    </div>
+    @if (User.HasPermission(Permissions.ServerEdit))
+    {
+        <a asp-action="Create" class="btn-primary shrink-0 whitespace-nowrap" title="Yeni sunucu grubu oluştur">@Icons.Render("plus", "h-4 w-4") Grup ekle</a>
+    }
+</div>
+
+<div data-ajax-list>
+    <partial name="_GroupList" model="Model" />
+</div>

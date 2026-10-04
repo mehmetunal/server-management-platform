@@ -81,6 +81,9 @@ public class ServerService : IServerService
         if (await _serverRepository.NameExistsAsync(dto.Name.Trim(), null, cancellationToken))
             return ServiceResult<Guid>.ValidationFailure(nameof(dto.Name), "Bu isimde bir sunucu zaten kayıtlı.");
 
+        if (dto.GroupId is { } createGroupId && !await _serverRepository.GroupExistsAsync(createGroupId, cancellationToken))
+            return ServiceResult<Guid>.ValidationFailure(nameof(dto.GroupId), "Seçilen grup bulunamadı.");
+
         var userName = _currentUser.UserName;
         var server = new Server { CreatedBy = userName };
         ApplyFormValues(server, dto);
@@ -123,6 +126,9 @@ public class ServerService : IServerService
 
         if (await _serverRepository.NameExistsAsync(dto.Name.Trim(), server.Id, cancellationToken))
             return ServiceResult.ValidationFailure(nameof(dto.Name), "Bu isimde bir sunucu zaten kayıtlı.");
+
+        if (dto.GroupId is { } updateGroupId && updateGroupId != server.GroupId && !await _serverRepository.GroupExistsAsync(updateGroupId, cancellationToken))
+            return ServiceResult.ValidationFailure(nameof(dto.GroupId), "Seçilen grup bulunamadı.");
 
         var hostChanged =
             !string.Equals(server.IpAddress, dto.IpAddress.Trim(), StringComparison.OrdinalIgnoreCase)
@@ -298,6 +304,15 @@ public class ServerService : IServerService
         });
     }
 
+    public async Task<IReadOnlyList<ServerOptionDto>> GetOptionsAsync(CancellationToken cancellationToken = default)
+    {
+        var servers = await _serverRepository.FindAsync(_ => true, cancellationToken);
+        return servers
+            .OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Select(s => new ServerOptionDto(s.Id, s.Name, s.IpAddress))
+            .ToList();
+    }
+
     public Task<IReadOnlyList<string>> GetTagNamesAsync(CancellationToken cancellationToken = default) =>
         _serverRepository.GetTagNamesAsync(cancellationToken);
 
@@ -316,6 +331,11 @@ public class ServerService : IServerService
         server.Location = TextHelper.NullIfEmpty(dto.Location);
         server.Provider = TextHelper.NullIfEmpty(dto.Provider);
         server.OperatingSystem = TextHelper.NullIfEmpty(dto.OperatingSystem);
+        server.GroupId = dto.GroupId;
+        server.MonthlyCost = dto.MonthlyCost;
+        server.CostCurrency = dto.MonthlyCost.HasValue
+            ? (string.IsNullOrWhiteSpace(dto.CostCurrency) ? CostCurrencies.Default : dto.CostCurrency.Trim().ToUpperInvariant())
+            : null;
     }
 
     private bool ApplySecrets(ServerCredential credential, ServerFormDto dto)

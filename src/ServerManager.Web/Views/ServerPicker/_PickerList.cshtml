@@ -1,0 +1,45 @@
+@model ServerPickerViewModel
+@{
+    var picker = Model.Section;
+}
+
+@if (Model.Servers.Items.Count == 0)
+{
+    <div class="empty-state">
+        <span class="empty-state-icon">@Icons.Render("server", "h-6 w-6")</span>
+        <p class="empty-state-title">Sunucu bulunamadı</p>
+        <p>Arama kriterlerini değiştirin veya önce bir sunucu ekleyin.</p>
+        @if (User.HasPermission(Permissions.ServerCreate))
+        {
+            <a asp-controller="Servers" asp-action="Create" class="btn-primary btn-sm mt-3" title="Panele yeni Linux sunucusu ekle">@Icons.Render("plus", "h-4 w-4") Sunucu ekle</a>
+        }
+    </div>
+}
+else
+{
+    <ul class="picker-grid">
+        @foreach (var server in Model.Servers.Items)
+        {
+            var resources = Model.Resources.GetValueOrDefault(server.Id);
+            var targetUrl = Url.Action(picker.TargetAction, picker.TargetController, new { id = server.Id });
+            <li class="picker-card">
+                <div class="picker-card-head">
+                    <a href="@targetUrl" class="picker-card-title" title="@picker.OpenLabel: @server.Name">@server.Name</a>
+                    <span class="@ServerDisplay.StatusBadgeClass(server.Status)"><span class="badge-dot"></span>@ServerDisplay.StatusText(server.Status)</span>
+                </div>
+                <p class="picker-card-meta">
+                    <span class="@ServerDisplay.EnvironmentBadgeClass(server.Environment)">@ServerDisplay.EnvironmentText(server.Environment)</span>
+                    <span class="font-mono">@server.IpAddress:@server.SshPort</span>
+                </p>
+                <p class="picker-card-os">@(server.OperatingSystem ?? server.Hostname)</p>
+                <div class="space-y-1">
+                    @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("CPU", "cpu", resources?.CpuUsagePercent, Model.Thresholds.CpuWarningPercent, Model.Thresholds.CpuCriticalPercent, Compact: true))
+                    @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("RAM", "memory", resources?.MemoryUsagePercent, Model.Thresholds.MemoryWarningPercent, Model.Thresholds.MemoryCriticalPercent, Compact: true))
+                    @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("Disk", "disk", resources?.DiskUsagePercent, Model.Thresholds.DiskWarningPercent, Model.Thresholds.DiskCriticalPercent, Compact: true))
+                </div>
+                <a href="@targetUrl" class="btn-secondary btn-sm picker-card-open" title="@picker.OpenLabel: @server.Name">@Icons.Render(picker.Icon, "h-4 w-4") @picker.OpenLabel</a>
+            </li>
+        }
+    </ul>
+    <partial name="_Pager" model="Model.ToPager()" />
+}

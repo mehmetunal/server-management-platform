@@ -1,5 +1,7 @@
 @model ServerFormDto
+@inject IServerGroupService GroupService
 @{
+    var groups = await GroupService.GetOptionsAsync();
     var edit = Model as UpdateServerDto;
     var isEdit = edit is not null;
     var passwordType = ((int)AuthenticationType.Password).ToString();
@@ -50,6 +52,32 @@
                     <label asp-for="Location" class="form-label">Lokasyon</label>
                     <input asp-for="Location" class="form-control" placeholder="Frankfurt, İstanbul…" maxlength="128" />
                     <span asp-validation-for="Location" class="field-validation-error"></span>
+                </div>
+                <div>
+                    <label asp-for="GroupId" class="form-label">Grup</label>
+                    <select asp-for="GroupId" class="form-control">
+                        <option value="">Grup yok</option>
+                        @foreach (var group in groups)
+                        {
+                            <option value="@group.Id" selected="@(group.Id == Model.GroupId)">@group.Name</option>
+                        }
+                    </select>
+                    <p class="form-hint">Gruplar menüdeki <a asp-controller="ServerGroups" asp-action="Index" class="font-medium text-brand-600 hover:underline dark:text-brand-400" title="Sunucu gruplarını yönet">Gruplar</a> sayfasından yönetilir.</p>
+                    <span asp-validation-for="GroupId" class="field-validation-error"></span>
+                </div>
+                <div>
+                    <label asp-for="MonthlyCost" class="form-label">Aylık maliyet</label>
+                    <div class="flex gap-2">
+                        <input asp-for="MonthlyCost" type="number" step="0.01" min="0" class="form-control" placeholder="ör. 12.50" />
+                        <select asp-for="CostCurrency" class="form-control w-28" aria-label="Para birimi">
+                            @foreach (var currency in CostCurrencies.All)
+                            {
+                                <option value="@currency" selected="@(currency == (Model.CostCurrency ?? CostCurrencies.Default))">@currency</option>
+                            }
+                        </select>
+                    </div>
+                    <p class="form-hint">Maliyet raporunda kullanılır. Bulut hesabından eşitlenen sunucularda otomatik güncellenir.</p>
+                    <span asp-validation-for="MonthlyCost" class="field-validation-error"></span>
                 </div>
                 <div class="sm:col-span-2">
                     <label asp-for="Tags" class="form-label">Etiketler</label>

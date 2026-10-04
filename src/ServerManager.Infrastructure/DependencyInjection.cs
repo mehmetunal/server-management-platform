@@ -123,6 +123,7 @@ public static class DependencyInjection
         services.AddScoped<ISslCertificateRepository, SslCertificateRepository>();
         services.AddScoped<IBackupRepository, BackupRepository>();
         services.AddScoped<ISecurityScanRepository, SecurityScanRepository>();
+        services.AddScoped<IServerGroupRepository, ServerGroupRepository>();
 
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<IUserManagementService, UserManagementService>();

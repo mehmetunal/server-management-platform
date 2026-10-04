@@ -1,0 +1,66 @@
+@model IReadOnlyList<ServerGroupListItemDto>
+@{
+    var canEdit = User.HasPermission(Permissions.ServerEdit);
+}
+
+@if (Model.Count == 0)
+{
+    <section class="panel">
+        <div class="empty-state">
+            <span class="empty-state-icon">@Icons.Render("squares", "h-6 w-6")</span>
+            <p class="empty-state-title">Henüz grup yok</p>
+            <p>Bir grup oluşturup sunucuları atayın; ardından sunucu listesinde gruba göre süzebilirsiniz.</p>
+            @if (canEdit)
+            {
+                <a asp-action="Create" class="btn-primary btn-sm mt-3" title="Yeni sunucu grubu oluştur">@Icons.Render("plus", "h-4 w-4") Grup ekle</a>
+            }
+        </div>
+    </section>
+}
+else
+{
+    <div class="group-grid">
+        @foreach (var group in Model)
+        {
+            <section class="panel group-card">
+                <div class="group-card-head">
+                    <span class="@ServerGroupDisplay.BadgeClass(group.Color)">@group.Name</span>
+                    @if (canEdit)
+                    {
+                        <div class="flex items-center gap-1">
+                            <a asp-action="Edit" asp-route-id="@group.Id" class="btn-ghost btn-sm" title="Grubu ve sunucularını düzenle">@Icons.Render("pencil", "h-4 w-4")</a>
+                            <button type="button" class="btn-ghost btn-sm text-red-600" title="Grubu sil (sunucular silinmez)"
+                                    data-ajax-action data-url="@Url.Action("Delete", new { id = group.Id })"
+                                    data-confirm-title="Grup silinsin mi?"
+                                    data-confirm-message="&quot;@group.Name&quot; grubu silinecek. Sunucular silinmez, yalnızca gruptan çıkarılır."
+                                    data-confirm-label="Sil">@Icons.Render("trash", "h-4 w-4")</button>
+                        </div>
+                    }
+                </div>
+                @if (!string.IsNullOrEmpty(group.Description))
+                {
+                    <p class="group-card-text">@group.Description</p>
+                }
+                <dl class="group-card-stats">
+                    <div><dt>Sunucu</dt><dd>@group.ServerCount</dd></div>
+                    <div><dt>Erişilebilir</dt><dd>@group.OnlineCount</dd></div>
+                    <div><dt>Aylık maliyet</dt><dd>@(group.MonthlyCosts.Count == 0 ? "—" : string.Join(" + ", group.MonthlyCosts.Select(c => CostDisplay.Amount(c.Value, c.Key))))</dd></div>
+                </dl>
+                @if (group.ServerNames.Count > 0)
+                {
+                    <div class="server-tags">
+                        @foreach (var name in group.ServerNames.Take(12))
+                        {
+                            <span class="tag">@name</span>
+                        }
+                        @if (group.ServerNames.Count > 12)
+                        {
+                            <span class="tag">+@(group.ServerNames.Count - 12)</span>
+                        }
+                    </div>
+                }
+                <a asp-controller="Servers" asp-action="Index" asp-route-groupId="@group.Id" class="btn-secondary btn-sm mt-auto justify-center" title="Bu gruptaki sunucuları listele">@Icons.Render("server", "h-4 w-4") Sunucuları göster</a>
+            </section>
+        }
+    </div>
+}

@@ -11,6 +11,8 @@ public interface IServerRepository : IRepository<Server>
 
     Task<PagedResult<Server>> SearchAsync(ServerFilterDto filter, CancellationToken cancellationToken = default);
 
+    Task<bool> GroupExistsAsync(Guid groupId, CancellationToken cancellationToken = default);
+
     Task<bool> NameExistsAsync(string name, Guid? excludeId = null, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyDictionary<ServerStatus, int>> GetStatusCountsAsync(CancellationToken cancellationToken = default);

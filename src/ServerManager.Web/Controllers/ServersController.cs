@@ -23,17 +23,20 @@ public class ServersController : Controller
     private readonly IMonitoringService _monitoringService;
     private readonly MonitoringOptions _monitoringOptions;
     private readonly ServerPageBuilder _pageBuilder;
+    private readonly IServerGroupService _groupService;
 
     public ServersController(
         IServerService serverService,
         IMonitoringService monitoringService,
         IOptions<MonitoringOptions> monitoringOptions,
-        ServerPageBuilder pageBuilder)
+        ServerPageBuilder pageBuilder,
+        IServerGroupService groupService)
     {
         _serverService = serverService;
         _monitoringService = monitoringService;
         _monitoringOptions = monitoringOptions.Value;
         _pageBuilder = pageBuilder;
+        _groupService = groupService;
     }
 
     [HttpGet]
@@ -48,6 +51,7 @@ public class ServersController : Controller
             Servers = servers,
             Filter = filter,
             Tags = tags,
+            Groups = await _groupService.GetOptionsAsync(cancellationToken),
             Resources = resources,
             Thresholds = _monitoringOptions
         };

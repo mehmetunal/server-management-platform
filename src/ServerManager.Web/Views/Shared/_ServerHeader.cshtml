@@ -56,6 +56,10 @@
                 <h1 class="page-title truncate">@server.Name</h1>
                 <span class="@ServerDisplay.StatusBadgeClass(server.Status)" data-live-status><span class="badge-dot"></span><span data-live-status-text>@ServerDisplay.StatusText(server.Status)</span></span>
                 <span class="@ServerDisplay.EnvironmentBadgeClass(server.Environment)">@ServerDisplay.EnvironmentText(server.Environment)</span>
+                @if (server.GroupName is not null)
+                {
+                    <a asp-controller="Servers" asp-action="Index" asp-route-groupId="@server.GroupId" class="@ServerGroupDisplay.BadgeClass(server.GroupColor)" title="Bu gruptaki sunucuları listele">@server.GroupName</a>
+                }
             </div>
             <p class="page-lead font-mono">@server.Username@@@server.IpAddress:@server.SshPort · @(server.OperatingSystem ?? "İşletim sistemi bilinmiyor")</p>
         </div>

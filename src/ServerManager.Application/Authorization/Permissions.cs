@@ -57,6 +57,16 @@ public static class Permissions
     public const string SystemView = "system.view";
     public const string SystemManage = "system.manage";
 
+    public const string CommandView = "command.view";
+    public const string CommandRun = "command.run";
+    public const string TemplateManage = "template.manage";
+
+    public const string CloudView = "cloud.view";
+    public const string CloudManage = "cloud.manage";
+    public const string CloudProvision = "cloud.provision";
+
+    public const string SettingsView = "settings.view";
+
     public static readonly IReadOnlyList<string> All =
     [
         DashboardView,
@@ -98,7 +108,14 @@ public static class Permissions
         SecurityView,
         SecurityScan,
         SystemView,
-        SystemManage
+        SystemManage,
+        CommandView,
+        CommandRun,
+        TemplateManage,
+        CloudView,
+        CloudManage,
+        CloudProvision,
+        SettingsView
     ];
 
     public static readonly IReadOnlyDictionary<string, string> DisplayNames = new Dictionary<string, string>
@@ -142,6 +159,13 @@ public static class Permissions
         [SecurityView] = "Güvenlik merkezi ve sunucu güvenlik taramalarını görüntüleme",
         [SecurityScan] = "Sunucuda güvenlik taraması başlatma (yalnızca okuma yapar)",
         [SystemView] = "Sunucu servisleri, process'ler, loglar, ağ ve disk bilgisini görüntüleme",
-        [SystemManage] = "Sunucu servisini başlatma, durdurma, yeniden başlatma ve process sonlandırma"
+        [SystemManage] = "Sunucu servisini başlatma, durdurma, yeniden başlatma ve process sonlandırma",
+        [CommandView] = "Toplu komut geçmişini ve sunucu şablonlarını görüntüleme",
+        [CommandRun] = "Birden fazla sunucuda aynı anda komut çalıştırma",
+        [TemplateManage] = "Sunucu şablonlarını (betik / cloud-init) ekleme, düzenleme ve silme",
+        [CloudView] = "Bulut sağlayıcı hesaplarını, sunucu listesini ve maliyetleri görüntüleme",
+        [CloudManage] = "Bulut sağlayıcı hesabı ekleme, düzenleme, silme, eşitleme ve sunucu içe aktarma",
+        [CloudProvision] = "Bulut sağlayıcıda yeni sunucu oluşturma",
+        [SettingsView] = "Sistem ayarlarını ve uygulama bilgisini görüntüleme"
     };
 }

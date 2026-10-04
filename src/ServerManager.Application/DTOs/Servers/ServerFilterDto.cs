@@ -13,6 +13,8 @@ public sealed class ServerFilterDto
 
     public string? Tag { get; set; }
 
+    public Guid? GroupId { get; set; }
+
     public int Page { get; set; } = 1;
 
     public int PageSize { get; set; } = Paging.DefaultPageSize;

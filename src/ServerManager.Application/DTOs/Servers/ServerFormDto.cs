@@ -40,6 +40,12 @@ public abstract class ServerFormDto
 
     public string? Tags { get; set; }
 
+    public Guid? GroupId { get; set; }
+
+    public decimal? MonthlyCost { get; set; }
+
+    public string? CostCurrency { get; set; }
+
     public void ClearSecrets()
     {
         Password = null;

@@ -1,5 +1,6 @@
 using ServerManager.Application.Common;
 using ServerManager.Application.DTOs.Monitoring;
+using ServerManager.Application.DTOs.ServerGroups;
 using ServerManager.Application.DTOs.Servers;
 using ServerManager.Application.Monitoring;
 
@@ -12,6 +13,8 @@ public sealed class ServerIndexViewModel
     public required ServerFilterDto Filter { get; init; }
 
     public IReadOnlyList<string> Tags { get; init; } = [];
+
+    public IReadOnlyList<ServerGroupOptionDto> Groups { get; init; } = [];
 
     public IReadOnlyDictionary<Guid, ServerResourceSummaryDto> Resources { get; init; } = new Dictionary<Guid, ServerResourceSummaryDto>();
 
@@ -27,7 +30,8 @@ public sealed class ServerIndexViewModel
             ["search"] = Filter.Search,
             ["status"] = Filter.Status.HasValue ? ((int)Filter.Status.Value).ToString() : null,
             ["environment"] = Filter.Environment.HasValue ? ((int)Filter.Environment.Value).ToString() : null,
-            ["tag"] = Filter.Tag
+            ["tag"] = Filter.Tag,
+            ["groupId"] = Filter.GroupId?.ToString()
         }
     };
 }

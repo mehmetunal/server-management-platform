@@ -26,6 +26,16 @@ public sealed class ServerListItemDto
 
     public IReadOnlyList<string> Tags { get; init; } = [];
 
+    public Guid? GroupId { get; init; }
+
+    public string? GroupName { get; init; }
+
+    public string? GroupColor { get; init; }
+
+    public decimal? MonthlyCost { get; init; }
+
+    public string? CostCurrency { get; init; }
+
     public DateTime? LastConnectionTestAt { get; init; }
 
     public bool? LastConnectionSucceeded { get; init; }

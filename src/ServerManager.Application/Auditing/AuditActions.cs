@@ -104,6 +104,25 @@ public static class AuditActions
     public const string SystemServiceControl = "system.service_control";
     public const string SystemProcessSignal = "system.process_signal";
 
+    public const string ServerGroupCreate = "server_group.create";
+    public const string ServerGroupUpdate = "server_group.update";
+    public const string ServerGroupDelete = "server_group.delete";
+
+    public const string CommandRun = "command.run";
+    public const string TemplateCreate = "template.create";
+    public const string TemplateUpdate = "template.update";
+    public const string TemplateDelete = "template.delete";
+
+    public const string CloudAccountCreate = "cloud.account_create";
+    public const string CloudAccountUpdate = "cloud.account_update";
+    public const string CloudAccountDelete = "cloud.account_delete";
+    public const string CloudSync = "cloud.sync";
+    public const string CloudImport = "cloud.import";
+    public const string CloudProvision = "cloud.provision";
+
+    public const string AgentTokenCreate = "agent.token_create";
+    public const string AgentTokenRevoke = "agent.token_revoke";
+
     public static readonly IReadOnlyDictionary<string, string> DisplayNames = new Dictionary<string, string>
     {
         [Login] = "Giriş",
@@ -195,6 +214,21 @@ public static class AuditActions
         [AuditExport] = "Audit log dışa aktarma",
         [AuditVerify] = "Audit log bütünlük doğrulaması",
         [SystemServiceControl] = "Sunucu servisi başlatma / durdurma / yeniden başlatma",
-        [SystemProcessSignal] = "Process sonlandırma"
+        [SystemProcessSignal] = "Process sonlandırma",
+        [ServerGroupCreate] = "Sunucu grubu ekleme",
+        [ServerGroupUpdate] = "Sunucu grubu güncelleme",
+        [ServerGroupDelete] = "Sunucu grubu silme",
+        [CommandRun] = "Toplu komut çalıştırma",
+        [TemplateCreate] = "Sunucu şablonu ekleme",
+        [TemplateUpdate] = "Sunucu şablonu güncelleme",
+        [TemplateDelete] = "Sunucu şablonu silme",
+        [CloudAccountCreate] = "Bulut hesabı ekleme",
+        [CloudAccountUpdate] = "Bulut hesabı güncelleme",
+        [CloudAccountDelete] = "Bulut hesabı silme",
+        [CloudSync] = "Bulut sunucu listesini eşitleme",
+        [CloudImport] = "Bulut sunucusunu içe aktarma",
+        [CloudProvision] = "Bulutta sunucu oluşturma",
+        [AgentTokenCreate] = "Agent anahtarı oluşturma",
+        [AgentTokenRevoke] = "Agent anahtarı iptali"
     };
 }

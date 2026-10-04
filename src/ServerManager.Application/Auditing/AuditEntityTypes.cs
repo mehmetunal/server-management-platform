@@ -15,6 +15,10 @@ public static class AuditEntityTypes
     public const string BackupJob = "BackupJob";
     public const string BackupRun = "BackupRun";
     public const string AuditLog = "AuditLog";
+    public const string ServerGroup = "ServerGroup";
+    public const string CommandRun = "CommandRun";
+    public const string ServerTemplate = "ServerTemplate";
+    public const string CloudAccount = "CloudAccount";
 
     public static IReadOnlyDictionary<string, string> DisplayNames { get; } = new Dictionary<string, string>(StringComparer.Ordinal)
     {
@@ -30,7 +34,11 @@ public static class AuditEntityTypes
         [BackupStorage] = "Yedek deposu",
         [BackupJob] = "Yedekleme görevi",
         [BackupRun] = "Yedekleme çalıştırması",
-        [AuditLog] = "Audit log"
+        [AuditLog] = "Audit log",
+        [ServerGroup] = "Sunucu grubu",
+        [CommandRun] = "Toplu komut",
+        [ServerTemplate] = "Sunucu şablonu",
+        [CloudAccount] = "Bulut hesabı"
     };
 
     public static string DisplayName(string? entityType) =>

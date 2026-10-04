@@ -42,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<ISslCertificateService, SslCertificateService>();
         services.AddScoped<IBackupStorageRegistry, BackupStorageRegistry>();
         services.AddScoped<IBackupStorageService, BackupStorageService>();
+        services.AddScoped<IServerGroupService, ServerGroupService>();
         services.AddScoped<IBackupJobService, BackupJobService>();
         services.AddScoped<IBackupRunService, BackupRunService>();
         services.AddScoped<ISecurityService, SecurityService>();

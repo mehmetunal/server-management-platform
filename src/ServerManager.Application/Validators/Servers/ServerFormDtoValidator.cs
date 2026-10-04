@@ -62,6 +62,12 @@ public abstract partial class ServerFormDtoValidator<T> : AbstractValidator<T> w
         RuleFor(x => x.Provider)
             .MaximumLength(128).WithMessage("Provider en fazla 128 karakter olabilir.");
 
+        RuleFor(x => x.MonthlyCost)
+            .InclusiveBetween(0m, 1_000_000m).When(x => x.MonthlyCost.HasValue).WithMessage("Aylık maliyet 0 ile 1.000.000 arasında olmalıdır.");
+
+        RuleFor(x => x.CostCurrency)
+            .Must(c => string.IsNullOrWhiteSpace(c) || CostCurrencies.IsValid(c.Trim().ToUpperInvariant())).WithMessage("Geçerli bir para birimi seçin.");
+
         RuleFor(x => x.OperatingSystem)
             .MaximumLength(128).WithMessage("İşletim sistemi en fazla 128 karakter olabilir.");
 

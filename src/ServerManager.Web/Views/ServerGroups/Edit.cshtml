@@ -1,0 +1,22 @@
+@model ServerGroupFormViewModel
+@{
+    ViewData["Title"] = $"{Model.Form.Name} · Düzenle";
+    ViewData["Page"] = "server-group-form";
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Grup listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Sunucu grupları</a>
+        <h1 class="page-title">@Model.Form.Name</h1>
+        <p class="page-lead">Grup bilgilerini ve gruptaki sunucuları güncelleyin. İşareti kaldırılan sunucular gruptan çıkarılır.</p>
+    </div>
+</div>
+
+<form asp-action="Edit" asp-route-id="@Model.Form.Id" method="post" data-group-form novalidate autocomplete="off">
+    <partial name="_GroupForm" model="Model" />
+
+    <div class="form-actions">
+        <a asp-action="Index" class="btn-secondary" title="Kaydetmeden listeye dön">İptal</a>
+        <button type="submit" class="btn-primary" title="Değişiklikleri kaydet"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+    </div>
+</form>

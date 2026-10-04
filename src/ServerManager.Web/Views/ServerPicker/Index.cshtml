@@ -1,0 +1,35 @@
+@model ServerPickerViewModel
+@{
+    var picker = Model.Section;
+    ViewData["Title"] = picker.Title;
+    ViewData["Page"] = "server-picker";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">@picker.Title</h1>
+        <p class="page-lead">@picker.Lead</p>
+    </div>
+</div>
+
+<section class="panel">
+    <form method="get" class="panel-toolbar picker-filters" data-list-filter>
+        <div class="search-field lg:col-span-2">
+            <span class="search-field-icon">@Icons.Render("search", "h-4 w-4")</span>
+            <input type="search" name="search" value="@Model.Filter.Search" class="form-control" placeholder="Ad, hostname, IP ara…" data-live-search aria-label="Sunucu ara" />
+        </div>
+        <select name="status" class="form-control" data-auto-submit asp-items="ServerDisplay.StatusOptions(Model.Filter.Status)" aria-label="Durum">
+            <option value="">Tüm durumlar</option>
+        </select>
+        <select name="environment" class="form-control" data-auto-submit asp-items="ServerDisplay.EnvironmentOptions(Model.Filter.Environment)" aria-label="Ortam">
+            <option value="">Tüm ortamlar</option>
+        </select>
+        <div class="picker-filter-actions">
+            <a href="@Url.Action()" class="btn-ghost btn-sm" data-list-link title="Tüm filtreleri kaldır">Temizle</a>
+        </div>
+    </form>
+
+    <div data-ajax-list>
+        <partial name="_PickerList" model="Model" />
+    </div>
+</section>

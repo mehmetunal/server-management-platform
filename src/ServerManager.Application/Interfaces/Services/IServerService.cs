@@ -19,5 +19,7 @@ public interface IServerService
 
     Task<ServiceResult<ConnectionTestResultDto>> TestConnectionAsync(Guid id, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<ServerOptionDto>> GetOptionsAsync(CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<string>> GetTagNamesAsync(CancellationToken cancellationToken = default);
 }

@@ -38,4 +38,17 @@
   a.tag {
     @apply hover:bg-slate-200 dark:hover:bg-slate-700;
   }
+
+  .group-badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium;
+  }
+
+  .group-badge-slate { @apply bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300; }
+  .group-badge-blue { @apply bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300; }
+  .group-badge-green { @apply bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300; }
+  .group-badge-amber { @apply bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300; }
+  .group-badge-red { @apply bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300; }
+  .group-badge-purple { @apply bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300; }
+  .group-badge-cyan { @apply bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300; }
+  .group-badge-pink { @apply bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300; }
 }
