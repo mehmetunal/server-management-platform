@@ -28,7 +28,7 @@ else
                 {
                     <tr>
                         <td class="audit-time">
-                            <a asp-action="Details" asp-route-id="@log.Id" class="audit-target-link" title="Kaydın tüm ayrıntılarını aç">@DateDisplay.Format(log.CreatedAt, "dd.MM.yyyy HH:mm:ss")</a>
+                            <a asp-controller="AuditLogs" asp-action="Details" asp-route-id="@log.Id" class="audit-target-link" title="Kaydın tüm ayrıntılarını aç">@DateDisplay.Format(log.CreatedAt, "dd.MM.yyyy HH:mm:ss")</a>
                         </td>
                         <td class="text-sm">@(log.UserName ?? "—")</td>
                         <td><span class="font-medium">@AuditCatalog.DisplayName(log.Action)</span><p class="audit-action-code">@log.Action</p></td>

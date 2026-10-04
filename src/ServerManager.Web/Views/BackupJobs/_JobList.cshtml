@@ -42,7 +42,7 @@
                     {
                         <tr>
                             <td>
-                                <a asp-action="Details" asp-route-id="@job.Id" class="backup-link" title="İş ayrıntıları ve yedek geçmişi">@job.Name</a>
+                                <a asp-controller="BackupJobs" asp-action="Details" asp-route-id="@job.Id" class="backup-link" title="İş ayrıntıları ve yedek geçmişi">@job.Name</a>
                                 <span class="block text-xs text-slate-500">@job.ServerName → @job.StorageName</span>
                                 @if (!job.IsEnabled)
                                 {
@@ -78,13 +78,13 @@
                                 @if (canExecute)
                                 {
                                     <button type="button" class="btn-secondary btn-sm" title="Şimdi yedek al ve ilerlemeyi izle" data-ajax-action data-redirect
-                                            data-url="@Url.Action("Run", new { id = job.Id })">
+                                            data-url="@Url.Action("Run", "BackupJobs", new { id = job.Id })">
                                         @Icons.Render("play", "h-4 w-4") Yedek al
                                     </button>
                                 }
                                 @if (canManage)
                                 {
-                                    <a asp-action="Edit" asp-route-id="@job.Id" class="btn-ghost btn-sm" title="İşi düzenle">@Icons.Render("pencil", "h-4 w-4")</a>
+                                    <a asp-controller="BackupJobs" asp-action="Edit" asp-route-id="@job.Id" class="btn-ghost btn-sm" title="İşi düzenle">@Icons.Render("pencil", "h-4 w-4")</a>
                                 }
                             </td>
                         </tr>

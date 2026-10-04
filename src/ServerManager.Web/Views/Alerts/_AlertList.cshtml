@@ -74,7 +74,7 @@ else
                             @if (firing && canAcknowledge && alert.AcknowledgedAt is null)
                             {
                                 <button type="button" class="btn-secondary btn-sm" title="Alarmı üstlen: kapanana kadar hatırlatma bildirimi gönderilmez" data-ajax-action
-                                        data-url="@Url.Action("Acknowledge", new { id = alert.Id })">
+                                        data-url="@Url.Action("Acknowledge", "Alerts", new { id = alert.Id })">
                                     @Icons.Render("check-circle", "h-4 w-4") Üstlen
                                 </button>
                             }
