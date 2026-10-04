@@ -66,6 +66,15 @@ public class Server : BaseEntity
     /// <summary>Sağlayıcıdaki sunucu kimliği; <see cref="CloudAccountId"/> ile birlikte dolu olur.</summary>
     public string? CloudExternalId { get; set; }
 
+    /// <summary>Agent token'ının SHA-256 özeti (hex); token'ın kendisi saklanmaz.</summary>
+    public string? AgentTokenHash { get; set; }
+
+    public DateTime? AgentTokenCreatedAt { get; set; }
+
+    public DateTime? AgentLastSeenAt { get; set; }
+
+    public string? AgentVersion { get; set; }
+
     public ServerCredential? Credential { get; set; }
 
     public ICollection<ServerTag> Tags { get; set; } = new List<ServerTag>();

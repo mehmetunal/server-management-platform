@@ -10,6 +10,9 @@ public interface IMonitoringService
 
     Task<ServiceResult<ServerMonitoringUpdateDto>> CollectAsync(Guid serverId, bool manual, CancellationToken cancellationToken = default);
 
+    /// <summary>Agent'ın gönderdiği ölçümü SSH ile toplanmış gibi kaydeder (metrik, anlık görüntü, sağlık kaydı, durum).</summary>
+    Task<ServiceResult<ServerMonitoringUpdateDto>> RecordAgentReportAsync(Guid serverId, MetricsCollectionResult result, CancellationToken cancellationToken = default);
+
     Task<ServiceResult<ServerMonitoringOverviewDto>> GetOverviewAsync(Guid serverId, CancellationToken cancellationToken = default);
 
     Task<ServiceResult<IReadOnlyList<MetricPointDto>>> GetSeriesAsync(Guid serverId, MetricRange range, CancellationToken cancellationToken = default);

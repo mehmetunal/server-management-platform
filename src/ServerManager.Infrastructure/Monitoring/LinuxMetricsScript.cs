@@ -5,7 +5,7 @@ internal static class LinuxMetricsScript
     public const string EndMarker = "@@END";
 
     // Tek tırnak kullanılmamalı: betik sh -c '...' içinde çalışır.
-    private const string Script = """
+    internal const string Script = """
         export LC_ALL=C
         echo @@T1; cat /proc/uptime
         echo @@STAT1; head -n 1 /proc/stat

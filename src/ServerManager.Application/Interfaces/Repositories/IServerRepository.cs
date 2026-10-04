@@ -13,6 +13,10 @@ public interface IServerRepository : IRepository<Server>
 
     Task<bool> GroupExistsAsync(Guid groupId, CancellationToken cancellationToken = default);
 
+    Task<Server?> GetByAgentTokenHashAsync(string tokenHash, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Server>> GetSilentAgentServersAsync(DateTime lastSeenBefore, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Server>> GetAllForCostReportAsync(CancellationToken cancellationToken = default);
 
     Task<bool> CloudAccountExistsAsync(Guid accountId, CancellationToken cancellationToken = default);
@@ -27,5 +31,6 @@ public interface IServerRepository : IRepository<Server>
 
     Task<IReadOnlyList<string>> GetTagNamesAsync(CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<Guid>> GetMonitorableIdsAsync(CancellationToken cancellationToken = default);
+    /// <summary>İzlemesi açık, host key'i doğrulanmış ve agent'ı <paramref name="agentActiveSince"/> sonrasında rapor göndermemiş sunucular.</summary>
+    Task<IReadOnlyList<Guid>> GetMonitorableIdsAsync(DateTime agentActiveSince, CancellationToken cancellationToken = default);
 }

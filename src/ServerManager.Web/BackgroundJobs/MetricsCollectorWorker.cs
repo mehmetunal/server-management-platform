@@ -46,6 +46,8 @@ public sealed class MetricsCollectorWorker : BackgroundService
 
     private async Task RunCycleAsync(CancellationToken stoppingToken)
     {
+        await MarkSilentAgentsAsync(stoppingToken);
+
         IReadOnlyList<Guid> serverIds;
         try
         {
@@ -82,5 +84,20 @@ public sealed class MetricsCollectorWorker : BackgroundService
         });
 
         await Task.WhenAll(tasks);
+    }
+
+    private async Task MarkSilentAgentsAsync(CancellationToken stoppingToken)
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var count = await scope.ServiceProvider.GetRequiredService<IAgentService>().MarkSilentAgentsOfflineAsync(stoppingToken);
+            if (count > 0)
+                _logger.LogWarning("Rapor göndermeyen {Count} agent için başarısız sağlık kaydı yazıldı.", count);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Sessiz agent kontrolü yapılamadı.");
+        }
     }
 }

@@ -60,6 +60,10 @@
     <partial name="_MetricsPanel" model="new MetricsPanelViewModel { Monitoring = Model.Monitoring, Thresholds = Model.Thresholds }" />
 </div>
 
+<div class="mt-6" data-agent-panel data-panel-url="@Url.Action("Panel", "Agent", new { id = server.Id })" aria-live="polite">
+    <section class="panel"><div class="panel-body text-sm text-slate-500">Agent durumu yükleniyor…</div></section>
+</div>
+
 @section Scripts {
     <script src="~/lib/chart.js/chart.umd.min.js"></script>
     <script src="~/lib/signalr/signalr.min.js"></script>

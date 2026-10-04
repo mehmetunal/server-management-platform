@@ -68,6 +68,17 @@ public class ServerRepository : Repository<Server>, IServerRepository
         return new PagedResult<Server>(items, totalCount, page, pageSize);
     }
 
+    public Task<Server?> GetByAgentTokenHashAsync(string tokenHash, CancellationToken cancellationToken = default) =>
+        _dbSet.FirstOrDefaultAsync(s => s.AgentTokenHash == tokenHash, cancellationToken);
+
+    public async Task<IReadOnlyList<Server>> GetSilentAgentServersAsync(DateTime lastSeenBefore, CancellationToken cancellationToken = default) =>
+        await _dbSet
+            .AsNoTracking()
+            .Where(s => s.MonitoringEnabled && s.HostKeyFingerprint == null && s.AgentTokenHash != null)
+            .Where(s => s.AgentLastSeenAt != null && s.AgentLastSeenAt < lastSeenBefore)
+            .Where(s => s.Status != ServerStatus.Offline && s.Status != ServerStatus.Maintenance)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<Server>> GetAllForCostReportAsync(CancellationToken cancellationToken = default) =>
         await _context.Servers
             .AsNoTracking()
@@ -112,10 +123,11 @@ public class ServerRepository : Repository<Server>, IServerRepository
             .OrderBy(n => n)
             .ToListAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<Guid>> GetMonitorableIdsAsync(CancellationToken cancellationToken = default) =>
+    public async Task<IReadOnlyList<Guid>> GetMonitorableIdsAsync(DateTime agentActiveSince, CancellationToken cancellationToken = default) =>
         await _dbSet
             .AsNoTracking()
             .Where(s => s.MonitoringEnabled && s.HostKeyFingerprint != null)
+            .Where(s => s.AgentLastSeenAt == null || s.AgentLastSeenAt < agentActiveSince)
             .OrderBy(s => s.Name)
             .Select(s => s.Id)
             .ToListAsync(cancellationToken);

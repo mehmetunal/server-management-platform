@@ -14,4 +14,5 @@ public static class RateLimitPolicies
     public const string SecurityScan = "security-scan";
     public const string AuditAction = "audit-action";
     public const string SystemAction = "system-action";
+    public const string AgentReport = "agent-report";
 }

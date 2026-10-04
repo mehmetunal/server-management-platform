@@ -28,6 +28,9 @@ public class ServerConfiguration : IEntityTypeConfiguration<Server>
         builder.Property(s => s.MonthlyCost).HasPrecision(12, 2);
         builder.Property(s => s.CostCurrency).HasMaxLength(3);
         builder.Property(s => s.CloudExternalId).HasMaxLength(128);
+        builder.Property(s => s.AgentTokenHash).HasMaxLength(64);
+        builder.Property(s => s.AgentVersion).HasMaxLength(32);
+        builder.HasIndex(s => s.AgentTokenHash).IsUnique().HasFilter("[AgentTokenHash] IS NOT NULL");
 
         builder.Property(s => s.AuthenticationType).HasConversion<int>();
         builder.Property(s => s.Environment).HasConversion<int>();

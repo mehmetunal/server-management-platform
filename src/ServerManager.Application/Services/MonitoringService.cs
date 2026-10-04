@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using ServerManager.Application.Agent;
 using ServerManager.Application.Auditing;
 using ServerManager.Application.Common;
 using ServerManager.Application.DTOs.AuditLogs;
@@ -58,7 +59,7 @@ public class MonitoringService : IMonitoringService
     }
 
     public Task<IReadOnlyList<Guid>> GetCollectableServerIdsAsync(CancellationToken cancellationToken = default) =>
-        _serverRepository.GetMonitorableIdsAsync(cancellationToken);
+        _serverRepository.GetMonitorableIdsAsync(_timeProvider.GetUtcNow().UtcDateTime - AgentRules.ActiveWindow, cancellationToken);
 
     public async Task<ServiceResult<ServerMonitoringUpdateDto>> CollectAsync(Guid serverId, bool manual, CancellationToken cancellationToken = default)
     {
@@ -97,6 +98,19 @@ public class MonitoringService : IMonitoringService
             result = new MetricsCollectionResult { IsSuccess = false, Message = "Kimlik bilgileri çözülemedi. Master key değişmiş olabilir." };
         }
 
+        return await ApplyResultAsync(server, result, manual, cancellationToken);
+    }
+
+    public async Task<ServiceResult<ServerMonitoringUpdateDto>> RecordAgentReportAsync(Guid serverId, MetricsCollectionResult result, CancellationToken cancellationToken = default)
+    {
+        var server = await _serverRepository.GetByIdAsync(serverId, cancellationToken);
+        return server is null
+            ? ServiceResult<ServerMonitoringUpdateDto>.NotFound(NotFoundMessage)
+            : await ApplyResultAsync(server, result, manual: false, cancellationToken);
+    }
+
+    private async Task<ServiceResult<ServerMonitoringUpdateDto>> ApplyResultAsync(Server server, MetricsCollectionResult result, bool manual, CancellationToken cancellationToken)
+    {
         var now = _timeProvider.GetUtcNow().UtcDateTime;
         var previousStatus = server.Status;
         var statusReasons = new List<string>();

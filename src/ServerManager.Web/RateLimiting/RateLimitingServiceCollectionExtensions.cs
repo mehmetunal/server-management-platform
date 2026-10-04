@@ -24,6 +24,16 @@ public static class RateLimitingServiceCollectionExtensions
                         QueueLimit = 0
                     }));
 
+            options.AddPolicy(RateLimitPolicies.AgentReport, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 120,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0
+                    }));
+
             options
                 .AddPerUserPolicy(RateLimitPolicies.ConnectionTest, 10)
                 .AddPerUserPolicy(RateLimitPolicies.MetricsCollect, 10)

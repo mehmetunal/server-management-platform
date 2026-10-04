@@ -1,0 +1,72 @@
+@model AgentPanelViewModel
+@{
+    var status = Model.Status;
+    var silent = status.HasToken && status.LastSeenAt is not null && !status.IsActive;
+    var (badgeClass, badgeText) = !status.HasToken
+        ? ("badge-neutral", "Kurulu değil")
+        : status.IsActive ? ("badge-success", "Aktif")
+        : silent ? ("badge-danger", "Rapor gelmiyor")
+        : ("badge-warning", "İlk rapor bekleniyor");
+}
+
+<section class="panel" data-agent-root>
+    <div class="panel-header">
+        <div class="flex items-center gap-3">
+            <h2 class="panel-title">Agent</h2>
+            <span class="@badgeClass"><span class="badge-dot"></span>@badgeText</span>
+        </div>
+        @if (Model.CanManage)
+        {
+            <div class="flex items-center gap-2">
+                @if (status.HasToken)
+                {
+                    <button type="button" class="btn-secondary btn-sm" title="Token'ı iptal et; agent raporları reddedilir"
+                            data-ajax-action data-url="@Url.Action("RevokeToken", "Agent", new { id = status.ServerId })"
+                            data-confirm-title="Agent token'ı iptal edilsin mi?"
+                            data-confirm-message="@status.ServerName sunucusundaki agent rapor gönderemez. Sunucudaki agent dosyalarını kaldırmak için aşağıdaki kaldırma komutunu çalıştırın."
+                            data-confirm-label="İptal et">@Icons.Render("x", "h-4 w-4") Token'ı iptal et</button>
+                }
+                <button type="button" class="btn-primary btn-sm" title="@(status.HasToken ? "Yeni token üret; eski token geçersiz olur" : "Token üret ve kurulum komutunu göster")"
+                        data-agent-create data-url="@Url.Action("CreateToken", "Agent", new { id = status.ServerId })"
+                        data-server-name="@status.ServerName" data-replace="@(status.HasToken ? "true" : "false")">@Icons.Render("key", "h-4 w-4") @(status.HasToken ? "Yeni token" : "Agent kur")</button>
+            </div>
+        }
+    </div>
+    <div class="panel-body space-y-4">
+        <p class="text-sm text-slate-600 dark:text-slate-400">
+            Agent, sunucuda dakikada bir ölçüm betiğini çalıştırıp sonucu panele gönderir; panelin SSH ile bağlanamadığı sunucular (NAT arkası, kapalı SSH) için kullanılır. Agent aktifken bu sunucudan SSH ile ayrıca metrik toplanmaz. Kurulum için sunucuda root yetkisi, <code>curl</code> ve systemd veya cron gerekir.
+        </p>
+
+        @if (!Model.IsHttps)
+        {
+            <p class="alert-warning">Panel HTTPS üzerinden açılmamış: token ve metrikler ağda şifresiz gider. Üretimde paneli HTTPS ile yayınlayın.</p>
+        }
+        @if (status.HasToken && !status.MonitoringEnabled)
+        {
+            <p class="alert-warning">Bu sunucuda otomatik izleme kapalı; agent raporları reddedilir. Sunucu düzenleme ekranından izlemeyi açın.</p>
+        }
+
+        <dl class="agent-facts">
+            <div>
+                <dt>Token</dt>
+                <dd title="@DateDisplay.Format(status.TokenCreatedAt, "dd.MM.yyyy HH:mm")">@(status.TokenCreatedAt is null ? "Yok" : $"{DateDisplay.Relative(status.TokenCreatedAt.Value)} oluşturuldu")</dd>
+            </div>
+            <div>
+                <dt>Son rapor</dt>
+                <dd title="@DateDisplay.Format(status.LastSeenAt, "dd.MM.yyyy HH:mm:ss")">@(status.LastSeenAt is null ? "Henüz yok" : DateDisplay.Relative(status.LastSeenAt.Value))</dd>
+            </div>
+            <div>
+                <dt>Sürüm</dt>
+                <dd>@(status.Version ?? "—")</dd>
+            </div>
+        </dl>
+
+        <div>
+            <p class="form-label">Sunucudan kaldırma</p>
+            <div class="agent-command">
+                <code data-agent-uninstall>@Model.UninstallCommand</code>
+                <button type="button" class="btn-ghost btn-sm" data-copy-command title="Kaldırma komutunu panoya kopyala">@Icons.Render("copy", "h-4 w-4")</button>
+            </div>
+        </div>
+    </div>
+</section>

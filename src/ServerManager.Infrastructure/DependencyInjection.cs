@@ -104,6 +104,7 @@ public static class DependencyInjection
         services.AddSingleton<IAuditChainSigner, HmacAuditChainSigner>();
         services.AddSingleton<ISshConnectionTester, SshNetConnectionTester>();
         services.AddSingleton<IMetricsCollector, SshMetricsCollector>();
+        services.AddSingleton<IAgentReportParser, AgentReportParser>();
         services.AddSingleton<IRemoteCommandRunner, SshRemoteCommandRunner>();
         services.AddSingleton<ITerminalSessionFactory, SshTerminalSessionFactory>();
         services.AddSingleton<IDockerClient, SshDockerClient>();
