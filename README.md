@@ -1,4 +1,4 @@
-# Server Management Platform
+# Mag Server Manager
 ## Sunucu Yönetim, Docker, Dokploy ve Terminal Yönetim Sistemi
 
 > Bu proje; birden fazla Linux sunucunun tek bir web panelinden güvenli şekilde tanımlanmasını, izlenmesini ve yönetilmesini amaçlayan profesyonel bir Server Management Platform'dur.

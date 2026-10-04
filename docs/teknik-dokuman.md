@@ -1,4 +1,4 @@
-# Server Manager — Teknik doküman
+# Mag Server Manager — Teknik doküman
 
 Çalışan sistemin mimarisi, güvenlik modeli, veri kuralları ve modül davranışıdır. Ekran adımları [kullanma kılavuzunda](kullanim-kilavuzu.md), sade anlatım [son kullanıcı kılavuzundadır](son-kullanici.md).
 

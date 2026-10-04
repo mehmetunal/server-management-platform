@@ -1,4 +1,4 @@
-# Server Manager — Kullanma kılavuzu
+# Mag Server Manager — Kullanma kılavuzu
 
 Bu kılavuz, hesabı açık bir operatör veya yöneticinin panelde işi nasıl yapacağını anlatır. Kurulum, veritabanı ve yapılandırma anahtarları [teknik dokümanda](teknik-dokuman.md) durur. Ekranların sade anlatımı [son kullanıcı kılavuzundadır](son-kullanici.md).
 

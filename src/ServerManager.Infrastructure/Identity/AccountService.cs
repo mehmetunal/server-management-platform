@@ -2,6 +2,7 @@ using System.Text;
 using FluentValidation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
+using ServerManager.Application;
 using ServerManager.Application.Auditing;
 using ServerManager.Application.Common;
 using ServerManager.Application.DTOs.Account;
@@ -18,7 +19,7 @@ public class AccountService : IAccountService
     private const string LockedOutMessage = "Çok fazla başarısız deneme yapıldı veya hesap kilitlendi. Daha sonra tekrar deneyin.";
     private const string SessionMissingMessage = "Oturum bulunamadı. Lütfen tekrar giriş yapın.";
     private const string WrongPasswordMessage = "Parola hatalı.";
-    private const string AuthenticatorIssuer = "Server Manager";
+    private const string AuthenticatorIssuer = ProductInfo.Name;
 
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;

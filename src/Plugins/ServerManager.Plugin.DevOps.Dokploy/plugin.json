@@ -3,7 +3,7 @@
   "FriendlyName": "Dokploy",
   "Group": "DevOps",
   "Version": "1.0.0",
-  "Author": "Server Manager",
+  "Author": "Mag Server Manager",
   "Description": "Sunuculara Dokploy kurulum sihirbazı, canlı kurulum çıktısı, durum ve sağlık izleme ile API anahtarıyla proje özeti ekler.",
   "DisplayOrder": 1,
   "AssemblyFileName": "ServerManager.Plugin.DevOps.Dokploy.dll",

@@ -1,4 +1,5 @@
 using System.Text;
+using ServerManager.Application;
 using ServerManager.Application.Notifications;
 using ServerManager.Domain.Entities;
 using ServerManager.Domain.Enums;
@@ -42,7 +43,7 @@ public static class AlertMessageBuilder
     public static NotificationMessage BuildTest(string channelName, DateTime now, string? publicBaseUrl) =>
         new(NotificationKind.Test,
             AlertSeverity.Warning,
-            $"[Test] Server Manager: {channelName}",
+            $"[Test] {ProductInfo.Name}: {channelName}",
             "Bu bir test bildirimidir. Kanal doğru yapılandırılmış; alarmlar bu kanala gönderilecek.",
             now,
             null,

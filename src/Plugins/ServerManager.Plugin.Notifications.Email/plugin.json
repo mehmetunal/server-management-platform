@@ -3,7 +3,7 @@
   "FriendlyName": "E-posta Bildirimleri",
   "Group": "Bildirim",
   "Version": "1.0.0",
-  "Author": "Server Manager",
+  "Author": "Mag Server Manager",
   "Description": "Alarm, düzelme ve hatırlatma bildirimlerini SMTP sunucusu üzerinden e-posta olarak gönderir (STARTTLS / SSL).",
   "DisplayOrder": 20,
   "AssemblyFileName": "ServerManager.Plugin.Notifications.Email.dll",

@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
+using ServerManager.Application;
 
 namespace ServerManager.Application.Backups;
 
@@ -103,7 +104,7 @@ public static class BackupEncryption
         var header = new byte[HeaderLength];
         if (await input.ReadAtLeastAsync(header, HeaderLength, throwOnEndOfStream: false, cancellationToken) < HeaderLength
             || !header.AsSpan(0, 4).SequenceEqual(Magic))
-            throw new BackupFormatException("Dosya şifreli bir Server Manager yedeği değil.");
+            throw new BackupFormatException($"Dosya şifreli bir {ProductInfo.Name} yedeği değil.");
         if (header[4] != Version || header[5] != EncryptedFlag)
             throw new BackupFormatException("Yedek dosyası sürümü desteklenmiyor.");
 

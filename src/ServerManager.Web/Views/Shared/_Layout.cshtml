@@ -10,7 +10,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
-    <title>@(string.IsNullOrEmpty(title) ? "Server Manager" : $"{title} · Server Manager")</title>
+    <title>@(string.IsNullOrEmpty(title) ? ProductInfo.Name : $"{title} · {ProductInfo.Name}")</title>
+    <link rel="icon" href="~/images/mag-logo.png" type="image/png" />
     <partial name="_ThemeScript" />
     @await RenderSectionAsync("Styles", required: false)
     <partial name="_PageStyles" />

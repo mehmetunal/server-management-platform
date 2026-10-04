@@ -1,8 +1,8 @@
-# Server Manager — Son kullanıcı kılavuzu
+# Mag Server Manager — Son kullanıcı kılavuzu
 
 Bu metin paneli her gün kullanan kişi içindir. Kurulum, sunucu adresi veya parola biçimi anlatılmaz. Hesabınızı size yöneticiniz açar.
 
-Server Manager, birden fazla sunucuyu tek ekrandan görmenizi sağlar. Sunucunun çalışıp çalışmadığını, dolup dolmadığını, yedeğinin alınıp alınmadığını ve bir sorun olduğunda kime haber gittiğini buradan takip edersiniz.
+Mag Server Manager, birden fazla sunucuyu tek ekrandan görmenizi sağlar. Sunucunun çalışıp çalışmadığını, dolup dolmadığını, yedeğinin alınıp alınmadığını ve bir sorun olduğunda kime haber gittiğini buradan takip edersiniz.
 
 ## Giriş
 

@@ -10,7 +10,7 @@ public static class AgentInstallScript
 
     private const string Template = """
         #!/bin/sh
-        # Server Manager agent kurulumu
+        # Mag Server Manager agent kurulumu
         #   Kurulum: curl -fsSL <panel>/api/agent/install.sh | sudo SM_URL=<panel> SM_TOKEN=<token> sh
         #   Kaldırma: curl -fsSL <panel>/api/agent/install.sh | sudo sh -s uninstall
         set -eu
@@ -38,7 +38,7 @@ public static class AgentInstallScript
           fi
           remove_cron
           rm -f "$BIN" "$ENV_FILE"
-          echo "Server Manager agent kaldırıldı."
+          echo "Mag Server Manager agent kaldırıldı."
           exit 0
         fi
 
@@ -55,7 +55,7 @@ public static class AgentInstallScript
 
         cat > "$BIN" <<'AGENT'
         #!/bin/sh
-        # Server Manager agent __VERSION__
+        # Mag Server Manager agent __VERSION__
         [ -r __ENV_PATH__ ] || exit 1
         . __ENV_PATH__
         collect() {
@@ -73,7 +73,7 @@ public static class AgentInstallScript
           remove_cron
           cat > "$UNIT_DIR/$NAME.service" <<UNIT
         [Unit]
-        Description=Server Manager agent raporu
+        Description=Mag Server Manager agent raporu
         After=network-online.target
         Wants=network-online.target
 
@@ -83,7 +83,7 @@ public static class AgentInstallScript
         UNIT
           cat > "$UNIT_DIR/$NAME.timer" <<UNIT
         [Unit]
-        Description=Server Manager agent zamanlayıcısı
+        Description=Mag Server Manager agent zamanlayıcısı
 
         [Timer]
         OnBootSec=30
@@ -105,7 +105,7 @@ public static class AgentInstallScript
         fi
 
         if "$BIN"; then
-          echo "Server Manager agent kuruldu ($SCHEDULER); ilk rapor gönderildi."
+          echo "Mag Server Manager agent kuruldu ($SCHEDULER); ilk rapor gönderildi."
         else
           echo "Agent kuruldu ($SCHEDULER) ancak ilk rapor gönderilemedi. Panel adresini, token'ı ve ağ erişimini kontrol edin." >&2
           exit 1

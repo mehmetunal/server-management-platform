@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using ServerManager.Application;
 
 namespace ServerManager.Plugin.Git.GitHub.Core;
 
@@ -19,7 +20,7 @@ public static class GitHubManifest
         {
             ["name"] = name.Trim(),
             ["url"] = root,
-            ["description"] = "Server Manager deployment bağlantısı",
+            ["description"] = $"{ProductInfo.Name} deployment bağlantısı",
             ["redirect_url"] = root + CallbackPath,
             ["setup_url"] = root + SetupPath,
             ["setup_on_update"] = true,

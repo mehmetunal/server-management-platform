@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Options;
+using ServerManager.Application;
 using ServerManager.Application.Common;
 using ServerManager.Application.Interfaces.Notifications;
 using ServerManager.Application.Notifications;
@@ -12,7 +13,7 @@ public sealed class DiscordNotificationProvider : INotificationChannelProvider
 {
     public const int MaxTitleLength = 256;
     public const int MaxDescriptionLength = 4096;
-    public const string DefaultUsername = "Server Manager";
+    public const string DefaultUsername = ProductInfo.Name;
 
     private const string WebhookPathPrefix = "/api/webhooks/";
 
@@ -23,7 +24,7 @@ public sealed class DiscordNotificationProvider : INotificationChannelProvider
             Placeholder: "https://discord.com/api/webhooks/...",
             MaxLength: 300),
         new(DiscordPlugin.UsernameKey, "Görünen ad", NotificationFieldType.Text, IsRequired: false,
-            Hint: "Mesajı gönderen adı; boş bırakılırsa \"Server Manager\".",
+            Hint: $"Mesajı gönderen adı; boş bırakılırsa \"{ProductInfo.Name}\".",
             DefaultValue: DefaultUsername,
             MaxLength: 80)
     ];

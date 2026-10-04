@@ -190,7 +190,7 @@ try
 }
 catch (Exception ex) when (ex is not HostAbortedException)
 {
-    Log.Fatal(ex, "Server Manager başlatılamadı");
+    Log.Fatal(ex, "{Product} başlatılamadı", ProductInfo.Name);
     throw;
 }
 finally

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using ServerManager.Application;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
@@ -127,7 +128,7 @@ public class GitHubController : Controller
     {
         HttpContext.AllowFormAction(_options.WebUrl);
         var host = Request.Host.Host;
-        var defaultName = $"Server Manager {host}";
+        var defaultName = $"{ProductInfo.Name} {host}";
         return View("Index", new GitHubIndexViewModel
         {
             Apps = await _appService.GetAppsAsync(cancellationToken),

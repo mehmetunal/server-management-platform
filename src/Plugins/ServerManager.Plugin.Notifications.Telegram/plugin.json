@@ -3,7 +3,7 @@
   "FriendlyName": "Telegram Bildirimleri",
   "Group": "Bildirim",
   "Version": "1.0.0",
-  "Author": "Server Manager",
+  "Author": "Mag Server Manager",
   "Description": "Alarm, düzelme ve hatırlatma bildirimlerini bir Telegram botu üzerinden kişiye, gruba veya kanala gönderir.",
   "DisplayOrder": 30,
   "AssemblyFileName": "ServerManager.Plugin.Notifications.Telegram.dll",

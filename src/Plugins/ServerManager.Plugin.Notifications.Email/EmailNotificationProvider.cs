@@ -4,6 +4,7 @@ using MailKit;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
+using ServerManager.Application;
 using ServerManager.Application.Alerting;
 using ServerManager.Application.Common;
 using ServerManager.Application.Interfaces.Notifications;
@@ -131,7 +132,7 @@ public sealed class EmailNotificationProvider : INotificationChannelProvider
         var body = new StringBuilder(message.Body);
         if (message.Url is not null)
             body.Append("\n\nPanelde aç: ").Append(message.Url);
-        body.Append("\n\n— Server Manager");
+        body.Append("\n\n— ").Append(ProductInfo.Name);
         mail.Body = new TextPart("plain") { Text = body.ToString() };
         return mail;
     }
