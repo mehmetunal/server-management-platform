@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PluginSystemName>Cloud.Vultr</PluginSystemName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ServerManager.Infrastructure\ServerManager.Infrastructure.csproj" Private="false" />
+    <ProjectReference Include="..\..\ServerManager.Web.Framework\ServerManager.Web.Framework.csproj" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ServerManager.Plugin.Cloud.Tests" />
+  </ItemGroup>
+
+</Project>

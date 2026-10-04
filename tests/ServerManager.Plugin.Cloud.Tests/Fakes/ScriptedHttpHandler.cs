@@ -8,7 +8,7 @@ public sealed class ScriptedHttpHandler : HttpMessageHandler
 {
     private readonly List<(string PathAndQuery, HttpStatusCode Status, string Body)> _routes = [];
 
-    public List<(HttpMethod Method, Uri Uri, string? Authorization, string Body)> Requests { get; } = [];
+    public List<(HttpMethod Method, Uri Uri, string? Authorization, string Body, string? Token)> Requests { get; } = [];
 
     public Exception? Throw { get; set; }
 
@@ -21,12 +21,16 @@ public sealed class ScriptedHttpHandler : HttpMessageHandler
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var body = request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync(cancellationToken);
-        Requests.Add((request.Method, request.RequestUri!, request.Headers.Authorization?.ToString(), body));
+        request.Headers.TryGetValues("X-Auth-Token", out var tokenValues);
+        Requests.Add((request.Method, request.RequestUri!, request.Headers.Authorization?.ToString(), body, tokenValues?.FirstOrDefault()));
         if (Throw is not null)
             throw Throw;
 
         var path = request.RequestUri!.PathAndQuery;
-        var route = _routes.LastOrDefault(r => path.StartsWith(r.PathAndQuery, StringComparison.Ordinal));
+        var route = _routes
+            .Where(r => path.StartsWith(r.PathAndQuery, StringComparison.Ordinal))
+            .OrderByDescending(r => r.PathAndQuery.Length)
+            .FirstOrDefault();
         return route.Body is null
             ? new HttpResponseMessage(HttpStatusCode.NotFound) { Content = new StringContent("{}") }
             : new HttpResponseMessage(route.Status) { Content = new StringContent(route.Body, Encoding.UTF8, "application/json") };

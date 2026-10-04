@@ -15,6 +15,9 @@
     <ProjectReference Include="..\..\src\ServerManager.Web.Framework\ServerManager.Web.Framework.csproj" />
     <ProjectReference Include="..\..\src\Plugins\ServerManager.Plugin.Cloud.Hetzner\ServerManager.Plugin.Cloud.Hetzner.csproj" />
     <ProjectReference Include="..\..\src\Plugins\ServerManager.Plugin.Cloud.DigitalOcean\ServerManager.Plugin.Cloud.DigitalOcean.csproj" />
+    <ProjectReference Include="..\..\src\Plugins\ServerManager.Plugin.Cloud.Vultr\ServerManager.Plugin.Cloud.Vultr.csproj" />
+    <ProjectReference Include="..\..\src\Plugins\ServerManager.Plugin.Cloud.Linode\ServerManager.Plugin.Cloud.Linode.csproj" />
+    <ProjectReference Include="..\..\src\Plugins\ServerManager.Plugin.Cloud.Scaleway\ServerManager.Plugin.Cloud.Scaleway.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -6,5 +6,6 @@
   "Author": "Server Manager",
   "Description": "Alarm, düzelme ve hatırlatma bildirimlerini SMTP sunucusu üzerinden e-posta olarak gönderir (STARTTLS / SSL).",
   "DisplayOrder": 20,
-  "AssemblyFileName": "ServerManager.Plugin.Notifications.Email.dll"
+  "AssemblyFileName": "ServerManager.Plugin.Notifications.Email.dll",
+  "Logo": "logo.svg"
 }

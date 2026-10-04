@@ -1,0 +1,11 @@
+{
+  "SystemName": "Cloud.Linode",
+  "FriendlyName": "Linode",
+  "Group": "Bulut",
+  "Version": "1.0.0",
+  "Author": "Server Manager",
+  "Description": "Linode (Akamai) hesabındaki sunucuları listeler, aylık maliyetlerini eşitler ve cloud-init ile yeni sunucu oluşturur.",
+  "DisplayOrder": 53,
+  "AssemblyFileName": "ServerManager.Plugin.Cloud.Linode.dll",
+  "Logo": "logo.svg"
+}

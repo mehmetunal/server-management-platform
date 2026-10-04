@@ -142,12 +142,12 @@ Build komutu hedef sunucuda çalışır. Bu yetkiyi yalnızca sunucuya komut yaz
 
 ## 11. Bulut
 
-**Sağlayıcılar** Hetzner Cloud ve DigitalOcean hesaplarını tutar. Eklenti kapalıysa hesap listede kalır, eşitleme ve yeni makine çalışmaz.
+**Sağlayıcılar** Hetzner Cloud, DigitalOcean, Vultr, Linode ve Scaleway hesaplarını tutar. Eklenti kapalıysa hesap listede kalır, eşitleme ve yeni makine çalışmaz.
 
 1. API anahtarını ekleyin. Panel anahtarı sağlayıcıda dener, sonra saklar.
 2. Listeden **Panele ekle** sunucu formunu ad, IP ve fiyatla doldurur. SSH kullanıcı ve parola veya key hâlâ sizin girmeniz gerekir.
 3. **Eşitle** bağlı sunucuların aylık fiyatını günceller.
-4. **Sunucu oluştur** bölge, tip ve imaj seçtirir. Onayda sunucu adını yazarsınız. Hetzner, anahtar vermezseniz root parolasını yalnızca o pencerede bir kez gösterir. Bu parola panele yazılmaz.
+4. **Sunucu oluştur** bölge, tip ve imaj seçtirir. Onayda sunucu adını yazarsınız. Hetzner, Vultr ve Linode, anahtar vermezseniz root parolasını yalnızca o pencerede bir kez gösterir. Bu parola panele yazılmaz. DigitalOcean parolayı e-postanıza gönderir. Linode adı harfle başlamalıdır; nokta kullanılamaz.
 
 **Maliyet** sayfası para birimine göre toplar. Doları liraya çevirmez.
 

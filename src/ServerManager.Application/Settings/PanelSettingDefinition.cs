@@ -7,4 +7,5 @@ public sealed record PanelSettingDefinition(
     PanelSettingKind Kind,
     double Minimum,
     double Maximum,
-    string Hint);
+    string Hint,
+    string? Cluster = null);

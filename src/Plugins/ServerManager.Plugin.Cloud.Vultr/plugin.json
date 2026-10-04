@@ -1,0 +1,11 @@
+{
+  "SystemName": "Cloud.Vultr",
+  "FriendlyName": "Vultr",
+  "Group": "Bulut",
+  "Version": "1.0.0",
+  "Author": "Server Manager",
+  "Description": "Vultr hesabındaki sunucuları listeler, aylık maliyetlerini eşitler ve cloud-init ile yeni sunucu oluşturur.",
+  "DisplayOrder": 52,
+  "AssemblyFileName": "ServerManager.Plugin.Cloud.Vultr.dll",
+  "Logo": "logo.svg"
+}

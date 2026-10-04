@@ -1,0 +1,46 @@
+@model PanelSettingFieldDto
+@{
+    var inputId = Model.Key.Replace(':', '-');
+    var wide = Model.Kind == "TimeZone";
+}
+<div class="settings-field@(wide ? " settings-field-wide" : "")">
+    <label class="form-label" for="@inputId">@Model.Label</label>
+    @if (Model.Kind == "Boolean")
+    {
+        <select id="@inputId" name="@Model.Key" class="form-control" title="@Model.Hint">
+            <option value="true" selected="@(Model.Value == "true")">Açık</option>
+            <option value="false" selected="@(Model.Value == "false")">Kapalı</option>
+        </select>
+    }
+    else if (Model.Kind == "TimeZone")
+    {
+        var known = SettingFieldChoices.TimeZones.Any(zone => zone.Id == Model.Value);
+        <select id="@inputId" name="@Model.Key" class="form-control" title="@Model.Hint">
+            @if (!known && !string.IsNullOrEmpty(Model.Value))
+            {
+                <option value="@Model.Value" selected>@Model.Value</option>
+            }
+            @foreach (var zone in SettingFieldChoices.TimeZones)
+            {
+                <option value="@zone.Id" selected="@(zone.Id == Model.Value)">@zone.Label</option>
+            }
+        </select>
+    }
+    else if (SettingFieldChoices.IsPercent(Model))
+    {
+        <select id="@inputId" name="@Model.Key" class="form-control" title="@Model.Hint">
+            @foreach (var percent in SettingFieldChoices.Percents(Model))
+            {
+                <option value="@percent" selected="@(percent == Model.Value)">%@percent</option>
+            }
+        </select>
+    }
+    else
+    {
+        <input id="@inputId" name="@Model.Key" value="@Model.Value" class="form-control" type="number"
+               min="@Model.Minimum" max="@Model.Maximum" step="@(Model.Kind == "Number" ? "0.1" : "1")"
+               inputmode="decimal" title="@Model.Hint" />
+    }
+    <p class="settings-hint">@Model.Hint</p>
+    <span class="field-validation-valid" data-valmsg-for="@Model.Key"></span>
+</div>

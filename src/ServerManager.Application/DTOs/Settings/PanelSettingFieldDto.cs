@@ -7,4 +7,5 @@ public sealed record PanelSettingFieldDto(
     string Value,
     string Hint,
     double? Minimum,
-    double? Maximum);
+    double? Maximum,
+    string? Cluster);

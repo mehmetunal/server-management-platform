@@ -17,6 +17,9 @@
     <Project Path="src/Plugins/ServerManager.Plugin.Storage.AzureBlob/ServerManager.Plugin.Storage.AzureBlob.csproj" />
     <Project Path="src/Plugins/ServerManager.Plugin.Cloud.Hetzner/ServerManager.Plugin.Cloud.Hetzner.csproj" />
     <Project Path="src/Plugins/ServerManager.Plugin.Cloud.DigitalOcean/ServerManager.Plugin.Cloud.DigitalOcean.csproj" />
+    <Project Path="src/Plugins/ServerManager.Plugin.Cloud.Vultr/ServerManager.Plugin.Cloud.Vultr.csproj" />
+    <Project Path="src/Plugins/ServerManager.Plugin.Cloud.Linode/ServerManager.Plugin.Cloud.Linode.csproj" />
+    <Project Path="src/Plugins/ServerManager.Plugin.Cloud.Scaleway/ServerManager.Plugin.Cloud.Scaleway.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ServerManager.Application.Tests/ServerManager.Application.Tests.csproj" />

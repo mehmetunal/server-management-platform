@@ -6,5 +6,6 @@
   "Author": "Server Manager",
   "Description": "Alarm, düzelme ve hatırlatma bildirimlerini bir Telegram botu üzerinden kişiye, gruba veya kanala gönderir.",
   "DisplayOrder": 30,
-  "AssemblyFileName": "ServerManager.Plugin.Notifications.Telegram.dll"
+  "AssemblyFileName": "ServerManager.Plugin.Notifications.Telegram.dll",
+  "Logo": "logo.svg"
 }

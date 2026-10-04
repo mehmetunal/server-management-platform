@@ -142,7 +142,8 @@ public class PanelSettingsService : IPanelSettingsService
     private PanelSettingFieldDto ToField(PanelSettingDefinition definition) =>
         new(definition.Key, definition.Label, definition.Kind.ToString(), Read(definition), definition.Hint,
             definition.Kind is PanelSettingKind.Integer or PanelSettingKind.Number ? definition.Minimum : null,
-            definition.Kind is PanelSettingKind.Integer or PanelSettingKind.Number ? definition.Maximum : null);
+            definition.Kind is PanelSettingKind.Integer or PanelSettingKind.Number ? definition.Maximum : null,
+            definition.Cluster);
 
     private string Read(PanelSettingDefinition definition) => Format(definition, Property(definition).GetValue(Target(definition)));
 

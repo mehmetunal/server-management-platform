@@ -13,6 +13,10 @@
 
 Bu dosyanın 1–82. bölümleri ürün hedefi ve yol haritasıdır. Çalışan sistemin kurulumu ve ayrıntılı davranışı [Geliştirme Ortamı](#geliştirme-ortamı) bölümünden başlar; teknik doküman oradaki ayrıntıya bağlanır.
 
+## Lisans
+
+Telif hakkı Mehmet Ünal'a aittir. Yazılım [MIT Lisansı](LICENSE) ile açık kaynak olarak yayımlanır: kullanılabilir, değiştirilebilir ve dağıtılabilir; ticari ürünlerde de kullanılabilir. Kopyalarda telif ve izin bildirimi korunur.
+
 ---
 
 ## 1. Proje Amacı
@@ -1280,6 +1284,8 @@ Provider:
 - Hetzner
 - DigitalOcean
 - Vultr
+- Linode
+- Scaleway
 - Contabo
 - OVH
 
@@ -3034,7 +3040,7 @@ Servis kontrolü ve process sonlandırma audit log'a yazılır (`system.service_
 
 ### Bulut sağlayıcıları
 
-**Sağlayıcılar** sayfası (`/CloudAccounts`) Hetzner Cloud ve DigitalOcean hesaplarını bağlar. Her sağlayıcı ayrı bir eklentidir (`Cloud.Hetzner`, `Cloud.DigitalOcean`, grup "Bulut"); kullanmadan önce **Eklentiler** sayfasından kurulup etkinleştirilmelidir. Eklentisi kapatılan hesap listede görünür, ancak eşitleme ve sunucu oluşturma çalışmaz.
+**Sağlayıcılar** sayfası (`/CloudAccounts`) Hetzner Cloud, DigitalOcean, Vultr, Linode ve Scaleway hesaplarını bağlar. Her sağlayıcı ayrı bir eklentidir (`Cloud.Hetzner`, `Cloud.DigitalOcean`, `Cloud.Vultr`, `Cloud.Linode`, `Cloud.Scaleway`, grup "Bulut"); kullanmadan önce **Eklentiler** sayfasından kurulup etkinleştirilmelidir. Eklentisi kapatılan hesap listede görünür, ancak eşitleme ve sunucu oluşturma çalışmaz.
 
 | İzin | Kapsam | Varsayılan roller |
 | --- | --- | --- |
@@ -3046,13 +3052,13 @@ Servis kontrolü ve process sonlandırma audit log'a yazılır (`system.service_
 - **Sunucu listesi** sağlayıcıdan anlık okunur. Panele bağlı olmayan sunucularda **Panele ekle** sunucu formunu ad, IP, konum ve aylık fiyatla doldurur (kullanıcı adı `root`); SSH bilgileri girilip kaydedildiğinde sunucu hesaba bağlanır (`server.create` izni gerekir, `cloud.import` olarak audit log'a yazılır).
 - **Eşitleme** (elle veya `Cloud:SyncIntervalHours` aralığında otomatik, varsayılan 6 saat, `0` kapatır):
   - Hiçbir hesaba bağlı olmayan ve IP adresi sağlayıcıdaki bir sunucuyla **tam olarak bir** kayıtta eşleşen panel sunucusu hesaba bağlanır. Aynı IP birden fazla panel sunucusunda varsa bağlama yapılmaz.
-  - Bağlı sunucuların aylık maliyeti ve para birimi sağlayıcı fiyatından güncellenir. Hetzner fiyatı sunucunun konumundaki **KDV hariç (net)** aylık ücrettir (EUR); DigitalOcean droplet'in aylık ücretidir (USD). Fiyat dönmeyen sunucunun elle girilmiş maliyeti değiştirilmez.
+  - Bağlı sunucuların aylık maliyeti ve para birimi sağlayıcı fiyatından güncellenir. Hetzner fiyatı sunucunun konumundaki **KDV hariç (net)** aylık ücrettir (EUR). DigitalOcean, Vultr ve Linode aylık ücrettir (USD). Scaleway ürünü aylık EUR yayınlamazsa saatlik ücret 730 ile çarpılır. Fiyat dönmeyen sunucunun elle girilmiş maliyeti değiştirilmez.
   - Son eşitleme zamanı ve hatası hesap kartında görünür. Elle eşitleme her zaman, otomatik eşitleme yalnızca değişiklik olduğunda audit log'a `cloud.sync` olarak yazılır.
 - **Sunucu oluşturma** (`/CloudAccounts/Provision`): bölge, sunucu tipi (aylık fiyatıyla, seçilen bölgede satılanlar) ve işletim sistemi imajı sağlayıcıdan yüklenir. İsteğe bağlı cloud-init şablonu user-data olarak verilir (en fazla 32 KB). SSH genel anahtarı girilirse root kullanıcısına eklenir: şablonsuzsa `#cloud-config` + `ssh_authorized_keys`, cloud-config şablonda mevcut listeye eklenerek, `#!` betikte shebang'den hemen sonra kurulum komutlarıyla. Onay penceresinde sunucu adının yazılması istenir.
-- Anahtar verilmezse Hetzner **tek seferlik root parolası** döndürür; parola yalnızca oluşturma sonrası pencerede bir kez gösterilir, veritabanına ve audit log'a yazılmaz. DigitalOcean parolayı hesabın e-postasına gönderir. Oluşturma (başarılı veya başarısız) `cloud.provision` olarak audit log'a yazılır.
+- Anahtar verilmezse Hetzner **tek seferlik root parolası** döndürür; Vultr `default_password` alanını, Linode ise panelin ürettiği root parolasını aynı pencerede bir kez gösterir. Bu parolalar veritabanına ve audit log'a yazılmaz. DigitalOcean parolayı hesabın e-postasına gönderir. Scaleway parola döndürmez. Linode adı harfle başlamalı, 3–64 karakter olmalı ve nokta içermemelidir. Oluşturma (başarılı veya başarısız) `cloud.provision` olarak audit log'a yazılır.
 - Hesap silindiğinde kayıt yumuşak silinir ve bağlı panel sunucularının hesap bağlantısı kaldırılır; sağlayıcıdaki sunuculara ve panel sunucu kayıtlarına dokunulmaz.
 
-Sağlayıcı API adresleri `Cloud:Hetzner:ApiUrl` (varsayılan `https://api.hetzner.cloud/v1/`) ve `Cloud:DigitalOcean:ApiUrl` (varsayılan `https://api.digitalocean.com/v2/`) ile değiştirilebilir; yerel testlerde sahte bir API'ye yönlendirmek için kullanılır. İstekler yönlendirme izlemeyen ayrı HTTP istemcileriyle yapılır; 401/403/429 yanıtları Türkçe hata mesajına çevrilir.
+Sağlayıcı API adresleri `Cloud:Hetzner:ApiUrl` (varsayılan `https://api.hetzner.cloud/v1/`), `Cloud:DigitalOcean:ApiUrl` (`https://api.digitalocean.com/v2/`), `Cloud:Vultr:ApiUrl` (`https://api.vultr.com/v2/`), `Cloud:Linode:ApiUrl` (`https://api.linode.com/v4/`) ve `Cloud:Scaleway:ApiUrl` (`https://api.scaleway.com/`) ile değiştirilebilir; yerel testlerde sahte bir API'ye yönlendirmek için kullanılır. İstekler yönlendirme izlemeyen ayrı HTTP istemcileriyle yapılır; 401/403/429 yanıtları Türkçe hata mesajına çevrilir. Scaleway gizli anahtarı Bearer yerine `X-Auth-Token` başlığında gider.
 
 ### Maliyet raporu
 

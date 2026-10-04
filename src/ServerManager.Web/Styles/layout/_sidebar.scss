@@ -1,9 +1,19 @@
 @layer components {
   .app-sidebar {
-    @apply fixed inset-y-0 left-0 z-50 flex w-64 -translate-x-full flex-col border-r border-slate-800 bg-slate-900 text-slate-300 transition-transform duration-200 lg:translate-x-0;
+    @apply fixed inset-y-0 left-0 z-50 flex w-[4.5rem] translate-x-0 flex-col border-r border-slate-800 bg-slate-900 text-slate-300 transition-[width] duration-200;
 
     &.is-open {
-      @apply translate-x-0;
+      @apply w-64;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .app-sidebar {
+      @apply w-64;
+    }
+
+    html.sidebar-collapsed .app-sidebar {
+      @apply w-[4.5rem];
     }
   }
 
@@ -22,6 +32,10 @@
   .nav-link {
     @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white;
 
+    svg {
+      @apply h-5 w-5 shrink-0;
+    }
+
     &.is-active {
       @apply bg-brand-600 text-white hover:bg-brand-600;
     }
@@ -33,5 +47,83 @@
 
   .nav-soon {
     @apply ml-auto rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-400;
+  }
+
+  .sidebar-close {
+    @apply hidden shrink-0 rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white;
+  }
+
+  .app-sidebar.is-open .sidebar-close {
+    @apply inline-flex lg:hidden;
+  }
+
+  .app-sidebar:not(.is-open) {
+    .sidebar-brand {
+      @apply justify-center px-2;
+    }
+
+    .sidebar-brand-copy,
+    .nav-soon {
+      @apply hidden;
+    }
+
+    .nav-group {
+      @apply mx-auto my-2 h-px w-8 overflow-hidden p-0 text-[0px];
+    }
+
+    .nav-link {
+      @apply justify-center gap-0 px-2 text-[0px];
+    }
+
+    .app-sidebar-nav {
+      @apply px-2;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .app-sidebar:not(.is-open) {
+      .sidebar-brand {
+        @apply justify-start gap-3 px-5;
+      }
+
+      .sidebar-brand-copy {
+        @apply block;
+      }
+
+      .nav-group {
+        @apply mx-0 my-0 h-auto w-auto overflow-visible px-3 pb-1 pt-4 text-[11px];
+      }
+
+      .nav-link {
+        @apply justify-start gap-3 px-3 text-sm;
+      }
+
+      .app-sidebar-nav {
+        @apply px-3;
+      }
+    }
+
+    html.sidebar-collapsed .app-sidebar {
+      .sidebar-brand {
+        @apply justify-center px-2;
+      }
+
+      .sidebar-brand-copy,
+      .nav-soon {
+        @apply hidden;
+      }
+
+      .nav-group {
+        @apply mx-auto my-2 h-px w-8 overflow-hidden p-0 text-[0px];
+      }
+
+      .nav-link {
+        @apply justify-center gap-0 px-2 text-[0px];
+      }
+
+      .app-sidebar-nav {
+        @apply px-2;
+      }
+    }
   }
 }

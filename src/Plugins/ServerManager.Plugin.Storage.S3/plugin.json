@@ -6,5 +6,6 @@
   "Author": "Server Manager",
   "Description": "Yedekleri Amazon S3, Cloudflare R2, MinIO, Backblaze B2 gibi S3 uyumlu nesne depolamalarında saklar.",
   "DisplayOrder": 40,
-  "AssemblyFileName": "ServerManager.Plugin.Storage.S3.dll"
+  "AssemblyFileName": "ServerManager.Plugin.Storage.S3.dll",
+  "Logo": "logo.svg"
 }

@@ -17,12 +17,15 @@
     var canSettings = User.HasPermission(Permissions.SettingsView);
 }
 <aside class="app-sidebar" data-sidebar>
-    <div class="flex h-16 shrink-0 items-center gap-3 border-b border-slate-800 px-5">
-        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white">@Icons.Render("server", "h-5 w-5")</span>
-        <div class="min-w-0">
+    <div class="sidebar-brand flex h-16 shrink-0 items-center gap-3 border-b border-slate-800 px-5">
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white">@Icons.Render("server", "h-5 w-5")</span>
+        <div class="sidebar-brand-copy min-w-0 flex-1">
             <p class="truncate text-sm font-semibold text-white">Server Manager</p>
             <p class="text-[11px] text-slate-500">Operasyon paneli</p>
         </div>
+        <button type="button" class="sidebar-close" data-sidebar-toggle aria-label="Menüyü kapat" title="Menüyü kapat">
+            @Icons.Render("x", "h-5 w-5")
+        </button>
     </div>
 
     <nav class="app-sidebar-nav flex-1 space-y-0.5 overflow-y-auto px-3 py-3">

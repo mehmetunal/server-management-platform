@@ -6,5 +6,6 @@
   "Author": "Server Manager",
   "Description": "Alarm, düzelme ve hatırlatma bildirimlerini Discord kanal webhook'u ile renkli kart (embed) olarak gönderir.",
   "DisplayOrder": 40,
-  "AssemblyFileName": "ServerManager.Plugin.Notifications.Discord.dll"
+  "AssemblyFileName": "ServerManager.Plugin.Notifications.Discord.dll",
+  "Logo": "logo.svg"
 }

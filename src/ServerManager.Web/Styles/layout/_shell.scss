@@ -12,7 +12,11 @@
   }
 
   .app-main {
-    @apply flex min-h-screen w-full flex-col lg:pl-64;
+    @apply flex min-h-screen w-full flex-col pl-[4.5rem] transition-[padding] duration-200 lg:pl-64;
+  }
+
+  html.sidebar-collapsed .app-main {
+    @apply lg:pl-[4.5rem];
   }
 
   .app-topbar {
@@ -25,6 +29,22 @@
 
   .page-header {
     @apply mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .page-breadcrumb {
+    @apply flex min-w-0 items-center gap-1.5 text-sm;
+  }
+
+  .page-breadcrumb-link {
+    @apply truncate text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100;
+  }
+
+  .page-breadcrumb-current {
+    @apply truncate font-medium text-slate-800 dark:text-slate-100;
+  }
+
+  .page-breadcrumb-sep {
+    @apply shrink-0 text-slate-300 dark:text-slate-600;
   }
 
   .page-title {

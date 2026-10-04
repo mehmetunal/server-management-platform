@@ -1,0 +1,24 @@
+@model IReadOnlyList<BreadcrumbItem>
+<nav class="page-breadcrumb" aria-label="Sayfa yolu">
+    @for (var i = 0; i < Model.Count; i++)
+    {
+        var item = Model[i];
+        var last = i == Model.Count - 1;
+        if (i > 0)
+        {
+            <span class="page-breadcrumb-sep" aria-hidden="true">@Icons.Render("chevron-right", "h-3.5 w-3.5")</span>
+        }
+        if (!last && !string.IsNullOrEmpty(item.Url))
+        {
+            <a class="page-breadcrumb-link" href="@item.Url" title="@item.Title">@item.Label</a>
+        }
+        else if (last)
+        {
+            <span class="page-breadcrumb-current" aria-current="page">@item.Label</span>
+        }
+        else
+        {
+            <span class="page-breadcrumb-current">@item.Label</span>
+        }
+    }
+</nav>

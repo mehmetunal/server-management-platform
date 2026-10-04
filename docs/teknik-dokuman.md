@@ -155,11 +155,11 @@ Güvenlik taraması SSH ile `sshd -T` veya `sshd_config`, port, güvenlik duvar�
 
 ## 11. Bulut ve maliyet
 
-`Cloud.Hetzner` ve `Cloud.DigitalOcean` eklentidir. API anahtarı kayıttan önce doğrulanır. İstemci yönlendirme izlemez. 401, 403 ve 429 Türkçe mesaja çevrilir.
+`Cloud.Hetzner`, `Cloud.DigitalOcean`, `Cloud.Vultr`, `Cloud.Linode` ve `Cloud.Scaleway` eklentidir. API anahtarı kayıttan önce doğrulanır. İstemci yönlendirme izlemez. 401, 403 ve 429 Türkçe mesaja çevrilir. Scaleway anahtarı `X-Auth-Token` başlığıyla gider; proje kimliği `account/v3/projects` içinden, adı `default` olan proje tercih edilerek okunur.
 
-Eşitleme `Cloud:SyncIntervalHours` (6, `0` kapatır) veya elle çalışır. Aynı IP birden fazla panel kaydındaysa otomatik bağlanmaz. Hetzner fiyatı konumun KDV hariç aylık EUR tutarıdır. DigitalOcean aylık USD tutarıdır. Fiyat dönmeyen sunucunun elle girilmiş maliyeti değişmez.
+Eşitleme `Cloud:SyncIntervalHours` (6, `0` kapatır) veya elle çalışır. Aynı IP birden fazla panel kaydındaysa otomatik bağlanmaz. Hetzner fiyatı konumun KDV hariç aylık EUR tutarıdır. DigitalOcean, Vultr ve Linode aylık USD tutarıdır. Scaleway katalog saatlik EUR yayınlarsa aylık tutar saatlik fiyat × 730 olur. Fiyat dönmeyen sunucunun elle girilmiş maliyeti değişmez. Scaleway hesabın açmadığı bölge 400/404 döner ve atlanır.
 
-Oluşturma onayı sunucu adını ister. SSH public key cloud-init içine eklenir. Hetzner’in tek seferlik root parolası yalnızca HTTP yanıtında gösterilir, veritabanı ve audit’e yazılmaz.
+Oluşturma onayı sunucu adını ister. SSH public key cloud-init içine eklenir. Hetzner’in tek seferlik root parolası, Vultr `default_password` alanı ve Linode’un üretilen root parolası yalnızca HTTP yanıtında gösterilir, veritabanı ve audit’e yazılmaz. Vultr `user_data` ve Linode `metadata.user_data` base64 gider. Scaleway cloud-init ayrı bir PATCH ile yazılır, sunucu `stopped` ise ardından `poweron` çağrılır. Linode etiketi harfle başlar, 3–64 karakterdir ve nokta, art arda tire veya alt çizgi kabul etmez.
 
 Maliyet sayfası kur çevirmez. Para birimi yoksa ve tutar varsa USD sayılır. Grup silinince sunucu silinmez, gruptan çıkar.
 
@@ -185,6 +185,9 @@ Kurulum migration, izin ve `InstalledPlugins` satırı yazar. Devre dışı bır
 | Storage.AzureBlob | Yedekleme | Azure Blob ve Azurite |
 | Cloud.Hetzner | Bulut | Hetzner Cloud |
 | Cloud.DigitalOcean | Bulut | DigitalOcean |
+| Cloud.Vultr | Bulut | Vultr |
+| Cloud.Linode | Bulut | Linode (Akamai) |
+| Cloud.Scaleway | Bulut | Scaleway |
 
 Dokku kurulum betiği `https://dokku.com/install/{Dokku:Version}/bootstrap.sh` adresindendir. Sürüm `v0.38.31` biçiminde doğrulanır, kabuğa kaçışlanarak yazılır. Çıktı süreç belleğindedir, veritabanına yazılmaz. Süreç ölürse sunucudaki betik sürebilir. Sonuç `dokku.install_complete` audit kaydıdır.
 

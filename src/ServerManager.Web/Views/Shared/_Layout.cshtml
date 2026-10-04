@@ -1,5 +1,6 @@
 @{
     var title = ViewData["Title"] as string;
+    var breadcrumbs = ViewData["Breadcrumb"] as IReadOnlyList<BreadcrumbItem>;
     var userName = User.Identity?.Name;
     var roleName = Roles.All.FirstOrDefault(r => User.IsInRole(r));
 }
@@ -22,12 +23,16 @@
 
         <div class="app-main">
             <header class="app-topbar">
-                <button type="button" class="btn-ghost lg:hidden" data-sidebar-toggle aria-label="Menüyü aç">
+                <button type="button" class="btn-ghost" data-sidebar-toggle aria-expanded="false" aria-label="Menüyü aç" title="Menüyü aç">
                     @Icons.Render("menu")
                 </button>
 
                 <div class="min-w-0 flex-1">
-                    @if (!string.IsNullOrEmpty(title))
+                    @if (breadcrumbs is { Count: > 0 })
+                    {
+                        <partial name="_Breadcrumb" model="breadcrumbs" />
+                    }
+                    else if (!string.IsNullOrEmpty(title))
                     {
                         <p class="truncate text-sm font-medium text-slate-500 dark:text-slate-400">@title</p>
                     }

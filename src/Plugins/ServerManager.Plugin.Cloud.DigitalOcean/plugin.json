@@ -6,5 +6,6 @@
   "Author": "Server Manager",
   "Description": "DigitalOcean hesabındaki droplet'ları listeler, aylık maliyetlerini eşitler ve cloud-init şablonuyla yeni droplet oluşturur.",
   "DisplayOrder": 51,
-  "AssemblyFileName": "ServerManager.Plugin.Cloud.DigitalOcean.dll"
+  "AssemblyFileName": "ServerManager.Plugin.Cloud.DigitalOcean.dll",
+  "Logo": "logo.svg"
 }

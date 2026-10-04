@@ -1,35 +1,81 @@
-.plugin-identity {
+.plugin-stats {
+  @apply mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4;
+}
+
+.plugin-grid {
+  @apply grid grid-cols-1 gap-4 p-4 sm:p-5 xl:grid-cols-2;
+}
+
+.plugin-card {
+  @apply flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-950/50;
+
+  &.is-enabled {
+    @apply border-l-emerald-500;
+    border-left-width: 3px;
+  }
+
+  &.is-disabled {
+    @apply border-l-amber-500;
+    border-left-width: 3px;
+  }
+
+  &.is-pending {
+    @apply border-l-slate-300 dark:border-l-slate-600;
+    border-left-width: 3px;
+  }
+
+  &.is-failed {
+    @apply border-l-red-500;
+    border-left-width: 3px;
+  }
+}
+
+.plugin-card-top {
   @apply flex items-start gap-3;
 }
 
+.plugin-logo,
+.plugin-mark {
+  @apply h-12 w-12 shrink-0 rounded-xl;
+}
+
 .plugin-logo {
-  @apply h-9 w-9 shrink-0 rounded-lg bg-white object-contain p-1 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700;
+  @apply bg-white object-contain p-1.5 dark:bg-white;
+}
+
+.plugin-mark {
+  @apply flex items-center justify-center bg-slate-200 text-base font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300;
 }
 
 .plugin-name {
-  @apply font-medium text-slate-900 dark:text-slate-100;
+  @apply text-sm font-semibold text-slate-900 dark:text-slate-100;
 }
 
 .plugin-system-name {
-  @apply font-mono text-xs text-slate-500;
+  @apply mt-0.5 truncate font-mono text-[11px] text-slate-500;
 }
 
 .plugin-description {
-  @apply mt-1 max-w-xl text-xs text-slate-600 dark:text-slate-400;
+  @apply text-sm leading-relaxed text-slate-600 dark:text-slate-400;
 }
 
 .plugin-error {
-  @apply mt-1 max-w-xl text-xs text-red-600 dark:text-red-400;
+  @apply text-xs text-red-600 dark:text-red-400;
+}
+
+.plugin-card-foot {
+  @apply mt-auto flex flex-col gap-3 border-t border-slate-200/80 pt-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800;
 }
 
 .plugin-meta {
-  @apply whitespace-nowrap text-xs text-slate-500;
+  @apply flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500;
+
+  span + span::before {
+    content: "·";
+    @apply mr-2 text-slate-300 dark:text-slate-600;
+  }
 }
 
 .plugin-actions {
-  @apply flex justify-end gap-1;
-}
-
-.plugin-empty {
-  @apply p-5 text-sm text-slate-500;
+  @apply flex shrink-0 justify-end;
 }

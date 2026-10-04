@@ -1,0 +1,11 @@
+{
+  "SystemName": "Cloud.Scaleway",
+  "FriendlyName": "Scaleway",
+  "Group": "Bulut",
+  "Version": "1.0.0",
+  "Author": "Server Manager",
+  "Description": "Scaleway hesabındaki sunucuları listeler, aylık maliyetlerini eşitler ve cloud-init ile yeni sunucu oluşturur.",
+  "DisplayOrder": 54,
+  "AssemblyFileName": "ServerManager.Plugin.Cloud.Scaleway.dll",
+  "Logo": "logo.svg"
+}
