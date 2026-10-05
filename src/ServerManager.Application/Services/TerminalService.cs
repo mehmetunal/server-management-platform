@@ -106,6 +106,9 @@ public class TerminalService : ITerminalService
         return result;
     }
 
+    public Task RecordSessionAsync(TerminalHandle handle, TerminalActor actor, CancellationToken cancellationToken = default) =>
+        SaveSessionAsync(handle, actor, cancellationToken);
+
     public async Task CompleteSessionAsync(TerminalHandle handle, TerminalActor actor, string? reason, CancellationToken cancellationToken = default)
     {
         var endedAt = _timeProvider.GetUtcNow().UtcDateTime;
@@ -119,14 +122,22 @@ public class TerminalService : ITerminalService
         }
 
         var minutes = (int)Math.Max(0, (endedAt - handle.Session.StartedAt).TotalMinutes);
-        var details = handle.Kind == TerminalSessionKind.Container
-            ? $"Container: {handle.Container}, süre: {minutes} dk"
-            : $"Sunucu kabuğu, süre: {minutes} dk";
+        var details = handle.Kind switch
+        {
+            TerminalSessionKind.Container => $"Container: {handle.Container}, süre: {minutes} dk",
+            TerminalSessionKind.ServiceConsole => $"Servis konsolu: {handle.Container}, süre: {minutes} dk",
+            _ => $"Sunucu kabuğu, süre: {minutes} dk"
+        };
         if (!string.IsNullOrEmpty(reason))
             details += $", neden: {reason}";
 
         await _auditLogService.LogAsync(new AuditEntry(
-            handle.Kind == TerminalSessionKind.Container ? AuditActions.DockerTerminalClose : AuditActions.TerminalClose,
+            handle.Kind switch
+            {
+                TerminalSessionKind.Container => AuditActions.DockerTerminalClose,
+                TerminalSessionKind.ServiceConsole => AuditActions.ManagedServiceConsoleClose,
+                _ => AuditActions.TerminalClose
+            },
             AuditEntityTypes.Server,
             handle.ServerId.ToString(),
             handle.ServerName,

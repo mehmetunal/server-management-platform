@@ -35,6 +35,21 @@ public sealed class DeploymentPlan
     /// <summary>Boşsa container'a Traefik etiketi yazılmaz ve mevcut davranış korunur.</summary>
     public IReadOnlyList<DeploymentRoute> Routes { get; init; } = [];
 
+    /// <summary>
+    /// Projeye bağlı yönetilen servis var: container'lar <c>sm-services</c> ağına da katılır (ağ yoksa oluşturulur);
+    /// uygulama servise container adıyla bağlanır.
+    /// </summary>
+    public bool JoinServicesNetwork { get; init; }
+
+    /// <summary>
+    /// Geri dönüş: Dockerfile projesinde <see cref="Commit"/> imajı sunucuda varsa kaynak kod çekilmez ve build yapılmaz,
+    /// imaj <c>latest</c> olarak etiketlenip çalıştırılır.
+    /// </summary>
+    public bool PreferExistingImage { get; init; }
+
+    /// <summary>Dockerfile projesinde başarılı deploy sonrası saklanan commit imajı sayısı; 0 ise imaj silinmez.</summary>
+    public int KeepImageCount { get; init; }
+
     public TimeSpan GitTimeout { get; init; } = TimeSpan.FromMinutes(5);
 
     public TimeSpan BuildTimeout { get; init; } = TimeSpan.FromMinutes(30);

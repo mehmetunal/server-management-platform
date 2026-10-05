@@ -35,6 +35,9 @@ public static class DependencyInjection
         services.AddScoped<IProjectService, ProjectService>();
         services.AddScoped<IDeploymentService, DeploymentService>();
         services.AddScoped<IDeploymentDomainService, DeploymentDomainService>();
+        services.AddScoped<IProjectEnvironmentService, ProjectEnvironmentService>();
+        services.AddScoped<IProjectWebhookService, ProjectWebhookService>();
+        services.AddScoped<IProjectRuntimeService, ProjectRuntimeService>();
         services.AddScoped<IGitIntegrationRegistry, GitIntegrationRegistry>();
         services.AddScoped<INotificationChannelRegistry, NotificationChannelRegistry>();
         services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
@@ -58,6 +61,12 @@ public static class DependencyInjection
         services.AddScoped<IBackupRunService, BackupRunService>();
         services.AddScoped<ISecurityService, SecurityService>();
         services.AddScoped<IServerSystemService, ServerSystemService>();
+
+        // Servisler (tek tıkla Docker servisleri)
+        services.AddScoped<IManagedServiceService, ManagedServiceService>();
+        services.AddScoped<IProjectServiceLinkService, ProjectServiceLinkService>();
+        services.AddScoped<IManagedServiceBackupService, ManagedServiceBackupService>();
+
         services.AddSingleton<AuditActionCatalog>();
         services.AddSingleton<DangerousCommandDetector>();
         services.AddSingleton<TerminalCommandQueue>();

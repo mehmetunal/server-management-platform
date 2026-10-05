@@ -126,7 +126,7 @@ public class PanelSettingsServiceTests
     {
         var group = Assert.Single(Service().GetGroups(), g => g.Title == "Kayıt saklama");
 
-        Assert.Equal(5, group.Fields.Count);
+        Assert.Equal(6, group.Fields.Count);
         Assert.All(group.Fields, f => Assert.Equal("90", f.Value));
     }
 

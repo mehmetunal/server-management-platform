@@ -20,6 +20,8 @@ public sealed class BackupJobDetailsDto
 
     public string? DatabaseUser { get; init; }
 
+    public string? DatabaseAuthSource { get; init; }
+
     public bool HasDatabasePassword { get; init; }
 
     public string? DatabaseHost { get; init; }

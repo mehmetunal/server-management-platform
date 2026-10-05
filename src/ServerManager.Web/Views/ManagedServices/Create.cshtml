@@ -1,0 +1,227 @@
+@model ManagedServiceCreateViewModel
+@{
+    var template = Model.Template;
+    var form = Model.Form;
+    ViewData["Title"] = template is null ? "Servis ekle" : $"{template.DisplayName} kur";
+    ViewData["Page"] = "managed-service-form";
+    var serverQuery = form.ServerId == Guid.Empty ? (Guid?)null : form.ServerId;
+    var credentials = template?.Credentials;
+}
+
+<div class="page-header">
+    <div>
+        @if (template is null)
+        {
+            <a asp-action="Index" asp-route-serverId="@serverQuery" class="back-link" title="Servis listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Servisler</a>
+            <h1 class="page-title">Servis ekle</h1>
+            <p class="page-lead">Kurmak istediğiniz veritabanını veya uygulamayı seçin. Servis seçtiğiniz sunucuda Docker container'ı olarak çalışır.</p>
+        }
+        else
+        {
+            <a asp-action="Create" asp-route-serverId="@serverQuery" class="back-link" title="Servis türü seçimine dön">@Icons.Render("chevron-left", "h-4 w-4") Servis türleri</a>
+            <h1 class="page-title service-title">
+                <partial name="_ServiceLogo" model="template" />
+                @template.DisplayName kur
+            </h1>
+            <p class="page-lead">@template.Description</p>
+        }
+    </div>
+</div>
+
+@if (template is null)
+{
+    foreach (var category in new[] { ManagedServiceCategory.Database, ManagedServiceCategory.Application })
+    {
+        <section class="mb-8">
+            <h2 class="form-section-title">@ManagedServiceDisplay.CategoryText(category)</h2>
+            <div class="service-template-grid">
+                @foreach (var item in ServiceTemplates.ByCategory(category))
+                {
+                    <a asp-action="Create" asp-route-template="@item.Key" asp-route-serverId="@serverQuery" class="service-template-card" title="@item.DisplayName kurulum formunu aç">
+                        <partial name="_ServiceLogo" model="item" />
+                        <span class="service-template-body">
+                            <span class="service-template-name">@item.DisplayName</span>
+                            <span class="service-template-text">@item.Description</span>
+                            <span class="service-template-meta">
+                                <span class="font-mono">@item.Image</span> · @string.Join(", ", item.Tags.Take(3))
+                                @if (item.RequiresX86)
+                                {
+                                    <span class="badge-warning">Yalnızca x86_64</span>
+                                }
+                            </span>
+                        </span>
+                    </a>
+                }
+            </div>
+        </section>
+    }
+}
+else
+{
+    <form asp-action="Create" method="post" data-service-form novalidate autocomplete="off"
+          data-probe-url="@Url.Action("Probe")"
+          data-requires-x86="@(template.RequiresX86 ? "true" : "false")"
+          data-docker-url="@Url.Action("Index", "Docker", new { id = "__id__" })"
+          data-networks-url="@Url.Action("Networks")">
+        <input type="hidden" name="TemplateKey" value="@template.Key" />
+        <p class="alert-error mb-6" data-form-error hidden></p>
+
+        <div class="service-form-layout">
+            <div class="service-form-main">
+                <div class="service-probe" data-service-probe-slot></div>
+
+                <section class="panel">
+                    <div class="panel-header"><h2 class="panel-title">Genel</h2></div>
+                    <div class="panel-body service-form-grid">
+                        <div>
+                            <label for="service-server" class="form-label">Sunucu *</label>
+                            <select id="service-server" name="ServerId" class="form-control" data-server-select>
+                                <option value="">Sunucu seçin</option>
+                                @foreach (var server in Model.Servers)
+                                {
+                                    <option value="@server.Id" selected="@(server.Id == form.ServerId)">@server.Name (@server.IpAddress)</option>
+                                }
+                            </select>
+                            <span class="field-validation-valid" data-valmsg-for="ServerId"></span>
+                        </div>
+                        <div>
+                            <label for="service-name" class="form-label">Servis adı *</label>
+                            <input id="service-name" name="Name" class="form-control" value="@form.Name" maxlength="64" placeholder="ör. ana-veritabani" />
+                            <p class="form-hint">Container adı bundan üretilir (<span class="font-mono">sm-svc-…</span>) ve sonradan değişmez.</p>
+                            <span class="field-validation-valid" data-valmsg-for="Name"></span>
+                        </div>
+                        <div>
+                            <label for="service-tag" class="form-label">Sürüm *</label>
+                            <input id="service-tag" name="ImageTag" class="form-control form-control-mono" value="@form.ImageTag" list="service-tags" maxlength="128" spellcheck="false" />
+                            <datalist id="service-tags">
+                                @foreach (var tag in template.Tags)
+                                {
+                                    <option value="@tag"></option>
+                                }
+                            </datalist>
+                            <p class="form-hint">İmaj: <span class="font-mono">@template.Image</span>. Listeden seçin veya Docker Hub'daki başka bir etiketi yazın.</p>
+                            <span class="field-validation-valid" data-valmsg-for="ImageTag"></span>
+                        </div>
+                        <div>
+                            <span class="form-label">Veri saklama</span>
+                            @if (template.DataPath(form.ImageTag ?? template.DefaultTag) is null)
+                            {
+                                <input type="hidden" name="VolumeMode" value="NamedVolume" />
+                                <p class="form-hint">Bu servis kalıcı veri tutmaz.</p>
+                            }
+                            else
+                            {
+                                <div class="service-radio-group">
+                                    <label class="check-inline"><input type="radio" class="form-check" name="VolumeMode" value="NamedVolume" checked="@(form.VolumeMode == ManagedServiceVolumeMode.NamedVolume)" data-volume-mode /> Docker volume</label>
+                                    <label class="check-inline"><input type="radio" class="form-check" name="VolumeMode" value="HostPath" checked="@(form.VolumeMode == ManagedServiceVolumeMode.HostPath)" data-volume-mode /> Sunucu klasörü</label>
+                                </div>
+                                <div data-host-path hidden="@(form.VolumeMode != ManagedServiceVolumeMode.HostPath)">
+                                    <input name="HostDataPath" class="form-control form-control-mono mt-2" value="@form.HostDataPath" placeholder="/srv/data/postgres" spellcheck="false" />
+                                    <span class="field-validation-valid" data-valmsg-for="HostDataPath"></span>
+                                </div>
+                                <p class="form-hint">Varsayılan: <span class="font-mono">sm-svc-&lt;ad&gt;-data</span> volume'u. Veri yeniden oluşturma ve sürüm yükseltmede korunur.</p>
+                            }
+                        </div>
+                    </div>
+                </section>
+
+                @if (credentials is not null && (credentials.HasUsername || credentials.HasPassword || credentials.HasDatabase || credentials.GeneratesEncryptionKey))
+                {
+                    <section class="panel">
+                        <div class="panel-header"><h2 class="panel-title">Kimlik bilgileri</h2></div>
+                        <div class="panel-body service-form-grid">
+                            @if (credentials.HasUsername)
+                            {
+                                <div>
+                                    <label for="service-username" class="form-label">@credentials.UsernameLabel *</label>
+                                    @if (credentials.UsernameKind == ServiceUsernameKind.Fixed)
+                                    {
+                                        <input id="service-username" class="form-control form-control-mono" value="@credentials.DefaultUsername" readonly />
+                                        <p class="form-hint">Bu servis için kullanıcı adı sabittir.</p>
+                                    }
+                                    else
+                                    {
+                                        <input id="service-username" name="Username" class="form-control form-control-mono" value="@form.Username" maxlength="254" spellcheck="false" autocomplete="off" />
+                                    }
+                                    <span class="field-validation-valid" data-valmsg-for="Username"></span>
+                                </div>
+                            }
+                            @if (credentials.HasPassword)
+                            {
+                                <div>
+                                    <label for="service-password" class="form-label">Parola *</label>
+                                    <div class="service-inline-field" data-password-field>
+                                        <input id="service-password" name="Password" type="password" class="form-control form-control-mono" value="@form.Password" maxlength="128" autocomplete="new-password" spellcheck="false" data-password-input />
+                                        <button type="button" class="btn-secondary" data-password-toggle title="Parolayı göster / gizle">@Icons.Render("eye", "h-4 w-4")</button>
+                                        <button type="button" class="btn-secondary" data-password-copy title="Parolayı panoya kopyala">@Icons.Render("copy", "h-4 w-4")</button>
+                                        <button type="button" class="btn-secondary" data-password-generate title="Yeni güçlü parola üret">@Icons.Render("refresh", "h-4 w-4")</button>
+                                    </div>
+                                    <p class="form-hint">
+                                        Otomatik üretildi. Parola şifreli saklanır; sonradan yalnızca yetkili kullanıcılar görebilir (görüntüleme audit log'a yazılır).
+                                        @if (credentials.PasswordPolicy == ServicePasswordPolicy.MssqlComplex)
+                                        {
+                                            <span>SQL Server: en az 8 karakter; büyük/küçük harf, rakam ve sembolden üçü.</span>
+                                        }
+                                    </p>
+                                    <span class="field-validation-valid" data-valmsg-for="Password"></span>
+                                </div>
+                            }
+                            @if (credentials.HasDatabase)
+                            {
+                                <div>
+                                    <label for="service-database" class="form-label">Veritabanı adı *</label>
+                                    <input id="service-database" name="Database" class="form-control form-control-mono" value="@form.Database" maxlength="63" spellcheck="false" />
+                                    <span class="field-validation-valid" data-valmsg-for="Database"></span>
+                                </div>
+                            }
+                            @if (credentials.GeneratesEncryptionKey)
+                            {
+                                <p class="form-hint service-form-wide">Şifreleme anahtarı kurulumda üretilir ve şifreli saklanır; servis sayfasından görüntülenebilir.</p>
+                            }
+                        </div>
+                    </section>
+                }
+
+                <partial name="_SettingsFields" model="new ManagedServiceSettingsFieldsModel(template, form, Model.AllowPrivilegedPorts, form.ServerId)" />
+
+                @if (Model.CanConfigureBackup)
+                {
+                    var askDatabase = !template.Credentials.HasDatabase && ManagedServiceBackups.EngineFor(template.Key) is { } backupEngine && BackupDatabaseEngines.RequiresDatabaseName(backupEngine);
+                    <section class="panel">
+                        <div class="panel-header"><h2 class="panel-title">Otomatik yedek</h2></div>
+                        <div class="panel-body">
+                            <partial name="_BackupFields" model="new ManagedServiceBackupFieldsModel(Model.BackupStorages, askDatabase, WithToggle: true)" />
+                        </div>
+                    </section>
+                }
+            </div>
+
+            <aside class="service-form-aside">
+                <section class="panel">
+                    <div class="panel-header"><h2 class="panel-title">Özet</h2></div>
+                    <dl class="panel-body detail-list">
+                        <div><dt class="detail-term">Tür</dt><dd class="detail-value">@ManagedServiceDisplay.CategoryText(template.Category)</dd></div>
+                        <div><dt class="detail-term">İmaj</dt><dd class="detail-value font-mono">@template.Image</dd></div>
+                        <div><dt class="detail-term">Önerilen bellek</dt><dd class="detail-value">en az @template.MinMemoryMb MB</dd></div>
+                        @if (template.ConsoleLabel is not null)
+                        {
+                            <div><dt class="detail-term">Konsol</dt><dd class="detail-value font-mono">@template.ConsoleLabel</dd></div>
+                        }
+                    </dl>
+                    @if (template.RequiresX86)
+                    {
+                        <p class="panel-note">@template.DisplayName yalnızca x86_64 (amd64) sunucularda çalışır; ARM (arm64) sunucularda container açılmaz.</p>
+                    }
+                    @if (template.Notes is not null)
+                    {
+                        <p class="panel-note">@template.Notes</p>
+                    }
+                </section>
+                <div class="service-form-actions">
+                    <a asp-action="Create" asp-route-serverId="@serverQuery" class="btn-secondary" title="Kurmadan geri dön">İptal</a>
+                    <button type="submit" class="btn-primary" title="Servisi kur; ilerleme canlı olarak gösterilir"><span class="spinner" data-spinner hidden></span>@Icons.Render("play", "h-4 w-4") Kur</button>
+                </div>
+            </aside>
+        </div>
+    </form>
+}

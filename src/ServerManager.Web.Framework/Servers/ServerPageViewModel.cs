@@ -22,6 +22,9 @@ public sealed class ServerPageViewModel
     public const string AlertsTab = "alerts";
     public const string ActivityTab = "activity";
 
+    /// <summary>Servisler (tek tıkla Docker servisleri); sistem servisleri sekmesi <see cref="ServicesTab"/>'dır.</summary>
+    public const string ManagedServicesTab = "managed-services";
+
     /// <summary>Çekirdek sekme sabitlerinden biri ya da bir eklentinin <see cref="ServerTab.Key"/> değeri.</summary>
     public string ActiveTab { get; init; } = OverviewTab;
 

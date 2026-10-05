@@ -27,7 +27,10 @@ public class Deployment
 
     public string? CommitAuthor { get; set; }
 
+    /// <summary>Yeniden deploy ve geri dönüşte kaynak alınan deployment; geri dönüşte hedef sürümdür.</summary>
     public Guid? SourceDeploymentId { get; set; }
+
+    public DeploymentKind Kind { get; set; } = DeploymentKind.Deploy;
 
     public DeploymentStatus Status { get; set; } = DeploymentStatus.Started;
 

@@ -72,6 +72,9 @@ public static partial class EnvironmentFile
         return builder.ToString().TrimEnd('\n') + "\n";
     }
 
+    /// <summary>Anahtar harf veya alt çizgiyle başlar; harf, rakam ve alt çizgi içerir.</summary>
+    public static bool IsValidKey(string? key) => !string.IsNullOrEmpty(key) && KeyPattern().IsMatch(key);
+
     [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]*$")]
     private static partial Regex KeyPattern();
 }

@@ -6,6 +6,10 @@ import { onPageDispose } from '../../core/page-scope.js';
 const FOLLOW_INTERVAL_MS = 3000;
 const MAX_LINES = 5000;
 
+// Yalnızca hata/uyarı filtresi (Servisler › Loglar): seviye kelimeleri büyük/küçük harf duyarsız aranır.
+const PROBLEM_PATTERN = /error|fatal|panic|exception|warn/i;
+const isProblem = line => line.isProblem ?? PROBLEM_PATTERN.test(line.text);
+
 const lineKey = line => `${line.rawTimestamp ?? ''}|${line.isError ? 1 : 0}|${line.text}`;
 
 /**
@@ -19,10 +23,12 @@ export function createLogViewer(root) {
     const tailSelect = qs('[data-logs-tail]', root);
     const search = qs('[data-logs-search]', root);
     const errorsOnly = qs('[data-logs-errors]', root);
+    // İsteğe bağlı hata/uyarı filtresi: sunucu satırı işaretlediyse (line.isProblem) o, yoksa istemci tarafı desen kullanılır.
+    const problemsOnly = qs('[data-logs-problems]', root);
     const wrap = qs('[data-logs-wrap]', root);
     const follow = qs('[data-logs-follow]', root);
     const status = qs('[data-logs-status]', root);
-    const baseUrl = root.dataset.url;
+    let baseUrl = root.dataset.url;
 
     let lines = [];
     let lastRaw = null;
@@ -45,7 +51,8 @@ export function createLogViewer(root) {
     }
 
     function matches(line) {
-        if (errorsOnly.checked && !line.isError) return false;
+        if (errorsOnly?.checked && !line.isError) return false;
+        if (problemsOnly?.checked && !isProblem(line)) return false;
         const query = search.value.trim().toLowerCase();
         return !query || line.text.toLowerCase().includes(query);
     }
@@ -53,7 +60,7 @@ export function createLogViewer(root) {
     function lineElement(line) {
         const row = element('div', 'log-line');
         row.appendChild(element('span', 'log-time', formatTimestamp(line.timestamp)));
-        const text = element('span', `log-text${wrap.checked ? ' is-wrapped' : ''}${line.isError ? ' is-error' : ''}`, line.text);
+        const text = element('span', `log-text${wrap.checked ? ' is-wrapped' : ''}${problemsOnly && isProblem(line) ? ' is-problem' : ''}${line.isError ? ' is-error' : ''}`, line.text);
         row.appendChild(text);
         return row;
     }
@@ -91,7 +98,7 @@ export function createLogViewer(root) {
     }
 
     async function load() {
-        if (loading) return;
+        if (loading || !baseUrl) return;
         loading = true;
         setStatus('Yükleniyor…');
         try {
@@ -114,7 +121,7 @@ export function createLogViewer(root) {
     }
 
     async function poll() {
-        if (loading || document.hidden) return;
+        if (loading || document.hidden || !baseUrl) return;
         if (!lastRaw) {
             await load();
             return;
@@ -155,7 +162,8 @@ export function createLogViewer(root) {
 
     tailSelect.addEventListener('change', load);
     search.addEventListener('input', render);
-    errorsOnly.addEventListener('change', render);
+    errorsOnly?.addEventListener('change', render);
+    problemsOnly?.addEventListener('change', render);
     wrap.addEventListener('change', render);
     follow.addEventListener('change', () => setFollow(follow.checked));
     qs('[data-logs-reload]', root).addEventListener('click', load);
@@ -167,6 +175,15 @@ export function createLogViewer(root) {
             if (started) return;
             started = true;
             load();
+        },
+        /** Başka bir container'a geçer (url sorgu dizesi içermelidir; tail/since eklenir). */
+        setSource(url, container) {
+            baseUrl = url;
+            root.dataset.container = container;
+            lines = [];
+            lastRaw = null;
+            seenAtLast = new Set();
+            if (started) load();
         }
     };
 }

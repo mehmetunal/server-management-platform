@@ -32,6 +32,7 @@ public static class DefaultRolePermissions
             Permissions.DeploymentView,
             Permissions.DeploymentManage,
             Permissions.DeploymentExecute,
+            Permissions.DeploymentSecrets,
             Permissions.AlertView,
             Permissions.AlertAcknowledge,
             Permissions.AlertManage,
@@ -52,7 +53,11 @@ public static class DefaultRolePermissions
             Permissions.CloudManage,
             Permissions.CloudProvision,
             Permissions.SettingsView,
-            Permissions.SettingsManage
+            Permissions.SettingsManage,
+            Permissions.ServicesView,
+            Permissions.ServicesManage,
+            Permissions.ServicesConsole,
+            Permissions.ServicesRevealSecrets
         ],
         [Roles.Operator] =
         [
@@ -82,7 +87,10 @@ public static class DefaultRolePermissions
             Permissions.SystemView,
             Permissions.SystemManage,
             Permissions.CommandView,
-            Permissions.CloudView
+            Permissions.CloudView,
+            Permissions.ServicesView,
+            Permissions.ServicesManage,
+            Permissions.ServicesConsole
         ],
         [Roles.Developer] =
         [
@@ -96,7 +104,8 @@ public static class DefaultRolePermissions
             Permissions.DeploymentExecute,
             Permissions.AlertView,
             Permissions.BackupView,
-            Permissions.SystemView
+            Permissions.SystemView,
+            Permissions.ServicesView
         ],
         [Roles.Viewer] =
         [
@@ -105,7 +114,8 @@ public static class DefaultRolePermissions
             Permissions.DockerView,
             Permissions.DeploymentView,
             Permissions.AlertView,
-            Permissions.BackupView
+            Permissions.BackupView,
+            Permissions.ServicesView
         ]
     };
 }

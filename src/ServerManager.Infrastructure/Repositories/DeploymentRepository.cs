@@ -72,6 +72,9 @@ public class DeploymentRepository : IDeploymentRepository
     public Task<bool> SlugExistsAsync(string slug, CancellationToken cancellationToken = default) =>
         _context.DeploymentProjects.IgnoreQueryFilters().AnyAsync(p => p.Slug == slug, cancellationToken);
 
+    public Task<bool> HasServiceLinksAsync(Guid projectId, CancellationToken cancellationToken = default) =>
+        _context.ProjectServiceLinks.AnyAsync(l => l.ProjectId == projectId, cancellationToken);
+
     public async Task AddProjectAsync(DeploymentProject project, CancellationToken cancellationToken = default) =>
         await _context.DeploymentProjects.AddAsync(project, cancellationToken);
 
@@ -146,6 +149,29 @@ public class DeploymentRepository : IDeploymentRepository
         return items.ToDictionary(d => d.ProjectId);
     }
 
+    public Task<Deployment?> GetLastSuccessfulDeploymentAsync(Guid projectId, CancellationToken cancellationToken = default) =>
+        _context.Deployments
+            .AsNoTracking()
+            .Where(d => d.ProjectId == projectId && d.Status == DeploymentStatus.Succeeded)
+            .OrderByDescending(d => d.StartedAt)
+            .Select(WithoutLog())
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyDictionary<Guid, Guid>> GetCurrentDeploymentIdsAsync(IReadOnlyCollection<Guid> projectIds, CancellationToken cancellationToken = default)
+    {
+        if (projectIds.Count == 0)
+            return new Dictionary<Guid, Guid>();
+
+        var rows = await _context.Deployments
+            .AsNoTracking()
+            .Where(d => projectIds.Contains(d.ProjectId) && d.Status == DeploymentStatus.Succeeded)
+            .GroupBy(d => d.ProjectId)
+            .Select(g => new { ProjectId = g.Key, Id = g.OrderByDescending(d => d.StartedAt).Select(d => d.Id).First() })
+            .ToListAsync(cancellationToken);
+
+        return rows.ToDictionary(r => r.ProjectId, r => r.Id);
+    }
+
     public async Task AddDeploymentAsync(Deployment deployment, CancellationToken cancellationToken = default) =>
         await _context.Deployments.AddAsync(deployment, cancellationToken);
 
@@ -179,6 +205,7 @@ public class DeploymentRepository : IDeploymentRepository
         CommitMessage = d.CommitMessage,
         CommitAuthor = d.CommitAuthor,
         SourceDeploymentId = d.SourceDeploymentId,
+        Kind = d.Kind,
         Status = d.Status,
         FailureReason = d.FailureReason,
         ExitCode = d.ExitCode,

@@ -29,6 +29,9 @@ public sealed class BackupJobFormDto
 
     public string? DatabaseUser { get; set; }
 
+    /// <summary>MongoDB: kimlik doğrulama veritabanı; boşsa admin.</summary>
+    public string? DatabaseAuthSource { get; set; }
+
     /// <summary>Yalnızca yazılır; düzenlemede boş bırakılırsa kayıtlı parola korunur.</summary>
     public string? DatabasePassword { get; set; }
 

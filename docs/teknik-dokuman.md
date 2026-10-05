@@ -130,10 +130,14 @@ SSH stdout’u panele akar, sunucuda geçici arşiv oluşmaz. Panel akışı dep
 | --- | --- | --- |
 | Dosya | `tar -czf -` | İlgili yolları okuyacak sudo veya root |
 | Volume | `alpine:3` container, volume salt okunur, `--network none` | docker grubu veya yalnızca docker için sudo |
-| Veritabanı, container | `docker exec` içinde `pg_dump` veya `mariadb-dump`/`mysqldump`, sonra gzip | docker |
+| Veritabanı, container | `docker exec` içinde `pg_dump`, `mariadb-dump`/`mysqldump`, `mongodump --archive`, `redis-cli BGSAVE` + RDB dosyası veya `sqlcmd BACKUP DATABASE … COPY_ONLY`, sonra gzip | docker |
 | Veritabanı, sunucu | Sunucudaki istemci ve gzip | İstemci kurulu olmalı |
 
-PostgreSQL `--clean --if-exists --no-owner --no-privileges`. MySQL `--single-transaction --routines --triggers`. Parola stdin ve yalnızca döküm sürecinin ortam değişkeniyle gider.
+PostgreSQL `--clean --if-exists --no-owner --no-privileges`. MySQL `--single-transaction --routines --triggers`. Parola stdin'in ilk satırından okunur, argv'ye girmez: PostgreSQL `PGPASSWORD`, MySQL `MYSQL_PWD`, Redis `REDISCLI_AUTH`, SQL Server `SQLCMDPASSWORD`; MongoDB araçları parolayı ortamdan okumadığı için `mktemp -d` içinde 0600 YAML dosyası + `--config` (Database Tools 100.3+, dosya EXIT tuzağıyla silinir).
+
+Motor kuralları `BackupDatabaseEngines` içindedir (zorunlu alanlar, varsayılan port/kullanıcı, uzantı, geri yükleme desteği). Uzantılar: `.sql.gz`, MongoDB `.archive.gz`, Redis `.rdb.gz`, SQL Server `.bak.gz`. Redis ve SQL Server dosyası veritabanı sunucusunun diskinde oluştuğundan uzak adres reddedilir. SQL Server geçici .bak dosyasını `/var/opt/mssql/backup` altına yazar ve siler; geri yüklemede `SINGLE_USER WITH ROLLBACK IMMEDIATE` → `RESTORE … WITH REPLACE` → her durumda `MULTI_USER`; farklı adda `RESTORE FILELISTONLY` ile `MOVE` üretilir. MongoDB geri yüklemesi isteğe bağlı `--drop`, farklı adda `--nsFrom/--nsTo`. Redis geri yüklemesi panelde yoktur; formda `BackupDatabaseEngines.RedisManualRestoreGuidance` gösterilir.
+
+Diğer modüller container veritabanı için iş açarken `IBackupJobService.CreateForContainerDatabaseAsync(ContainerDatabaseBackupRequest)` kullanır; istek `BackupJobSpecs.ForContainerDatabase` ile forma çevrilip `CreateAsync` yolundan geçer. MongoDB kimlik doğrulama veritabanı `BackupJobs.DatabaseAuthSource` sütunundadır (M025).
 
 Nesne adı `{önek}{iş}/{yyyyMMdd-HHmmss}-{kısa}.tar.gz` veya veritabanında `.sql.gz`. Şifreliyse sonuna `.smbk` eklenir. SMBK sürüm 1: 36 bayt başlık, PBKDF2-HMAC-SHA256, 1 MiB AES-256-GCM parçaları. Tur sayısı `Backup:KeyDerivationIterations`. Her çalıştırma parola kopyasını kendinde tutar. İşin parolası değişse de eski dosya kendi kopyasıyla açılır.
 
@@ -151,11 +155,29 @@ Proje çekirdektedir. Dokploy veya Dokku dağıtımının yerine geçmez. Git, h
 
 Domain kaydı `DeploymentDomains` tablosundadır. Aynı sunucuda aynı host ve yol iki kez kullanılamaz. Sunucuda bir kez `sm-traefik` ve `sm-proxy` ağı kurulur. Compose dosyası değiştirilmez; yanına `sm-proxy.override.yml` yazılır. Dockerfile container'ına etiket `docker run` ile eklenir. Özel sertifika ve anahtar şifreli saklanır, komut satırına yazılmaz, `/var/lib/sm-traefik/dynamic` altına stdin ile gider. Domain'i olmayan proje eskisi gibi yalnızca port veya compose ile ayağa kalkar. Proje silinince kayıt panelden kalkar; onay kutusundaki kalıcı silme sunucudaki klasörü, container'ı, imajı, volume'ları ve bu projenin vekil dosyalarını da kaldırır. `sm-traefik` durmaz. Deployment geçmişi silinmez. `Deployment:AcmeEmail` Let's Encrypt hesabıdır; varsayılanı boştur ve yapılandırılmadan vekil kurulmaz.
 
+Ortam değişkenleri projede tek şifreli `.env` metni olarak durur (`DeploymentProjects.EncryptedEnvironment`) ve satır bazında düzenlenir; yorum ve sıra korunur. Okuma `deployment.view` (yalnızca anahtarlar), yazma `deployment.manage`, değer görme ve `.env` indirme `deployment.secrets` ister ve audit'e anahtar adıyla yazılır. Compose `.env`'yi container'a aktarmadığı için `docker compose config --services` ile servisler okunur ve override her servise `env_file` ekler; Dockerfile container'ı `--env-file` ile başlar. Diğer modüller `IProjectEnvironmentService.UpsertEnvironmentVariablesAsync` / `RemoveEnvironmentVariablesAsync` kullanır. **Uygula / Yeniden başlat** (`IDeploymentService.BeginRestartAsync`, `Deployment.Kind = Restart`) kaynak kod ve build olmadan `.env` ve override'ı yazıp container'ları yeniden oluşturur.
+
+Çalışma logları sekmesi projenin container'larını (`com.docker.compose.project=sm-<proje>` veya `sm-<proje>`) `docker logs` ile okur. Push webhook'u `POST /api/webhooks/projects/{id}`: GitHub `X-Hub-Signature-256` HMAC veya GitLab `X-Gitlab-Token`, sabit zamanlı karşılaştırma, anonim, IP başına dakikada 30 istek; süren deployment varken proje başına tek takip deploy'u kuyruğa alınır. GitHub'da *Settings → Webhooks* içinde içerik türü `application/json`, gizli anahtar paneldeki değer, olay "Just the push event"; GitLab'da *Settings → Webhooks* içinde URL, "Secret token" ve "Push events". Panel ters vekil arkasındaysa adres `Deployment:PublicBaseUrl` ile üretilir. Geri dönüş (`Deployment.Kind = Rollback`) Dockerfile'da `sm-<proje>:<kısa-sha>` imajı duruyorsa build'i atlar; `Deployment:KeepImageCount` (5) başarılı deploy sonrası saklanan commit imajı sayısıdır, `latest` ve çalışan imaj silinmez.
+
+Projeye bağlı yönetilen servis varsa (`ProjectServiceLinks`, M026) plan `JoinServicesNetwork` taşır: override tüm servislere `default`, (rota varsa) `sm-proxy` ve `sm-services` ağlarını yazar ve `sm-services`'i dış ağ tanımlar; Dockerfile container'ı rota yoksa `--network sm-services` ile başlar, rota varsa `sm-proxy` ile başlayıp `docker network connect sm-services` ile eklenir. Ağ yoksa `docker network create --label sm.managed=true sm-services` ile oluşturulur (idempotent).
+
 GitHub App eklentisi `contents: read` ve `metadata: read` ister. Private key ile kısa ömürlü JWT, oradan kurulum anahtarı üretilir. Anahtar önbelleğe alınmaz ve tek depoya daraltılır. Private key, client secret ve webhook secret şifrelidir. Uygulamayı kullanan proje varken kayıt kaldırılamaz. Kaldırma yumuşak siler, GitHub’daki uygulamayı silmez.
 
 `GitHub:PublicBaseUrl` boşsa isteğin adresi dönüş adresi olur. Ters vekil varsa doldurulmalıdır. Manifest ve kurulum dönüşü, Strict çerez yüzünden ara sayfa kullanır.
 
-## 10. Alarm, uptime, SSL, güvenlik taraması
+## 10. Servisler
+
+Tek tıkla Docker servisleri çekirdektedir: `ManagedServices` ve `ManagedServiceOperations` tabloları (M023), şablon kataloğu `ServiceTemplates` (PostgreSQL, MySQL, MariaDB, Redis, MongoDB, SQL Server; MinIO, RabbitMQ, Adminer, pgAdmin, Uptime Kuma, n8n). Kurulum, yeniden oluşturma, yükseltme ve kaldırma `Begin*` ile kayda alınır, `ManagedServiceManager` arka planda `RunOperationAsync` ile yürütür ve çıktıyı `/hubs/services` ile yayınlar. Aynı serviste aynı anda tek işlem çalışır; uygulama kapanırken süren işlem "kesildi" olur.
+
+Container `sm-svc-<kısa-ad>`, volume `sm-svc-<kısa-ad>-data`. Kimlik bilgileri ve ek değişkenler master key ile şifrelidir; sunucuda `/var/lib/sm-services/<kısa-ad>/.env` (klasör 700, `umask 077`) stdin ile yazılıp `--env-file` ile verilir. Sağlık, bağlantı testi ve konsol komutları parolayı container ortamından okur; argv'ye ve loglara parola girmez, işlem çıktısı maskelenir. Portlar varsayılan `127.0.0.1`'e, "Dışarıya aç" ile `0.0.0.0`'a bağlanır. Docker yayınlanan portlarda UFW'yi atladığı için IP izin listesi `DOCKER-USER` zincirine servis etiketli kurallar olarak yazılır (`--ctstate DNAT --ctorigdstport`, önce DROP, üstte izinli kaynaklar için RETURN) ve `sm-services-firewall.service` systemd birimiyle açılışta yeniden uygulanır. Kural yazılamazsa kurulum başarısız sayılır; port açık kalmaz.
+
+Entegrasyon `IManagedServiceService.GetConnectionInfoAsync` ile yapılır (iç ağ adresi, kimlik bilgileri, önerilen ortam değişkenleri ve parolası maskeli önizlemeleri, ağlar). "Projeye bağla" `IProjectServiceLinkService` üzerinden önerilen değişkenleri (kullanıcının seçtiği ve yeniden adlandırdığı anahtarlarla) proje `.env` kaydına yazar ve bağı kaydeder; değerler tarayıcıya gitmez. `services.manage` + `deployment.manage` ister, audit `project.service_link/service_unlink`. Bağ kaldırılırken yalnızca istenirse bağla yazılan anahtarlar silinir.
+
+Veritabanı servislerinde otomatik yedek `IManagedServiceBackupService` ile açılır: şablon → motor eşlemesi `ManagedServiceBackups` (postgres → PostgreSql, mysql/mariadb → MySql (root), mongodb → MongoDb (tüm veritabanları), redis → Redis, mssql → SqlServer (sa, ad formdan)). Sihirbazda seçilirse ayarlar kurulumdan önce doğrulanır, iş yalnızca kurulum başarılı bitince `ManagedServiceManager`'ın işlem sonrası adımında, başlatan kullanıcı adına (`CurrentUserService.RunAs`) `CreateForContainerDatabaseAsync` ile oluşturulur. Servise ait işler sunucu + container adıyla eşlenir. `backup.manage` ister.
+
+Yapılandırma `ManagedServices:` altındadır: `PullTimeoutMinutes` (20), `CommandTimeoutSeconds` (120), `HealthTimeoutSeconds` (180), `MaxStoredLogKilobytes` (256), `AllowPrivilegedHostPorts` (false), `DefaultLogTail` (200). İşlem logları `Retention:ServiceOperationLogDays` (90) ile temizlenir.
+
+## 11. Alarm, uptime, SSL, güvenlik taraması
 
 Değerlendirici `Alerting:EvaluationIntervalSeconds` (60) ile kural bakar. Türler doluluk, çevrimdışı, uptime, SSL bitişi ve yedek başarısızlığını kapsar. Bildirim e-posta, Telegram ve Discord eklentileriyle gider. Teslim kaydı saklama süresi dolunca silinebilir. Kural ve kanal yumuşak silinir.
 
@@ -163,7 +185,7 @@ Uptime ve SSL kendi aralıklarında çalışır. Sonuç satırları yaşa göre 
 
 Güvenlik taraması SSH ile `sshd -T` veya `sshd_config`, port, güvenlik duvarı ve bekleyen güncelleme okur. Sunucuyu değiştirmez. Parmak izi yoksa tarama açılmaz.
 
-## 11. Bulut ve maliyet
+## 12. Bulut ve maliyet
 
 `Cloud.Hetzner`, `Cloud.DigitalOcean`, `Cloud.Vultr`, `Cloud.Linode` ve `Cloud.Scaleway` eklentidir. API anahtarı kayıttan önce doğrulanır. İstemci yönlendirme izlemez. 401, 403 ve 429 Türkçe mesaja çevrilir. Scaleway anahtarı `X-Auth-Token` başlığıyla gider; proje kimliği `account/v3/projects` içinden, adı `default` olan proje tercih edilerek okunur.
 
@@ -173,7 +195,7 @@ Oluşturma onayı sunucu adını ister. SSH public key cloud-init içine eklenir
 
 Maliyet sayfası kur çevirmez. Para birimi yoksa ve tutar varsa USD sayılır. Grup silinince sunucu silinmez, gruptan çıkar.
 
-## 12. Eklentiler
+## 13. Eklentiler
 
 `plugin.json` alanları: `SystemName`, `FriendlyName`, `Group`, `Version`, `Author`, `Description`, `DisplayOrder`, `AssemblyFileName`, isteğe bağlı `Logo`. `SystemName` yalnızca harf, rakam ve noktadır, sonradan değişmez. Logo yalnızca `Content` altındaki düz dosya adıdır. `..` ve klasör ayracı reddedilir. Adres `/plugins/{systemname-küçük}/logo.svg` olur.
 
@@ -207,19 +229,19 @@ Dokploy kurulum kaydı ve çıktısı eklenti tablosundadır. Sayfa kapansa da i
 
 Eklenti şeması yalnızca kendi migration’ındadır. Sürüm numarası tüm uygulamada benzersiz bir zaman damgasıdır. Host tablosuna yalnızca foreign key bağlanır. Host tablosunun kolonu eklentiyle değişmez. Şema değişikliği eklemedir: kolon silinmez, yeniden adlandırılmaz, tipi değişmez.
 
-## 13. Veri kuralları
+## 14. Veri kuralları
 
 Silme yumuşaktır. Profil, maliyet, istatistik, satın alma ve audit otomatik işlerle silinmez. Okunamayan satır (sahibi veya tarihi yok) silinmez.
 
 Silinebilen geçici veri ölçümü oluşturulma zamanına değil son harekete bakar ve pay bırakır. Uygulamanın gösterdiği son N kayıt kalır.
 
-Geçmiş kayıtların saklama süresi `Retention:` anahtarlarıyla gün cinsinden verilir: `DeploymentLogDays`, `BackupRunLogDays`, `CommandRunDays`, `TerminalSessionDays`, `AlertEventDays`. `0` süresiz saklar. Audit log hiçbir ayarla silinmez.
+Geçmiş kayıtların saklama süresi `Retention:` anahtarlarıyla gün cinsinden verilir: `DeploymentLogDays`, `BackupRunLogDays`, `CommandRunDays`, `TerminalSessionDays`, `AlertEventDays`, `ServiceOperationLogDays` (Servisler işlem logları). `0` süresiz saklar. Audit log hiçbir ayarla silinmez.
 
 Eski istemciyle uyum: alan eklenir, silinmez. Yeni alan opsiyoneldir ve varsayılanla okunur. Sıkılaştırılmış kural, mağazadaki eski sürüm çoğunlukla güncellenmeden yüklenmez. Bu depoda mağaza istemcisi yoktur. Kural yine de API ve şema içindir.
 
 Audit HMAC zinciriyle imzalanır ve panelden doğrulanabilir. Satır silinmez ve güncellenmez.
 
-## 14. Arayüz
+## 15. Arayüz
 
 `ViewData["Page"]` layout’a `css/pages/{sayfa}.css` ve `js/pages/{sayfa}.js` ekletir. Eklenti view’ı ayrıca `ViewData[PluginContent.PagePluginKey]` atar. Dosya `/plugins/{systemname}/` altından gelir.
 
@@ -227,7 +249,7 @@ JavaScript yalnızca ES module’dür. Host modülü `@app/` import map’i ile 
 
 Sayfa stili `npm run build:css` ile üretilir. Eklenti SCSS’i aynı komutla eklentinin `Content/css/pages` klasörüne çıkar. Derlenmiş CSS repoya dahildir.
 
-## 15. Gözlemlenebilirlik ve sınırlar
+## 16. Gözlemlenebilirlik ve sınırlar
 
 Serilog konsol ve dosyaya yazar. İstek süresi ve sonuç kodu loglanır. Gizli değer ve terminal çıktısı loglanmaz.
 

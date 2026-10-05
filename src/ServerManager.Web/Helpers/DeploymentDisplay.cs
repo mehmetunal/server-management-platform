@@ -27,6 +27,20 @@ public static class DeploymentDisplay
         _ => "badge-neutral"
     };
 
+    public static string KindText(DeploymentKind kind) => kind switch
+    {
+        DeploymentKind.Rollback => "Geri dönüş",
+        DeploymentKind.Restart => "Yeniden başlatma",
+        _ => "Deploy"
+    };
+
+    public static string KindHint(DeploymentKind kind) => kind switch
+    {
+        DeploymentKind.Rollback => "Önceki bir sürüme geri dönüldü; imaj sunucuda duruyorsa build yapılmadı.",
+        DeploymentKind.Restart => "Build olmadan .env yeniden yazıldı ve container'lar yeniden oluşturuldu.",
+        _ => "Kaynak kod çekildi, build edildi ve çalıştırıldı."
+    };
+
     public static IEnumerable<SelectListItem> StatusOptions(DeploymentStatus? selected) =>
         Enum.GetValues<DeploymentStatus>().Select(s => new SelectListItem(StatusText(s), ((int)s).ToString(), s == selected));
 

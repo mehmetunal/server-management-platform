@@ -8,6 +8,7 @@ public static class TerminalDisplay
     {
         TerminalSessionKind.Server => "Sunucu",
         TerminalSessionKind.Container => "Container",
+        TerminalSessionKind.ServiceConsole => "Servis konsolu",
         _ => kind.ToString()
     };
 

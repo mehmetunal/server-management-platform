@@ -41,7 +41,8 @@ public static class PanelSettingCatalog
         Def("Retention:BackupRunLogDays", "Kayıt saklama", "Yedek logları (gün)", PanelSettingKind.Integer, "Kayıt kalır, yalnızca log metni temizlenir. İş başına son 10 korunur. 0 silmez.", 0, 3650, "Loglar"),
         Def("Retention:CommandRunDays", "Kayıt saklama", "Toplu komut geçmişi (gün)", PanelSettingKind.Integer, "Biten çalıştırmalar çıktılarıyla silinir. 0 silmez.", 0, 3650, "Geçmiş"),
         Def("Retention:TerminalSessionDays", "Kayıt saklama", "Terminal oturumları (gün)", PanelSettingKind.Integer, "Kapanmış oturumlar komut geçmişiyle silinir. 0 silmez.", 0, 3650, "Geçmiş"),
-        Def("Retention:AlertEventDays", "Kayıt saklama", "Kapanmış alarmlar (gün)", PanelSettingKind.Integer, "Açık alarmlar silinmez. 0 silmez.", 0, 3650, "Geçmiş")
+        Def("Retention:AlertEventDays", "Kayıt saklama", "Kapanmış alarmlar (gün)", PanelSettingKind.Integer, "Açık alarmlar silinmez. 0 silmez.", 0, 3650, "Geçmiş"),
+        Def("Retention:ServiceOperationLogDays", "Kayıt saklama", "Servis işlem logları (gün)", PanelSettingKind.Integer, "Kayıt kalır, yalnızca log metni temizlenir. Servis başına son 10 korunur. 0 silmez.", 0, 3650, "Loglar")
     ];
 
     public static readonly IReadOnlyList<(string Warning, string Critical)> ThresholdPairs =

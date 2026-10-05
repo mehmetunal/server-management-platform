@@ -77,6 +77,7 @@ public class BackupJobService : IBackupJobService
             ContainerName = job.ContainerName,
             DatabaseName = job.DatabaseName,
             DatabaseUser = job.DatabaseUser,
+            DatabaseAuthSource = job.DatabaseAuthSource,
             HasDatabasePassword = !string.IsNullOrEmpty(job.EncryptedDatabasePassword),
             DatabaseHost = job.DatabaseHost,
             DatabasePort = job.DatabasePort,
@@ -107,6 +108,7 @@ public class BackupJobService : IBackupJobService
             ContainerName = job.ContainerName,
             DatabaseName = job.DatabaseName,
             DatabaseUser = job.DatabaseUser,
+            DatabaseAuthSource = job.DatabaseAuthSource,
             HasStoredDatabasePassword = !string.IsNullOrEmpty(job.EncryptedDatabasePassword),
             DatabaseHost = job.DatabaseHost,
             DatabasePort = job.DatabasePort,
@@ -148,6 +150,9 @@ public class BackupJobService : IBackupJobService
         await AuditAsync(AuditActions.BackupJobCreate, job, $"{BackupSourceDescriber.TypeName(job.SourceType)} | {BackupSourceDescriber.Describe(job)} | Şifreleme: {(job.EncryptionEnabled ? "açık" : "kapalı")}", cancellationToken);
         return ServiceResult<Guid>.Success(job.Id, "Yedekleme işi eklendi.");
     }
+
+    public Task<ServiceResult<Guid>> CreateForContainerDatabaseAsync(ContainerDatabaseBackupRequest request, CancellationToken cancellationToken = default) =>
+        CreateAsync(BackupJobSpecs.ForContainerDatabase(request), cancellationToken);
 
     public async Task<ServiceResult> UpdateAsync(BackupJobFormDto dto, CancellationToken cancellationToken = default)
     {
@@ -255,8 +260,11 @@ public class BackupJobService : IBackupJobService
         {
             job.DatabaseEngine = dto.DatabaseEngine;
             job.ContainerName = NullIfEmpty(dto.ContainerName);
-            job.DatabaseName = dto.DatabaseName;
-            job.DatabaseUser = dto.DatabaseUser;
+            job.DatabaseName = BackupDatabaseEngines.UsesDatabaseName(dto.DatabaseEngine) ? NullIfEmpty(dto.DatabaseName) : null;
+            job.DatabaseUser = NullIfEmpty(dto.DatabaseUser);
+            job.DatabaseAuthSource = BackupDatabaseEngines.UsesAuthSource(dto.DatabaseEngine) && job.DatabaseUser is not null
+                ? NullIfEmpty(dto.DatabaseAuthSource) ?? BackupDatabaseEngines.DefaultMongoAuthSource
+                : null;
             job.DatabaseHost = string.IsNullOrWhiteSpace(dto.ContainerName) ? NullIfEmpty(dto.DatabaseHost) : null;
             job.DatabasePort = string.IsNullOrWhiteSpace(dto.ContainerName) ? dto.DatabasePort : null;
             if (dto.ClearDatabasePassword)
@@ -270,6 +278,7 @@ public class BackupJobService : IBackupJobService
             job.ContainerName = null;
             job.DatabaseName = null;
             job.DatabaseUser = null;
+            job.DatabaseAuthSource = null;
             job.DatabaseHost = null;
             job.DatabasePort = null;
             job.EncryptedDatabasePassword = null;
@@ -317,6 +326,8 @@ public class BackupJobService : IBackupJobService
         StorageName = job.Storage?.Name ?? "-",
         SourceType = job.SourceType,
         SourceSummary = BackupSourceDescriber.Describe(job),
+        DatabaseEngine = job.DatabaseEngine,
+        ContainerName = job.ContainerName,
         ScheduleType = job.ScheduleType,
         ScheduleIntervalHours = job.ScheduleIntervalHours,
         ScheduleMinuteOfDay = job.ScheduleMinuteOfDay,
@@ -340,6 +351,7 @@ public class BackupJobService : IBackupJobService
         dto.ContainerName = dto.ContainerName?.Trim();
         dto.DatabaseName = dto.DatabaseName?.Trim();
         dto.DatabaseUser = dto.DatabaseUser?.Trim();
+        dto.DatabaseAuthSource = dto.DatabaseAuthSource?.Trim();
         dto.DatabaseHost = dto.DatabaseHost?.Trim();
     }
 

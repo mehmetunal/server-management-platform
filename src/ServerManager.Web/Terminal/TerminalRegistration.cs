@@ -47,9 +47,12 @@ public sealed class TerminalRegistration
         }
     }
 
-    public string Title => Handle is { Kind: TerminalSessionKind.Container } handle
-        ? $"{handle.Container} (container)"
-        : Handle?.ServerName ?? "Terminal";
+    public string Title => Handle switch
+    {
+        { Kind: TerminalSessionKind.Container } handle => $"{handle.Container} (container)",
+        { Kind: TerminalSessionKind.ServiceConsole } handle => $"{handle.Container} (konsol)",
+        _ => Handle?.ServerName ?? "Terminal"
+    };
 
     public string? ConnectionId
     {

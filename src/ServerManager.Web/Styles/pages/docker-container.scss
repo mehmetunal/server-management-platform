@@ -1,4 +1,5 @@
 @use "docker-shared";
+@use "log-viewer";
 
 .container-breadcrumb {
   @apply flex min-w-0 items-center gap-2;
@@ -14,58 +15,6 @@
 
 .container-title {
   @apply truncate font-mono text-lg font-semibold text-slate-900 dark:text-slate-100;
-}
-
-.log-toolbar {
-  @apply flex flex-wrap items-center gap-3 border-b border-slate-200 px-5 py-3 dark:border-slate-800;
-}
-
-.log-toolbar-end {
-  @apply ml-auto flex items-center gap-2;
-}
-
-.log-tail {
-  @apply flex items-center gap-2 text-sm;
-}
-
-.log-tail-select {
-  @apply w-auto py-1.5;
-}
-
-.log-search {
-  @apply w-56 py-1.5;
-}
-
-.log-output {
-  @apply h-[32rem] overflow-auto bg-slate-950 px-4 py-3 font-mono text-xs leading-5 text-slate-200;
-}
-
-.log-line {
-  @apply flex gap-3 hover:bg-white/5;
-}
-
-.log-time {
-  @apply shrink-0 select-none text-slate-500;
-}
-
-.log-text {
-  @apply min-w-0 whitespace-pre;
-
-  &.is-wrapped {
-    @apply whitespace-pre-wrap break-all;
-  }
-
-  &.is-error {
-    @apply text-red-400;
-  }
-}
-
-.log-empty {
-  @apply text-slate-500;
-}
-
-.log-error {
-  @apply text-red-400;
 }
 
 .terminal-screen {

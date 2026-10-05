@@ -36,7 +36,8 @@ internal static class RetentionAllowList
 {
     private static readonly Regex AllowedTablePattern = new(
         "^(ServerMetrics|ServerMetricsHourly|ServerHealthChecks|UptimeCheckResults|NotificationDeliveries|SecurityScans" +
-        "|Deployments|BackupRuns|CommandRuns|CommandRunTargets|TerminalSessions|TerminalCommands|AlertEvents)$",
+        "|Deployments|BackupRuns|CommandRuns|CommandRunTargets|TerminalSessions|TerminalCommands|AlertEvents" +
+        "|ManagedServiceOperations)$",
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     private static readonly Regex AllowedColumnPattern = new(
@@ -44,7 +45,7 @@ internal static class RetentionAllowList
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     private static readonly Regex AllowedPartitionPattern = new(
-        "^(ServerId|CheckId|ChannelId|ProjectId|JobId)$",
+        "^(ServerId|CheckId|ChannelId|ProjectId|JobId|ServiceId)$",
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     private static readonly Regex AllowedLogColumnPattern = new("^Log$", RegexOptions.CultureInvariant | RegexOptions.Compiled);
@@ -68,7 +69,9 @@ internal static class RetentionAllowList
                 Filter: "t.CompletedAt IS NOT NULL", ChildTable: "CommandRunTargets", ChildForeignKey: "RunId"),
             [RetentionTarget.TerminalSessions] = new("TerminalSessions", "EndedAt", null, RetentionMode.DeleteWithChildren,
                 ChildTable: "TerminalCommands", ChildForeignKey: "SessionId"),
-            [RetentionTarget.AlertEvents] = new("AlertEvents", "ResolvedAt", null, Filter: $"t.Status = {(int)AlertEventStatus.Resolved}")
+            [RetentionTarget.AlertEvents] = new("AlertEvents", "ResolvedAt", null, Filter: $"t.Status = {(int)AlertEventStatus.Resolved}"),
+            [RetentionTarget.ServiceOperationLogs] = new("ManagedServiceOperations", "StartedAt", "ServiceId", RetentionMode.TrimLog,
+                Filter: "t.FinishedAt IS NOT NULL", LogColumn: "Log")
         };
 
     public static RetentionMapping Resolve(RetentionTarget target)

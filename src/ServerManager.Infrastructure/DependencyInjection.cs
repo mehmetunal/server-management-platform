@@ -21,6 +21,8 @@ using ServerManager.Application.Plugins;
 using ServerManager.Application.Terminal;
 using ServerManager.Application.Interfaces.Deployments;
 using ServerManager.Application.Interfaces.Docker;
+using ServerManager.Application.Interfaces.ManagedServices;
+using ServerManager.Application.ManagedServices;
 using ServerManager.Application.Interfaces.Files;
 using ServerManager.Application.Interfaces;
 using ServerManager.Application.Interfaces.Monitoring;
@@ -34,6 +36,7 @@ using ServerManager.Application.Interfaces.Ssh;
 using ServerManager.Application.Validators.Users;
 using ServerManager.Infrastructure.Deployments;
 using ServerManager.Infrastructure.Docker;
+using ServerManager.Infrastructure.ManagedServices;
 using ServerManager.Infrastructure.Files;
 using ServerManager.Infrastructure.Identity;
 using ServerManager.Infrastructure.Monitoring;
@@ -107,6 +110,7 @@ public static class DependencyInjection
         services.Configure<SecurityScanOptions>(configuration.GetSection(SecurityScanOptions.SectionName));
         services.Configure<CloudOptions>(configuration.GetSection(CloudOptions.SectionName));
         services.Configure<RetentionOptions>(configuration.GetSection(RetentionOptions.SectionName));
+        services.Configure<ManagedServiceOptions>(configuration.GetSection(ManagedServiceOptions.SectionName));
 
         services.AddHttpClient(UptimeProbe.HttpClientName, UptimeProbe.ConfigureClient)
             .ConfigurePrimaryHttpMessageHandler(UptimeProbe.CreateHandler);
@@ -149,6 +153,11 @@ public static class DependencyInjection
         services.AddScoped<ICloudAccountRepository, CloudAccountRepository>();
         services.AddScoped<IPanelSettingRepository, PanelSettingRepository>();
         services.AddScoped<IServerScriptExecutor, SshServerScriptExecutor>();
+
+        // Servisler (tek tıkla Docker servisleri)
+        services.AddSingleton<IManagedServiceProvider, SshManagedServiceProvider>();
+        services.AddScoped<IManagedServiceRepository, ManagedServiceRepository>();
+        services.AddScoped<IProjectServiceLinkRepository, ProjectServiceLinkRepository>();
 
         services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<IUserManagementService, UserManagementService>();

@@ -29,8 +29,8 @@ public static class ServerPickerSections
         "folder", "Files", "Index", "Dosyaları aç");
 
     public static readonly ServerPickerSection Services = new(
-        "services", "Servisler", "Sistem servislerini (systemd / OpenRC) görmek istediğiniz sunucuyu seçin.",
-        "cog", "ServerSystem", "Services", "Servisleri aç");
+        "services", "Sistem Servisleri", "Sistem servislerini (systemd / OpenRC) görmek istediğiniz sunucuyu seçin.",
+        "cog", "ServerSystem", "Services", "Sistem servislerini aç");
 
     public static readonly ServerPickerSection Processes = new(
         "processes", "Process'ler", "Çalışan process'lerini incelemek istediğiniz sunucuyu seçin.",

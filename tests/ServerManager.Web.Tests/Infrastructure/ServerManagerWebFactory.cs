@@ -68,6 +68,23 @@ public class ServerManagerWebFactory : WebApplicationFactory<Program>
         return email;
     }
 
+    /// <summary>Yalnızca verilen yetkilere sahip yeni bir rol ve bu roldeki kullanıcıyı oluşturur.</summary>
+    public async Task<string> CreateUserWithPermissionsAsync(params string[] permissions)
+    {
+        var roleName = "Test-" + Guid.NewGuid().ToString("N")[..12];
+        using (var scope = Services.CreateScope())
+        {
+            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+            var role = new ApplicationRole(roleName);
+            var created = await roleManager.CreateAsync(role);
+            Assert.True(created.Succeeded, string.Join(", ", created.Errors.Select(e => e.Description)));
+            foreach (var permission in permissions)
+                await roleManager.AddClaimAsync(role, new System.Security.Claims.Claim(Application.Authorization.Permissions.ClaimType, permission));
+        }
+
+        return await CreateUserAsync(roleName);
+    }
+
     public async Task<bool> IsLockedOutAsync(string email)
     {
         using var scope = Services.CreateScope();

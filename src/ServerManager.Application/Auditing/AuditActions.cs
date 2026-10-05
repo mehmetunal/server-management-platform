@@ -62,6 +62,16 @@ public static class AuditActions
     public const string DeploymentDomainDelete = "deployment_domain.delete";
     public const string DeploymentProxyInstall = "deployment_proxy.install";
 
+    // Proje ortam değişkenleri, webhook, geri dönüş ve yeniden başlatma
+    public const string DeploymentRollback = "deployment.rollback";
+    public const string DeploymentRestart = "deployment.restart";
+    public const string ProjectEnvironmentUpdate = "project.env_update";
+    public const string ProjectEnvironmentReveal = "project.env_reveal";
+    public const string ProjectEnvironmentExport = "project.env_export";
+    public const string ProjectWebhookUpdate = "project.webhook_update";
+    public const string ProjectServiceLink = "project.service_link";
+    public const string ProjectServiceUnlink = "project.service_unlink";
+
     public const string AlertRuleCreate = "alert_rule.create";
     public const string AlertRuleUpdate = "alert_rule.update";
     public const string AlertRuleDelete = "alert_rule.delete";
@@ -130,6 +140,18 @@ public static class AuditActions
 
     public const string SettingsUpdate = "settings.update";
 
+    // Servisler (tek tıkla Docker servisleri)
+    public const string ManagedServiceCreate = "managed_service.create";
+    public const string ManagedServiceRecreate = "managed_service.recreate";
+    public const string ManagedServiceUpgrade = "managed_service.upgrade";
+    public const string ManagedServiceRemove = "managed_service.remove";
+    public const string ManagedServiceOperationComplete = "managed_service.operation_complete";
+    public const string ManagedServiceRevealSecrets = "managed_service.reveal_secrets";
+    public const string ManagedServiceConsoleOpen = "managed_service.console_open";
+    public const string ManagedServiceConsoleClose = "managed_service.console_close";
+    public const string ManagedServiceContainerAction = "managed_service.container_action";
+    public const string ManagedServiceFirewallApply = "managed_service.firewall_apply";
+
     public static readonly IReadOnlyDictionary<string, string> DisplayNames = new Dictionary<string, string>
     {
         [Login] = "Giriş",
@@ -186,6 +208,14 @@ public static class AuditActions
         [DeploymentDomainUpdate] = "Domain güncelleme",
         [DeploymentDomainDelete] = "Domain silme",
         [DeploymentProxyInstall] = "Vekil kurulumu",
+        [DeploymentRollback] = "Önceki sürüme geri dönüş başlatıldı",
+        [DeploymentRestart] = "Build olmadan yeniden başlatma başlatıldı",
+        [ProjectEnvironmentUpdate] = "Proje ortam değişkenleri güncellendi",
+        [ProjectEnvironmentReveal] = "Proje ortam değişkeni değeri görüntülendi",
+        [ProjectEnvironmentExport] = "Proje ortam değişkenleri (.env) indirildi",
+        [ProjectWebhookUpdate] = "Proje push webhook ayarı güncellendi",
+        [ProjectServiceLink] = "Servis projeye bağlandı",
+        [ProjectServiceUnlink] = "Servisin proje bağı kaldırıldı",
         [AlertRuleCreate] = "Alarm kuralı ekleme",
         [AlertRuleUpdate] = "Alarm kuralı güncelleme",
         [AlertRuleDelete] = "Alarm kuralı silme",
@@ -242,6 +272,18 @@ public static class AuditActions
         [CloudProvision] = "Bulutta sunucu oluşturma",
         [AgentTokenCreate] = "Agent anahtarı oluşturma",
         [AgentTokenRevoke] = "Agent anahtarı iptali",
-        [SettingsUpdate] = "Sistem ayarı güncelleme"
+        [SettingsUpdate] = "Sistem ayarı güncelleme",
+
+        // Servisler
+        [ManagedServiceCreate] = "Servis kurulumu",
+        [ManagedServiceRecreate] = "Servis yeniden oluşturma",
+        [ManagedServiceUpgrade] = "Servis sürüm yükseltme",
+        [ManagedServiceRemove] = "Servis kaldırma",
+        [ManagedServiceOperationComplete] = "Servis işlemi tamamlandı",
+        [ManagedServiceRevealSecrets] = "Servis parolası görüntülendi",
+        [ManagedServiceConsoleOpen] = "Servis konsolu açıldı",
+        [ManagedServiceConsoleClose] = "Servis konsolu kapandı",
+        [ManagedServiceContainerAction] = "Servis başlatma / durdurma",
+        [ManagedServiceFirewallApply] = "Servis güvenlik duvarı kuralları"
     };
 }

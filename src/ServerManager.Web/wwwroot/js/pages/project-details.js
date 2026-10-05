@@ -1,4 +1,5 @@
 import { bindAjaxActions } from '../components/ajax-actions.js';
+import { createTabs } from '../components/tabs.js';
 import { confirmAction } from '../core/dialog.js';
 import { element, on, qs, setBusy } from '../core/dom.js';
 import { clearErrors, showErrors } from '../core/forms.js';
@@ -6,11 +7,23 @@ import { failureMessage, getHtml, getJson, postForm } from '../core/http.js';
 import { navigate } from '../core/navigation.js';
 import { notify } from '../core/notify.js';
 import { initDeploymentList } from '../features/deployments/deployment-list.js';
+import { initProjectEnvironment } from '../features/deployments/project-environment.js';
+import { initProjectLogs } from '../features/deployments/project-logs.js';
+import { initProjectWebhook } from '../features/deployments/project-webhook.js';
 
 const deployForm = qs('[data-deploy-form]');
 
 bindAjaxActions(document);
 initDeploymentList(qs('[data-ajax-list]'), { embedded: true });
+initProjectEnvironment(qs('[data-env]'));
+initProjectWebhook(qs('[data-webhook]'));
+const runtimeLogs = initProjectLogs(qs('[data-project-logs]'));
+
+const tabs = createTabs({
+    defaultTab: 'overview',
+    activators: { logs: () => runtimeLogs?.activate() }
+});
+on(document, 'click', '[data-open-tab]', (event, button) => tabs?.activate(button.dataset.openTab));
 
 async function startDeployment(event) {
     event.preventDefault();

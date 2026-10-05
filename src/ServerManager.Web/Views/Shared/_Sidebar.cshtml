@@ -15,6 +15,7 @@
     var canCommands = User.HasPermission(Permissions.CommandView);
     var canCloud = User.HasPermission(Permissions.CloudView);
     var canSettings = User.HasPermission(Permissions.SettingsView);
+    var canManagedServices = canServers && User.HasPermission(Permissions.ServicesView);
 }
 <aside class="app-sidebar" data-sidebar>
     <div class="sidebar-brand flex h-16 shrink-0 items-center gap-3 border-b border-slate-800 px-5">
@@ -70,6 +71,10 @@
         {
             <a asp-controller="ServerPicker" asp-action="Networks" class="nav-link @NavigationHelper.ActiveActionClass(ViewContext, "ServerPicker", "Networks")" title="Sunucu seçip Docker ağlarını yönet">@Icons.Render("globe") Ağlar</a>
         }
+        @if (canManagedServices)
+        {
+            <a asp-controller="ManagedServices" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "ManagedServices", "ServerManagedServices")" title="Tek tıkla kurulan veritabanları (PostgreSQL, Redis …) ve uygulamalar (MinIO, n8n …)">@Icons.Render("database") Servisler</a>
+        }
 
         <partial name="_PluginMenuItems" model="MenuGroups.Containers" />
         <p class="nav-group">Deployment</p>
@@ -91,7 +96,7 @@
         }
         @if (canSystem)
         {
-            <a asp-controller="ServerPicker" asp-action="Services" class="nav-link @NavigationHelper.ActiveActionClass(ViewContext, "ServerPicker", "Services")" title="Sunucu seçip sistem servislerini yönet">@Icons.Render("cog") Servisler</a>
+            <a asp-controller="ServerPicker" asp-action="Services" class="nav-link @NavigationHelper.ActiveActionClass(ViewContext, "ServerPicker", "Services")" title="Sunucu seçip sistem servislerini (systemd / OpenRC) yönet">@Icons.Render("cog") Sistem Servisleri</a>
         }
         @if (canSystem)
         {

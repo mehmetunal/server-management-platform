@@ -17,9 +17,10 @@
     var canViewBackups = User.HasPermission(Permissions.BackupView);
     var canViewAlerts = User.HasPermission(Permissions.AlertView);
     var canViewActivity = User.HasPermission(Permissions.AuditView);
+    var canViewManagedServices = User.HasPermission(Permissions.ServicesView);
     var systemTabs = new (string Key, string Action, string Title, string Tooltip)[]
     {
-        (ServerPageViewModel.ServicesTab, "Services", "Services", "Sistem servisleri (systemd / OpenRC)"),
+        (ServerPageViewModel.ServicesTab, "Services", "Sistem Servisleri", "Sistem servisleri (systemd / OpenRC)"),
         (ServerPageViewModel.ProcessesTab, "Processes", "Processes", "Çalışan process'ler"),
         (ServerPageViewModel.LogsTab, "Logs", "Logs", "Journal ve /var/log kayıtları"),
         (ServerPageViewModel.NetworkTab, "Network", "Network", "Ağ arayüzleri, rotalar ve dinlenen portlar"),
@@ -42,6 +43,7 @@
         ServerPageViewModel.BackupsTab => "Bu sunucunun yedekleme işleri ve yedek geçmişi.",
         ServerPageViewModel.AlertsTab => "Bu sunucu için tetiklenen alarmlar; onaylayabilir veya sessize alabilirsiniz.",
         ServerPageViewModel.ActivityTab => "Bu sunucu üzerinde yapılan işlemlerin audit kayıtları.",
+        ServerPageViewModel.ManagedServicesTab => "Bu sunucuya tek tıkla kurulan veritabanları ve uygulamalar; bağlantı bilgileri, loglar, konsol ve sürüm yükseltme.",
         ServerPageViewModel.SecurityTab => "SSH ayarları, açık portlar, güvenlik duvarı, güncellemeler ve kullanıcı hesaplarının salt okunur denetimi. Panel hiçbir düzeltmeyi kendiliğinden uygulamaz.",
         _ when activePluginTab is not null => activePluginTab.Lead,
         _ => "Sunucunun bağlantı bilgileri, donanımı ve son izleme verileri."
@@ -144,6 +146,10 @@
         @if (canViewFiles)
         {
             <a asp-controller="Files" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.FilesTab ? "is-active" : "")" title="SFTP dosya yöneticisi">Files</a>
+        }
+        @if (canViewManagedServices)
+        {
+            <a asp-controller="ServerManagedServices" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.ManagedServicesTab ? "is-active" : "")" title="Tek tıkla kurulan veritabanı ve uygulama servisleri">Servisler</a>
         }
         @if (canViewDeployments)
         {

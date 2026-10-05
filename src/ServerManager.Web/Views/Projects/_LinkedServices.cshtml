@@ -1,0 +1,77 @@
+@model ProjectDetailsViewModel
+@{
+    var project = Model.Project;
+    var canViewServices = User.HasPermission(Permissions.ServicesView);
+    var detailsUrl = Url.Action("Details", new { id = project.Id });
+}
+
+<section class="panel mb-6" data-linked-services>
+    <div class="panel-header">
+        <h2 class="panel-title">Bağlı servisler</h2>
+        @if (canViewServices)
+        {
+            <a asp-controller="ServerManagedServices" asp-action="Index" asp-route-id="@project.ServerId" class="btn-ghost btn-sm" title="Bu sunucunun servisleri; servis sayfasındaki &quot;Projeye bağla&quot; ile bağlayın">@Icons.Render("database", "h-4 w-4") Sunucunun servisleri</a>
+        }
+    </div>
+    @if (Model.ServiceLinks.Count == 0)
+    {
+        <div class="panel-body">
+            <p class="form-hint">
+                Bu projeye bağlı servis yok. Aynı sunucudaki bir veritabanını veya uygulama servisini, servis sayfasındaki "Projeye bağla" ile bağlayın;
+                bağlantı bilgisi ortam değişkenlerine eklenir ve container'lar <span class="font-mono">@ManagedServiceNames.ServicesNetwork</span> ağına katılır.
+            </p>
+        </div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Servis</th>
+                        <th>Adres (iç ağ)</th>
+                        <th>Eklenen değişkenler</th>
+                        <th><span class="sr-only">İşlemler</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var link in Model.ServiceLinks)
+                    {
+                        <tr>
+                            <td>
+                                @if (canViewServices)
+                                {
+                                    <a asp-controller="ManagedServices" asp-action="Details" asp-route-id="@link.ServiceId" class="service-name">@link.ServiceName</a>
+                                }
+                                else
+                                {
+                                    <span>@link.ServiceName</span>
+                                }
+                                <span class="tag">@link.TemplateName</span>
+                            </td>
+                            <td class="font-mono text-xs">@link.ContainerName</td>
+                            <td class="font-mono text-xs">@(link.EnvironmentKeys.Count == 0 ? "—" : string.Join(", ", link.EnvironmentKeys))</td>
+                            <td class="whitespace-nowrap text-right">
+                                @if (Model.CanManageServiceLinks)
+                                {
+                                    <button type="button" class="btn-ghost btn-sm" data-ajax-action
+                                            data-url="@Url.Action("Unlink", "ManagedServices", new { linkId = link.Id })"
+                                            data-confirm-title="Bağ kaldırılsın mı?"
+                                            data-confirm-message="@link.ServiceName servisinin bu projeyle bağı kaldırılacak. Ortam değişkenleri varsayılan olarak korunur; proje bir sonraki deploy veya yeniden başlatmada servis ağından çıkar (başka bağlı servis yoksa)."
+                                            data-confirm-check="Bağlarken eklenen ortam değişkenlerini de sil"
+                                            data-check-field="removeKeys"
+                                            data-confirm-label="Bağı kaldır"
+                                            data-redirect="@detailsUrl"
+                                            title="Servis bağını kaldır">
+                                        @Icons.Render("x", "h-4 w-4") Bağı kaldır
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="panel-note">Bağlı servis olduğu için container'lar <span class="font-mono">@ManagedServiceNames.ServicesNetwork</span> ağına da katılır; servise tablodaki container adıyla bağlanın.</p>
+    }
+</section>

@@ -1,0 +1,142 @@
+@model ManagedServiceSettingsFieldsModel
+@{
+    var template = Model.Template;
+    var form = Model.Form;
+    var minPort = Model.AllowPrivilegedPorts ? 1 : 1024;
+    IReadOnlyList<EnvironmentEntryDto> environment = form.Environment.Count == 0 ? [new EnvironmentEntryDto()] : form.Environment;
+    var defaults = template.DefaultEnvironment;
+}
+
+<section class="panel">
+    <div class="panel-header"><h2 class="panel-title">Ağ ve portlar</h2></div>
+    <div class="panel-body service-form-stack">
+        <div>
+            <p class="form-label">Sunucuya yayınlanan portlar</p>
+            <div class="service-port-grid">
+                @for (var i = 0; i < template.Ports.Count; i++)
+                {
+                    var definition = template.Ports[i];
+                    var item = form.Ports.FirstOrDefault(p => p.ContainerPort == definition.ContainerPort)
+                               ?? new ServerManager.Application.DTOs.ManagedServices.ServicePortFormItem { ContainerPort = definition.ContainerPort, Publish = false, HostPort = definition.ContainerPort };
+                    <div class="service-port-row" data-port-row>
+                        <input type="hidden" name="Ports[@i].ContainerPort" value="@definition.ContainerPort" />
+                        <label class="check-inline service-port-toggle">
+                            <input type="checkbox" class="form-check" name="Ports[@i].Publish" value="true" checked="@item.Publish" data-port-publish />
+                            <input type="hidden" name="Ports[@i].Publish" value="false" />
+                            <span><strong>@definition.Label</strong> <span class="font-mono text-xs text-slate-500">(container @definition.ContainerPort)</span></span>
+                        </label>
+                        <div class="service-port-host">
+                            <label for="port-@i" class="sr-only">Sunucu portu</label>
+                            <input id="port-@i" type="number" name="Ports[@i].HostPort" class="form-control form-control-mono" min="@minPort" max="65535" value="@item.HostPort" data-port-host />
+                            <span class="field-validation-valid" data-valmsg-for="Ports[@i].HostPort"></span>
+                        </div>
+                    </div>
+                }
+            </div>
+            <p class="form-hint">Yayınlanmayan portlara yalnızca aynı Docker ağındaki container'lar (<span class="font-mono">@ManagedServiceNames.ServicesNetwork</span>) erişir.</p>
+        </div>
+
+        <label class="check-card">
+            <input type="checkbox" class="form-check" name="ExposePublicly" value="true" checked="@form.ExposePublicly" data-expose-toggle />
+            <input type="hidden" name="ExposePublicly" value="false" />
+            <span>
+                <span class="check-card-title">Dışarıya aç (0.0.0.0)</span>
+                <span class="check-card-text">Kapalıyken portlar yalnızca 127.0.0.1'e bağlanır; sunucudaki uygulamalar ve SSH tüneli erişebilir.</span>
+            </span>
+        </label>
+
+        <div class="service-expose-panel" data-expose-panel hidden="@(!form.ExposePublicly)">
+            <div class="alert-warning">
+                Docker'ın yayınladığı portlar UFW / firewalld kurallarını <strong>atlar</strong>. İzinli IP listesi boşsa port tüm internete açık olur;
+                güçlü parola kullanın ve mümkünse erişimi kendi IP adreslerinizle sınırlayın.
+            </div>
+            <div>
+                <label for="allowed-ips" class="form-label">İzin verilen IP / ağlar</label>
+                <textarea id="allowed-ips" name="AllowedSourceIps" class="form-control form-control-mono" rows="3" placeholder="203.0.113.10&#10;10.0.0.0/24&#10;2001:db8::/32" spellcheck="false">@form.AllowedSourceIps</textarea>
+                <p class="form-hint">Satır başına bir IP veya CIDR. Kurallar sunucunun DOCKER-USER zincirine <span class="font-mono">sm-svc-…</span> etiketiyle yazılır ve yeniden başlatmada geri yüklenir.</p>
+                <span class="field-validation-valid" data-valmsg-for="AllowedSourceIps"></span>
+            </div>
+        </div>
+
+        <div class="service-form-grid">
+            <label class="check-card">
+                <input type="checkbox" class="form-check" name="JoinProxyNetwork" value="true" checked="@form.JoinProxyNetwork" />
+                <input type="hidden" name="JoinProxyNetwork" value="false" />
+                <span>
+                    <span class="check-card-title">Vekil ağına katıl (@ManagedServiceNames.ProxyNetwork)</span>
+                    <span class="check-card-text">Traefik ile domain üzerinden yayınlanan projeler bu servise container adıyla ulaşır.</span>
+                </span>
+            </label>
+            <div>
+                <label for="service-networks" class="form-label">Ek Docker ağları</label>
+                <div class="service-inline-field">
+                    <input id="service-networks" name="Networks" class="form-control form-control-mono" value="@form.Networks" placeholder="ör. app_default" spellcheck="false" data-networks-input />
+                    <button type="button" class="btn-secondary" data-networks-load data-url="@Url.Action("Networks", "ManagedServices", new { serverId = Model.ServerId })" title="Sunucudaki Docker ağlarını listele">
+                        <span class="spinner" data-spinner hidden></span>@Icons.Render("globe", "h-4 w-4")
+                    </button>
+                </div>
+                <div class="service-chip-list" data-networks-list hidden></div>
+                <p class="form-hint">Virgülle ayırın; ağ sunucuda var olmalıdır. Servis her zaman <span class="font-mono">@ManagedServiceNames.ServicesNetwork</span> ağına katılır.</p>
+                <span class="field-validation-valid" data-valmsg-for="Networks"></span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="panel">
+    <div class="panel-header"><h2 class="panel-title">Kaynak sınırları</h2></div>
+    <div class="panel-body service-form-grid">
+        <div>
+            <label for="memory-limit" class="form-label">Bellek sınırı (MB)</label>
+            <input id="memory-limit" type="number" name="MemoryLimitMb" class="form-control" min="32" step="32" value="@form.MemoryLimitMb" placeholder="Sınırsız" />
+            <p class="form-hint">@(template.MemoryHint ?? $"En az {template.MinMemoryMb} MB önerilir.")</p>
+            <span class="field-validation-valid" data-valmsg-for="MemoryLimitMb"></span>
+        </div>
+        <div>
+            <label for="cpu-limit" class="form-label">CPU sınırı (çekirdek)</label>
+            <input id="cpu-limit" type="number" name="CpuLimit" class="form-control" min="0.1" step="0.1" value="@form.CpuLimit?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)" placeholder="Sınırsız" />
+            <p class="form-hint">ör. 0.5 yarım çekirdek, 2 iki çekirdek.</p>
+            <span class="field-validation-valid" data-valmsg-for="CpuLimit"></span>
+        </div>
+    </div>
+</section>
+
+<section class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">Ek ortam değişkenleri</h2>
+        <button type="button" class="btn-secondary btn-sm" data-env-add title="Yeni değişken satırı ekle">@Icons.Render("plus", "h-4 w-4") Ekle</button>
+    </div>
+    <div class="panel-body">
+        <div class="service-env-list" data-env-list>
+            @for (var i = 0; i < environment.Count; i++)
+            {
+                <div class="service-env-row" data-env-row>
+                    <input name="Environment[@i].Key" class="form-control form-control-mono" value="@environment[i].Key" placeholder="ANAHTAR" spellcheck="false" autocomplete="off" aria-label="Değişken adı" />
+                    <input name="Environment[@i].Value" class="form-control form-control-mono" value="@environment[i].Value" placeholder="değer" spellcheck="false" autocomplete="off" aria-label="Değer" />
+                    <button type="button" class="btn-ghost-danger btn-sm" data-env-remove title="Satırı sil">@Icons.Render("x", "h-4 w-4")</button>
+                    <span class="field-validation-valid service-env-error" data-valmsg-for="Environment[@i].Key"></span>
+                    <span class="field-validation-valid service-env-error" data-valmsg-for="Environment[@i].Value"></span>
+                </div>
+            }
+        </div>
+        <span class="field-validation-valid" data-valmsg-for="Environment"></span>
+        <p class="form-hint">
+            Kimlik bilgisi değişkenleri servis tarafından yönetilir ve burada değiştirilemez.
+            @if (defaults.Count > 0)
+            {
+                <span>Varsayılanlar (ezilebilir): <span class="font-mono">@string.Join(", ", defaults.Select(d => $"{d.Key}={d.Value}"))</span>.</span>
+            }
+            Değerler şifreli saklanır ve sunucuya 0600 izinli dosya olarak yazılır.
+        </p>
+    </div>
+</section>
+
+<template data-env-template>
+    <div class="service-env-row" data-env-row>
+        <input data-env-field="Key" class="form-control form-control-mono" placeholder="ANAHTAR" spellcheck="false" autocomplete="off" aria-label="Değişken adı" />
+        <input data-env-field="Value" class="form-control form-control-mono" placeholder="değer" spellcheck="false" autocomplete="off" aria-label="Değer" />
+        <button type="button" class="btn-ghost-danger btn-sm" data-env-remove title="Satırı sil">@Icons.Render("x", "h-4 w-4")</button>
+        <span class="field-validation-valid service-env-error" data-env-error="Key"></span>
+        <span class="field-validation-valid service-env-error" data-env-error="Value"></span>
+    </div>
+</template>

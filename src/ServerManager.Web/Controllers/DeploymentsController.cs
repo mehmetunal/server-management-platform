@@ -89,6 +89,20 @@ public partial class DeploymentsController : Controller
         return this.ApiSuccess(result.Message, Url.Action(nameof(Details), new { id = result.Data }));
     }
 
+    /// <summary>"Bu sürüme geri dön": önceki başarılı deployment'ın commit'i yeni bir geri dönüş kaydıyla dağıtılır.</summary>
+    [HttpPost]
+    [HasPermission(Permissions.DeploymentExecute)]
+    [EnableRateLimiting(RateLimitPolicies.DeploymentAction)]
+    public async Task<IActionResult> Rollback(Guid id, CancellationToken cancellationToken)
+    {
+        var actor = new DeploymentActor(_currentUser.UserId, _currentUser.UserName, _currentUser.IpAddress);
+        var result = await _deploymentManager.RollbackAsync(id, actor, cancellationToken);
+        if (!result.IsSuccess)
+            return this.ApiFailure(result, "Geri dönüş başlatılamadı.");
+
+        return this.ApiSuccess(result.Message, Url.Action(nameof(Details), new { id = result.Data }));
+    }
+
     [HttpGet]
     public async Task<IActionResult> Log(Guid id, CancellationToken cancellationToken)
     {

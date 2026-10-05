@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using ServerManager.Application.Backups;
 using ServerManager.Application.DTOs.Backups;
@@ -66,6 +67,34 @@ public static class BackupDisplay
 
     public static IEnumerable<SelectListItem> EngineOptions(BackupDatabaseEngine selected) =>
         Enum.GetValues<BackupDatabaseEngine>().Select(e => new SelectListItem(EngineText(e), ((int)e).ToString(), e == selected));
+
+    /// <summary>İş formunda <c>data-engine-mode</c> değeri (boşlukla ayrılmış motor numaraları).</summary>
+    public static string EngineModes(params BackupDatabaseEngine[] engines) =>
+        string.Join(' ', engines.Select(e => ((int)e).ToString(CultureInfo.InvariantCulture)));
+
+    /// <summary>Motor seçilince kullanıcı ve port alanlarına yazılan örnekler.</summary>
+    public static string EngineDefaultsJson() =>
+        JsonSerializer.Serialize(Enum.GetValues<BackupDatabaseEngine>().ToDictionary(
+            e => ((int)e).ToString(CultureInfo.InvariantCulture),
+            e => new { port = BackupDatabaseEngines.DefaultPort(e), user = BackupDatabaseEngines.DefaultUser(e) ?? string.Empty }));
+
+    public static string EngineHint(BackupDatabaseEngine engine) => engine switch
+    {
+        BackupDatabaseEngine.PostgreSql => "pg_dump ile düz SQL dökümü alınır (--clean --if-exists); psql ile geri yüklenir. Varsayılan port 5432.",
+        BackupDatabaseEngine.MySql => "mariadb-dump (yoksa mysqldump) ile --single-transaction dökümü alınır; mariadb / mysql ile geri yüklenir. Varsayılan port 3306.",
+        BackupDatabaseEngine.MongoDb => "mongodump --archive ile alınıp gzip'lenir; mongorestore --archive ile geri yüklenir. Parola, yalnızca sahibinin okuyabildiği geçici bir config dosyasıyla verilir (MongoDB Database Tools 100.3+). Varsayılan port 27017.",
+        BackupDatabaseEngine.Redis => "BGSAVE ile yeni bir RDB anlık görüntüsü alınır ve dosya gzip'lenir (AOF açık olsa da RDB tüm veriyi içerir). Redis bu sunucuda çalışmalı, CONFIG komutu açık olmalıdır. Geri yükleme panelden yapılmaz, elle yapılır. Varsayılan port 6379.",
+        BackupDatabaseEngine.SqlServer => $"sqlcmd ile BACKUP DATABASE … WITH COPY_ONLY alınır; geçici .bak {BackupDatabaseEngines.SqlServerBackupDirectory} altına yazılır, aktarılır ve silinir (veritabanı kadar boş alan gerekir). SQL Server bu sunucuda çalışmalıdır. Geri yükleme RESTORE … WITH REPLACE ile yapılır. Varsayılan port 1433, kullanıcı sa.",
+        _ => string.Empty
+    };
+
+    public static string RestoreDatabaseHint(BackupDatabaseEngine? engine, bool allDatabases) => engine switch
+    {
+        BackupDatabaseEngine.MongoDb when allDatabases => "Yedek tüm veritabanlarını içerir; özgün adlarıyla yüklenir.",
+        BackupDatabaseEngine.MongoDb => "Yoksa oluşturulur. Farklı bir ad yazarsanız koleksiyonlar o veritabanına yüklenir (--nsFrom/--nsTo).",
+        BackupDatabaseEngine.SqlServer => "Yoksa oluşturulur, varsa tamamen değiştirilir. Farklı bir ad yazarsanız özgün veritabanına dokunulmaz (dosyalar yeni adla taşınır).",
+        _ => $"Veritabanı önceden var olmalıdır. {EngineText(engine)}"
+    };
 
     public static string ScheduleTypeText(BackupScheduleType type) => type switch
     {

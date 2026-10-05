@@ -1,0 +1,396 @@
+@model ManagedServiceDetailsViewModel
+@{
+    var service = Model.Service;
+    var template = service.Template;
+    ViewData["Title"] = $"{service.Name} · Servis";
+    ViewData["Page"] = "managed-service-details";
+    var canManage = User.HasPermission(Permissions.ServicesManage);
+    var canConsole = User.HasPermission(Permissions.ServicesConsole) && service.Status != ManagedServiceStatus.Removed;
+    var canReveal = User.HasPermission(Permissions.ServicesRevealSecrets);
+    var busy = service.IsBusy;
+    var expectsFirewall = service.ExposePublicly && service.AllowedSources.Count > 0 && service.Ports.Count > 0;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/lib/xterm/xterm.css" />
+}
+
+<div class="page-header">
+    <div class="min-w-0">
+        <a asp-controller="ServerManagedServices" asp-action="Index" asp-route-id="@service.ServerId" class="back-link" title="Sunucunun servislerine dön">@Icons.Render("chevron-left", "h-4 w-4") @service.ServerName · Servisler</a>
+        <div class="service-title-row">
+            <partial name="_ServiceLogo" model="template" />
+            <h1 class="page-title truncate">@service.Name</h1>
+            <span class="@ManagedServiceDisplay.StatusBadgeClass(service.Status)"><span class="badge-dot"></span>@ManagedServiceDisplay.StatusText(service.Status)</span>
+            <span class="tag">@service.TemplateName @service.ImageTag</span>
+        </div>
+        <p class="page-lead font-mono">@service.ContainerName · @service.ServerName (@service.ServerAddress)</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        @if (service.WebUiUrl is not null)
+        {
+            <a href="@service.WebUiUrl" target="_blank" rel="noopener noreferrer" class="btn-primary" title="Web arayüzünü yeni sekmede aç">@Icons.Render("link", "h-4 w-4") Aç</a>
+        }
+        @if (canManage && !busy)
+        {
+            foreach (var (action, label, icon) in new[] { ("Start", "Başlat", "play"), ("Stop", "Durdur", "stop"), ("Restart", "Yeniden başlat", "refresh") })
+            {
+                <button type="button" class="btn-secondary" data-ajax-action data-url="@Url.Action("ContainerAction", new { id = service.Id })" data-field-action="@action" title="Container'ı @label.ToLowerInvariant()">
+                    <span class="spinner" data-spinner hidden></span>@Icons.Render(icon, "h-4 w-4") @label
+                </button>
+            }
+        }
+    </div>
+</div>
+
+@if (service.RunningOperationId is Guid runningId)
+{
+    <div class="alert-info mb-6">
+        Bu servis için süren bir işlem var. <a asp-action="Operation" asp-route-id="@runningId" class="panel-link">Canlı çıktıyı izleyin</a>.
+    </div>
+}
+else if (service.Status == ManagedServiceStatus.Failed && !string.IsNullOrEmpty(service.LastError))
+{
+    <div class="alert-error mb-6">Son işlem başarısız: @service.LastError</div>
+}
+
+<nav class="tab-list mb-6" aria-label="Servis sekmeleri" data-tabs>
+    <button type="button" class="tab is-active" data-tab="general" title="Durum ve bağlantı bilgileri">Genel</button>
+    <button type="button" class="tab" data-tab="logs" title="Container çıktısı (docker logs)">Loglar</button>
+    <button type="button" class="tab" data-tab="operations" title="Kurulum, yükseltme ve kaldırma geçmişi">İşlemler</button>
+    @if (canManage && Model.Settings is not null)
+    {
+        <button type="button" class="tab" data-tab="settings" title="Ortam değişkenleri, portlar, IP izin listesi ve kaynak sınırları">Ayarlar</button>
+        <button type="button" class="tab" data-tab="version" title="Sürüm yükseltme">Sürüm</button>
+    }
+    @if (canConsole)
+    {
+        <button type="button" class="tab" data-tab="console" title="@(template?.ConsoleLabel ?? "Kabuk") konsolu">Konsol</button>
+    }
+    @if (canManage)
+    {
+        <button type="button" class="tab" data-tab="danger" title="Servisi kaldır">Tehlikeli bölge</button>
+    }
+</nav>
+
+<div data-tab-panel="general">
+    @if (service.ExposePublicly && service.Ports.Count > 0 && service.AllowedSources.Count == 0)
+    {
+        <div class="alert-warning mb-6">
+            Portlar dışarıya açık ve IP kısıtlaması yok. Docker'ın yayınladığı portlar UFW kurallarını atlar; servis tüm internete açıktır.
+            Güçlü parola kullanın ve Ayarlar sekmesinden izinli IP listesi tanımlayın.
+        </div>
+    }
+
+    <div class="service-detail-grid">
+        <section class="panel" data-service-runtime data-url="@Url.Action("Runtime", new { id = service.Id })" data-expects-firewall="@(expectsFirewall ? "true" : "false")">
+            <div class="panel-header">
+                <h2 class="panel-title">Durum</h2>
+                <button type="button" class="btn-ghost btn-sm" data-runtime-refresh title="Container durumunu yeniden oku">@Icons.Render("refresh", "h-4 w-4")</button>
+            </div>
+            <dl class="panel-body detail-list">
+                <div><dt class="detail-term">Container</dt><dd class="detail-value"><span class="badge-neutral" data-runtime-state><span class="badge-dot"></span><span data-runtime-state-text>Okunuyor…</span></span></dd></div>
+                <div><dt class="detail-term">Sağlık</dt><dd class="detail-value" data-runtime-health>—</dd></div>
+                <div><dt class="detail-term">Başlama</dt><dd class="detail-value" data-runtime-started>—</dd></div>
+                <div><dt class="detail-term">Yeniden başlama</dt><dd class="detail-value" data-runtime-restarts>—</dd></div>
+                <div><dt class="detail-term">Ağlar</dt><dd class="detail-value font-mono" data-runtime-networks>@string.Join(", ", service.Networks)</dd></div>
+                <div><dt class="detail-term">Veri</dt><dd class="detail-value font-mono">@(service.VolumeMode == ManagedServiceVolumeMode.HostPath ? service.HostDataPath : service.VolumeName)@(service.DataPath is null ? "" : $" → {service.DataPath}")</dd></div>
+                <div><dt class="detail-term">Sınırlar</dt><dd class="detail-value">@(service.MemoryLimitMb is null ? "Bellek sınırsız" : $"{service.MemoryLimitMb} MB") · @(service.CpuLimit is null ? "CPU sınırsız" : $"{service.CpuLimit.Value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)} CPU")</dd></div>
+                <div><dt class="detail-term">Oluşturan</dt><dd class="detail-value">@(service.CreatedBy ?? "—") · @DateDisplay.Format(service.CreatedAt, "dd.MM.yyyy HH:mm")</dd></div>
+            </dl>
+            <div class="panel-note" data-runtime-error hidden></div>
+            @if (expectsFirewall)
+            {
+                <div class="panel-note" data-firewall-warning hidden>
+                    IP kısıtlama kuralları sunucuda bulunamadı (sunucu yeniden başlamış veya kurallar silinmiş olabilir); port şu an herkese açık olabilir.
+                    @if (canManage)
+                    {
+                        <button type="button" class="btn-secondary btn-sm mt-2" data-ajax-action data-url="@Url.Action("ReapplyFirewall", new { id = service.Id })" title="DOCKER-USER kurallarını yeniden yaz">
+                            <span class="spinner" data-spinner hidden></span>@Icons.Render("shield", "h-4 w-4") Kuralları yeniden uygula
+                        </button>
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title">Bağlantı</h2>
+                @if (canReveal && service.HasPassword)
+                {
+                    <button type="button" class="btn-secondary btn-sm" data-reveal data-url="@Url.Action("Reveal", new { id = service.Id })" title="Parolayı ve parolalı bağlantı adreslerini göster (audit log'a yazılır)">
+                        <span class="spinner" data-spinner hidden></span>@Icons.Render("key", "h-4 w-4") <span data-label>Parolayı göster</span>
+                    </button>
+                }
+            </div>
+            <dl class="panel-body detail-list">
+                @if (service.InternalEndpoint is not null)
+                {
+                    <div>
+                        <dt class="detail-term">İç adres</dt>
+                        <dd class="detail-value">
+                            <span class="service-copy-row"><code>@ServiceConnectionStrings.HostPort(service.InternalEndpoint)</code><button type="button" class="btn-ghost btn-sm" data-copy="@ServiceConnectionStrings.HostPort(service.InternalEndpoint)" title="Kopyala">@Icons.Render("copy", "h-4 w-4")</button></span>
+                            <p class="form-hint">Aynı sunucudaki container'lar @string.Join(" / ", service.Networks) ağlarından birine katılırsa bu adresle bağlanır.</p>
+                        </dd>
+                    </div>
+                }
+                @if (service.ExternalEndpoint is not null)
+                {
+                    <div>
+                        <dt class="detail-term">Dış adres</dt>
+                        <dd class="detail-value">
+                            <span class="service-copy-row"><code>@ServiceConnectionStrings.HostPort(service.ExternalEndpoint)</code><button type="button" class="btn-ghost btn-sm" data-copy="@ServiceConnectionStrings.HostPort(service.ExternalEndpoint)" title="Kopyala">@Icons.Render("copy", "h-4 w-4")</button></span>
+                            @if (!service.ExposePublicly)
+                            {
+                                <p class="form-hint">Yalnızca sunucunun kendisinden veya SSH tüneliyle (<span class="font-mono">ssh -L @service.ExternalEndpoint.Port:127.0.0.1:@service.ExternalEndpoint.Port …</span>) erişilebilir.</p>
+                            }
+                            else if (service.AllowedSources.Count > 0)
+                            {
+                                <p class="form-hint">Yalnızca şu kaynaklardan: <span class="font-mono">@string.Join(", ", service.AllowedSources)</span></p>
+                            }
+                        </dd>
+                    </div>
+                }
+                @if (service.Username is not null)
+                {
+                    <div><dt class="detail-term">Kullanıcı</dt><dd class="detail-value"><span class="service-copy-row"><code>@service.Username</code><button type="button" class="btn-ghost btn-sm" data-copy="@service.Username" title="Kopyala">@Icons.Render("copy", "h-4 w-4")</button></span></dd></div>
+                }
+                @if (service.Database is not null)
+                {
+                    <div><dt class="detail-term">Veritabanı</dt><dd class="detail-value"><code>@service.Database</code></dd></div>
+                }
+                @if (service.HasPassword)
+                {
+                    <div><dt class="detail-term">Parola</dt><dd class="detail-value"><code data-secret-password>••••••••••••</code></dd></div>
+                }
+                @if (service.InternalConnectionPreview is not null)
+                {
+                    <div>
+                        <dt class="detail-term">Bağlantı (iç)</dt>
+                        <dd class="detail-value"><span class="service-copy-row"><code class="service-connection" data-secret-internal>@service.InternalConnectionPreview</code><button type="button" class="btn-ghost btn-sm" data-copy-target="[data-secret-internal]" title="Kopyala">@Icons.Render("copy", "h-4 w-4")</button></span></dd>
+                    </div>
+                }
+                @if (service.ExternalConnectionPreview is not null)
+                {
+                    <div>
+                        <dt class="detail-term">Bağlantı (dış)</dt>
+                        <dd class="detail-value"><span class="service-copy-row"><code class="service-connection" data-secret-external>@service.ExternalConnectionPreview</code><button type="button" class="btn-ghost btn-sm" data-copy-target="[data-secret-external]" title="Kopyala">@Icons.Render("copy", "h-4 w-4")</button></span></dd>
+                    </div>
+                }
+            </dl>
+            <div class="panel-body service-secret-panel" data-secret-panel hidden>
+                <p class="form-label">Uygulamaya verilebilecek ortam değişkenleri (iç ağ)</p>
+                <pre class="service-env-preview" data-secret-env></pre>
+                <button type="button" class="btn-secondary btn-sm" data-copy-target="[data-secret-env]" title="Tümünü kopyala">@Icons.Render("copy", "h-4 w-4") Kopyala</button>
+            </div>
+            @if (service.Ports.Count > 0)
+            {
+                <div class="panel-body service-port-summary">
+                    @foreach (var port in service.Ports)
+                    {
+                        <span class="service-port @(service.ExposePublicly ? "is-public" : "")">@ManagedServiceDisplay.PortText(port)</span>
+                    }
+                </div>
+            }
+        </section>
+    </div>
+
+    <partial name="_IntegrationPanels" model="Model" />
+</div>
+
+<div data-tab-panel="logs" hidden>
+    <section class="panel" data-logs data-url="@Url.Action("Logs", new { serviceId = service.Id })" data-container="@service.ContainerName">
+        <div class="log-toolbar">
+            <label class="log-tail">
+                <span class="text-slate-500">Son</span>
+                <select class="form-control log-tail-select" data-logs-tail aria-label="Satır sayısı">
+                    <option value="100">100</option>
+                    <option value="200" selected>200</option>
+                    <option value="500">500</option>
+                    <option value="1000">1000</option>
+                    <option value="5000">5000</option>
+                </select>
+                <span class="text-slate-500">satır</span>
+            </label>
+            <div class="search-field">
+                <span class="search-field-icon">@Icons.Render("search", "h-4 w-4")</span>
+                <input type="search" class="form-control log-search" placeholder="Loglarda ara…" data-logs-search aria-label="Loglarda ara" />
+            </div>
+            <label class="check-inline" title="error, fatal, panic, exception veya warn içeren satırlar"><input type="checkbox" class="form-check" data-logs-problems /> Yalnızca hata/uyarı</label>
+            <label class="check-inline"><input type="checkbox" class="form-check" data-logs-errors /> Yalnızca stderr</label>
+            <label class="check-inline"><input type="checkbox" class="form-check" data-logs-wrap checked /> Satır kaydır</label>
+            <label class="check-inline"><input type="checkbox" class="form-check" data-logs-follow /> Canlı takip</label>
+            <div class="log-toolbar-end">
+                <span class="text-xs text-slate-400" data-logs-status></span>
+                <button type="button" class="btn-secondary btn-sm" data-logs-reload title="Logları yeniden çek">@Icons.Render("refresh", "h-4 w-4") Yenile</button>
+                <button type="button" class="btn-secondary btn-sm" data-logs-download title="Görüntülenen logları dosya olarak indir">@Icons.Render("download", "h-4 w-4") İndir</button>
+            </div>
+        </div>
+        <div class="log-output" data-logs-output>
+            <p class="log-empty">Loglar yükleniyor…</p>
+        </div>
+    </section>
+</div>
+
+<div data-tab-panel="operations" hidden>
+    <section class="panel">
+        <div class="panel-header"><h2 class="panel-title">İşlem geçmişi</h2></div>
+        @if (Model.Operations.Count == 0)
+        {
+            <div class="empty-state"><p>Henüz işlem yok.</p></div>
+        }
+        else
+        {
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>İşlem</th>
+                            <th>Durum</th>
+                            <th>Sürüm</th>
+                            <th>Başlatan</th>
+                            <th>Başlangıç</th>
+                            <th>Süre</th>
+                            <th><span class="sr-only">Log</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var operation in Model.Operations)
+                        {
+                            <tr>
+                                <td><a asp-action="Operation" asp-route-id="@operation.Id" class="service-name" title="İşlem logunu aç">@ManagedServiceDisplay.KindText(operation.Kind)</a></td>
+                                <td>
+                                    <span class="@ManagedServiceDisplay.OperationStatusBadgeClass(operation.Status)" title="@operation.FailureReason"><span class="badge-dot"></span>@ManagedServiceDisplay.OperationStatusText(operation.Status)</span>
+                                </td>
+                                <td class="font-mono text-xs">@(operation.FromTag is not null && operation.ToTag is not null && operation.FromTag != operation.ToTag ? $"{operation.FromTag} → {operation.ToTag}" : operation.ToTag ?? operation.FromTag)</td>
+                                <td class="text-sm">@(operation.UserName ?? "—")</td>
+                                <td class="whitespace-nowrap text-sm" title="@DateDisplay.Format(operation.StartedAt)">@DateDisplay.Relative(operation.StartedAt)</td>
+                                <td class="whitespace-nowrap text-sm">@(operation.IsRunning ? "Sürüyor" : ManagedServiceDisplay.Duration(operation.StartedAt, operation.FinishedAt))</td>
+                                <td class="whitespace-nowrap text-right">
+                                    <a asp-action="Operation" asp-route-id="@operation.Id" class="btn-ghost btn-sm" title="Logu görüntüle">@Icons.Render("eye", "h-4 w-4")</a>
+                                    @if (!operation.IsRunning)
+                                    {
+                                        <a asp-action="OperationLog" asp-route-id="@operation.Id" class="btn-ghost btn-sm" title="Logu indir">@Icons.Render("download", "h-4 w-4")</a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>
+
+@if (canManage && Model.Settings is not null && template is not null)
+{
+    <div data-tab-panel="settings" hidden>
+        <form asp-action="Settings" asp-route-id="@service.Id" method="post" data-service-settings novalidate autocomplete="off">
+            <p class="alert-error mb-6" data-form-error hidden></p>
+            <div class="service-form-stack">
+                <partial name="_SettingsFields" model="new ManagedServiceSettingsFieldsModel(template, Model.Settings, Model.AllowPrivilegedPorts, service.ServerId)" />
+                <div class="service-form-actions">
+                    <p class="form-hint">Kaydedince container yeni ayarlarla yeniden oluşturulur; veri (volume) korunur. Kısa bir kesinti olur.</p>
+                    <button type="submit" class="btn-primary" disabled="@busy" title="Ayarları kaydet ve container'ı yeniden oluştur"><span class="spinner" data-spinner hidden></span>@Icons.Render("refresh", "h-4 w-4") Kaydet ve yeniden oluştur</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div data-tab-panel="version" hidden>
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Sürüm yükseltme</h2></div>
+            <form asp-action="Upgrade" asp-route-id="@service.Id" method="post" class="panel-body service-form-stack" data-service-upgrade novalidate autocomplete="off"
+                  data-current-tag="@service.ImageTag">
+                <p class="alert-error" data-form-error hidden></p>
+                <input type="hidden" name="ConfirmMajorUpgrade" value="false" data-confirm-major />
+                <div class="service-form-grid">
+                    <div>
+                        <span class="form-label">Mevcut sürüm</span>
+                        <p class="font-mono">@template.Image:@service.ImageTag</p>
+                    </div>
+                    <div>
+                        <label for="upgrade-tag" class="form-label">Yeni sürüm</label>
+                        <input id="upgrade-tag" name="ImageTag" class="form-control form-control-mono" list="upgrade-tags" value="@service.ImageTag" maxlength="128" spellcheck="false" />
+                        <datalist id="upgrade-tags">
+                            @foreach (var tag in template.Tags)
+                            {
+                                <option value="@tag"></option>
+                            }
+                        </datalist>
+                        <p class="form-hint">Aynı etiketi seçerseniz imaj yeniden çekilir (ör. latest güncellemesi).</p>
+                        <span class="field-validation-valid" data-valmsg-for="ImageTag"></span>
+                    </div>
+                </div>
+                @if (template.WarnOnMajorUpgrade)
+                {
+                    <div class="alert-warning">
+                        Ana sürüm değişikliği (ör. 16 → 17) veri dosyalarını otomatik dönüştürmeyebilir; container açılmayabilir. Önce yedek alın.
+                        @if (template.Notes is not null)
+                        {
+                            <span>@template.Notes</span>
+                        }
+                    </div>
+                }
+                <div class="service-form-actions">
+                    <p class="form-hint">Yeni imaj indirilir, container aynı veriyle yeniden oluşturulur. İndirme başarısız olursa mevcut container'a dokunulmaz.</p>
+                    <button type="submit" class="btn-primary" disabled="@busy" title="Sürümü yükselt"><span class="spinner" data-spinner hidden></span>@Icons.Render("arrow-up", "h-4 w-4") Yükselt</button>
+                </div>
+            </form>
+        </section>
+    </div>
+}
+
+@if (canConsole)
+{
+    <div data-tab-panel="console" hidden>
+        <section class="panel overflow-hidden" data-terminal data-hub-url="@Url.Content("~" + TerminalHub.Path)" data-service-id="@service.Id" data-server-id="@service.ServerId" data-container="@service.ContainerName">
+            <div class="log-toolbar">
+                <span class="badge-neutral" data-terminal-status><span class="badge-dot"></span><span data-terminal-status-text>Bağlı değil</span></span>
+                <p class="text-xs text-slate-500">
+                    Container içinde <span class="font-mono">@(template?.ConsoleLabel ?? "bash/sh")</span> açılır; parola container'ın kendi ortam değişkeninden okunur, ekrana yazılmaz.
+                    Açılış, kapanış ve komutlar kayda alınır.
+                </p>
+                <div class="log-toolbar-end">
+                    <button type="button" class="btn-secondary btn-sm" data-terminal-takeover hidden title="Başka sekmede açık oturumu bu sekmeye taşı">@Icons.Render("refresh", "h-4 w-4") Buraya al</button>
+                    <button type="button" class="btn-primary btn-sm" data-terminal-connect title="Konsolu başlat">@Icons.Render("terminal", "h-4 w-4") Bağlan</button>
+                    <button type="button" class="btn-secondary btn-sm" data-terminal-disconnect hidden title="Konsolu kapat">@Icons.Render("x", "h-4 w-4") Bağlantıyı kes</button>
+                </div>
+            </div>
+            <div class="terminal-screen" data-terminal-screen></div>
+        </section>
+    </div>
+}
+
+@if (canManage)
+{
+    <div data-tab-panel="danger" hidden>
+        <section class="panel service-danger">
+            <div class="panel-header"><h2 class="panel-title">Servisi kaldır</h2></div>
+            <div class="panel-body service-form-stack">
+                <p>Container durdurulup silinir ve güvenlik duvarı kuralları kaldırılır. Veri varsayılan olarak korunur (<span class="font-mono">@(service.VolumeMode == ManagedServiceVolumeMode.HostPath ? service.HostDataPath : service.VolumeName)</span>).</p>
+                <p class="form-hint">"Veriyi de sil" seçilirse volume veya (panelin oluşturduğu) sunucu klasörü kalıcı olarak silinir; geri alınamaz.</p>
+                <div>
+                    <button type="button" class="btn-danger" disabled="@busy" data-ajax-action
+                            data-url="@Url.Action("Remove", new { id = service.Id })"
+                            data-confirm-title="Servis kaldırılsın mı?"
+                            data-confirm-message="@service.Name servisi (@service.ContainerName) sunucudan kaldırılacak. Onaylamak için servis adını yazın."
+                            data-confirm-name="@service.Name"
+                            data-confirm-check="Veriyi de sil (geri alınamaz)"
+                            data-check-field="removeData"
+                            data-confirm-label="Kaldır"
+                            data-redirect>
+                        <span class="spinner" data-spinner hidden></span>@Icons.Render("trash", "h-4 w-4") Servisi kaldır
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/lib/signalr/signalr.min.js"></script>
+    <script src="~/lib/xterm/xterm.js"></script>
+    <script src="~/lib/xterm/addon-fit.js"></script>
+    <script src="~/lib/xterm/addon-search.js"></script>
+}

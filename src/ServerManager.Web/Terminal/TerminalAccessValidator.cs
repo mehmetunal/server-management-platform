@@ -34,8 +34,12 @@ public sealed class TerminalAccessValidator
         _logger = logger;
     }
 
-    public static string RequiredPermission(TerminalSessionKind kind) =>
-        kind == TerminalSessionKind.Container ? Permissions.DockerTerminal : Permissions.TerminalExecute;
+    public static string RequiredPermission(TerminalSessionKind kind) => kind switch
+    {
+        TerminalSessionKind.Container => Permissions.DockerTerminal,
+        TerminalSessionKind.ServiceConsole => Permissions.ServicesConsole,
+        _ => Permissions.TerminalExecute
+    };
 
     /// <summary>Oturum türüne göre gereken yetki (sunucu: terminal.execute, container: docker.terminal).</summary>
     public static bool HasPermission(ClaimsPrincipal? principal, TerminalSessionKind kind) =>

@@ -20,6 +20,12 @@ public sealed class BackupJobListItemDto
 
     public string SourceSummary { get; init; } = string.Empty;
 
+    /// <summary>Veritabanı yedeğinde motor; diğer kaynaklarda null.</summary>
+    public BackupDatabaseEngine? DatabaseEngine { get; init; }
+
+    /// <summary>Veritabanı container'da çalışıyorsa container adı (ör. yönetilen servis <c>sm-svc-db</c>).</summary>
+    public string? ContainerName { get; init; }
+
     public BackupScheduleType ScheduleType { get; init; }
 
     public int ScheduleIntervalHours { get; init; }

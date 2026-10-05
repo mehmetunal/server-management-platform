@@ -1,6 +1,7 @@
 import { createAjaxList } from '../../components/ajax-list.js';
 import { on, qs, setBusy } from '../../core/dom.js';
 import { onPageDispose, pageSignal } from '../../core/page-scope.js';
+import { bindRollback } from './rollback.js';
 
 const RUNNING_REFRESH_MS = 5000;
 
@@ -40,6 +41,7 @@ export function initDeploymentList(root, { form, embedded = false } = {}) {
         }
     });
 
+    bindRollback(root);
     schedule();
     return list;
 }

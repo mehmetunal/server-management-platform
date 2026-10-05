@@ -22,5 +22,8 @@ public enum RetentionTarget
     TerminalSessions = 10,
 
     /// <summary>Çözülmüş alarm kayıtları silinir.</summary>
-    AlertEvents = 11
+    AlertEvents = 11,
+
+    /// <summary>Biten servis işlemlerinin (kurulum, yükseltme, kaldırma) log metni temizlenir; kayıt silinmez.</summary>
+    ServiceOperationLogs = 20
 }

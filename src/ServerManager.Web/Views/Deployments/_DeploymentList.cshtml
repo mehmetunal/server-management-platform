@@ -1,4 +1,7 @@
 @model DeploymentListViewModel
+@{
+    var canRollback = User.HasPermission(Permissions.DeploymentExecute);
+}
 
 @if (Model.Deployments.Items.Count == 0)
 {
@@ -43,6 +46,10 @@ else
                             <td class="whitespace-nowrap text-sm">@deployment.ServerName</td>
                         }
                         <td class="deployment-commit">
+                            @if (deployment.Kind != DeploymentKind.Deploy)
+                            {
+                                <span class="badge-neutral" title="@DeploymentDisplay.KindHint(deployment.Kind)">@DeploymentDisplay.KindText(deployment.Kind)</span>
+                            }
                             <span class="tag">@deployment.Branch</span>
                             <span class="font-mono text-xs">@DeploymentDisplay.ShortSha(deployment.CommitSha)</span>
                             @if (!string.IsNullOrEmpty(deployment.CommitMessage))
@@ -55,7 +62,16 @@ else
                         </td>
                         <td class="whitespace-nowrap text-sm tabular-nums">@(deployment.IsRunning ? "Sürüyor" : DeploymentDisplay.Duration(deployment.StartedAt, deployment.CompletedAt))</td>
                         <td class="text-sm">@(deployment.UserName ?? "—")</td>
-                        <td class="text-right">
+                        <td class="whitespace-nowrap text-right">
+                            @if (canRollback && deployment.CanRollback)
+                            {
+                                <button type="button" class="btn-ghost btn-sm" data-deployment-rollback
+                                        data-url="@Url.Action("Rollback", "Deployments", new { id = deployment.Id })"
+                                        data-project="@deployment.ProjectName" data-commit="@DeploymentDisplay.ShortSha(deployment.CommitSha)"
+                                        title="Bu deployment'ın sürümüne geri dön">
+                                    @Icons.Render("refresh", "h-4 w-4") Bu sürüme geri dön
+                                </button>
+                            }
                             <a asp-controller="Deployments" asp-action="Details" asp-route-id="@deployment.Id" class="btn-ghost btn-sm" title="Deployment ayrıntılarını ve logunu aç">@Icons.Render("eye", "h-4 w-4") Log</a>
                         </td>
                     </tr>

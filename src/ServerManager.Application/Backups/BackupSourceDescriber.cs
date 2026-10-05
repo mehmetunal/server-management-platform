@@ -17,7 +17,18 @@ public static class BackupSourceDescriber
     {
         BackupDatabaseEngine.PostgreSql => "PostgreSQL",
         BackupDatabaseEngine.MySql => "MySQL / MariaDB",
+        BackupDatabaseEngine.MongoDb => "MongoDB",
+        BackupDatabaseEngine.Redis => "Redis",
+        BackupDatabaseEngine.SqlServer => "SQL Server",
         _ => "-"
+    };
+
+    /// <summary>MongoDB'de ad boşsa tüm veritabanları, Redis'te RDB tüm veritabanlarını içerir.</summary>
+    public static string DatabaseLabel(BackupDatabaseEngine? engine, string? databaseName) => engine switch
+    {
+        BackupDatabaseEngine.Redis => "tüm veritabanları (RDB)",
+        BackupDatabaseEngine.MongoDb when string.IsNullOrEmpty(databaseName) => "tüm veritabanları",
+        _ => databaseName ?? "-"
     };
 
     public static string Describe(BackupJob job)
@@ -36,7 +47,7 @@ public static class BackupSourceDescriber
                 return $"Volume: {job.VolumeName}";
             case BackupSourceType.Database:
                 var location = string.IsNullOrWhiteSpace(job.ContainerName) ? "sunucuda" : $"container: {job.ContainerName}";
-                return $"{EngineName(job.DatabaseEngine)}: {job.DatabaseName} ({location})";
+                return $"{EngineName(job.DatabaseEngine)}: {DatabaseLabel(job.DatabaseEngine, job.DatabaseName)} ({location})";
             default:
                 return "-";
         }

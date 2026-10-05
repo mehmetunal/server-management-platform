@@ -1,0 +1,59 @@
+@model EnvironmentPanelViewModel
+@{
+    var env = Model.Environment;
+}
+
+@if (env.Unreadable)
+{
+    <div class="alert-warning m-5">
+        Kayıtlı ortam değişkenleri çözülemedi (şifreleme anahtarı değişmiş olabilir). Değerler okunamaz ve tek tek düzenlenemez;
+        @(Model.CanManage ? "\"İçe aktar\" ile \"Tümünü değiştir\" seçerek yeniden girin." : "yönetim yetkisi olan bir kullanıcı yeniden girmelidir.")
+    </div>
+}
+else if (env.Keys.Count == 0)
+{
+    <div class="empty-state">
+        <span class="empty-state-icon">@Icons.Render("key", "h-6 w-6")</span>
+        <p>Tanımlı ortam değişkeni yok.</p>
+        @if (Model.CanManage)
+        {
+            <p class="text-xs text-slate-500">"Değişken ekle" ile tek tek ekleyin veya mevcut bir .env dosyasını içe aktarın.</p>
+        }
+    </div>
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Anahtar</th>
+                    <th>Değer</th>
+                    <th><span class="sr-only">İşlemler</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var key in env.Keys)
+                {
+                    <tr data-env-row data-key="@key">
+                        <td class="env-key">@key</td>
+                        <td class="env-value" data-env-value><span class="env-mask">••••••••</span></td>
+                        <td class="whitespace-nowrap text-right">
+                            @if (Model.CanReveal)
+                            {
+                                <button type="button" class="btn-ghost btn-sm" data-env-reveal title="Değeri göster (görüntüleme denetim kaydına yazılır)">@Icons.Render("eye", "h-4 w-4") Göster</button>
+                                <button type="button" class="btn-ghost btn-sm" data-env-hide hidden title="Değeri gizle">@Icons.Render("x", "h-4 w-4") Gizle</button>
+                            }
+                            @if (Model.CanManage)
+                            {
+                                <button type="button" class="btn-ghost btn-sm" data-env-edit title="Bu değişkenin değerini değiştir">@Icons.Render("pencil", "h-4 w-4") Düzenle</button>
+                                <button type="button" class="btn-ghost btn-sm text-red-600 dark:text-red-400" data-env-delete title="Değişkeni sil">@Icons.Render("trash", "h-4 w-4") Sil</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="form-hint px-5 py-3">@env.Keys.Count değişken. Değerler şifreli saklanır; gösterme ve indirme işlemleri denetim kaydına yazılır.</p>
+}

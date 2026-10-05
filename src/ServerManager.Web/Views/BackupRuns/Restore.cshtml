@@ -8,11 +8,17 @@
     {
         BackupSourceType.Files => "Arşivdeki dosyalar hedef klasöre açılır; aynı adlı dosyaların üzerine yazılır. Hedefte olup arşivde olmayan dosyalar silinmez.",
         BackupSourceType.DockerVolume => "Arşiv volume'un içine açılır; aynı adlı dosyaların üzerine yazılır. Volume yoksa oluşturulur. Volume'u kullanan container'ı önce durdurmanız önerilir.",
-        _ => form.DatabaseEngine == BackupDatabaseEngine.PostgreSql
-            ? "Döküm hedef veritabanında çalıştırılır: yedekteki tablolar silinip yeniden oluşturulur (DROP … IF EXISTS). Yedekte olmayan tablolar korunur."
-            : "Döküm hedef veritabanında çalıştırılır: yedekteki tablolar silinip yeniden oluşturulur (DROP TABLE IF EXISTS). Yedekte olmayan tablolar korunur."
+        _ => form.DatabaseEngine switch
+        {
+            BackupDatabaseEngine.PostgreSql => "Döküm hedef veritabanında çalıştırılır: yedekteki tablolar silinip yeniden oluşturulur (DROP … IF EXISTS). Yedekte olmayan tablolar korunur.",
+            BackupDatabaseEngine.MongoDb => "Arşiv mongorestore ile yüklenir. \"Önce sil\" seçiliyse yedekteki koleksiyonlar yüklenmeden önce silinir (--drop); seçili değilse belgeler eklenir, aynı _id'li belgeler atlanır. Yedekte olmayan koleksiyonlar korunur.",
+            BackupDatabaseEngine.SqlServer => "Hedef veritabanı .bak dosyasıyla tamamen değiştirilir (RESTORE … WITH REPLACE). Açık bağlantılar kesilir. Aynı adla yüklemede veri dosyaları yedekteki yollara, farklı adla yüklemede varsayılan veri klasörüne {ad}_{n}.mdf/.ldf olarak yazılır.",
+            BackupDatabaseEngine.Redis => "Redis yedeği panelden geri yüklenmez.",
+            _ => "Döküm hedef veritabanında çalıştırılır: yedekteki tablolar silinip yeniden oluşturulur (DROP TABLE IF EXISTS). Yedekte olmayan tablolar korunur."
+        }
     };
     var canSubmit = run.SourceType != BackupSourceType.Database || form.CanRestoreDatabase;
+    var databaseOptional = form.DatabaseEngine == BackupDatabaseEngine.MongoDb && string.IsNullOrEmpty(form.DefaultDatabase);
 }
 
 <div class="page-header">
@@ -63,7 +69,14 @@
                         </div>
                         break;
                     default:
-                        @if (!form.CanRestoreDatabase)
+                        @if (form.ManualRestoreGuidance is { } guidance)
+                        {
+                            <div class="alert-warning sm:col-span-2">
+                                <p class="font-semibold">Geri yükleme elle yapılır</p>
+                                <p class="mt-1">@guidance</p>
+                            </div>
+                        }
+                        else if (!form.CanRestoreDatabase)
                         {
                             <p class="alert-error sm:col-span-2">Bu yedeğin veritabanı bağlantı bilgileri bulunamadı. Dosyayı indirip elle geri yükleyin.</p>
                         }
@@ -76,11 +89,22 @@
                                 <span class="field-validation-valid" data-valmsg-for="TargetContainer"></span>
                             </div>
                             <div>
-                                <label for="TargetDatabase" class="form-label">Hedef veritabanı *</label>
-                                <input id="TargetDatabase" name="TargetDatabase" value="@form.DefaultDatabase" class="form-control font-mono" maxlength="128" />
-                                <p class="form-hint">Veritabanı önceden var olmalıdır. @BackupDisplay.EngineText(form.DatabaseEngine)</p>
+                                <label for="TargetDatabase" class="form-label">Hedef veritabanı@(databaseOptional ? string.Empty : " *")</label>
+                                <input id="TargetDatabase" name="TargetDatabase" value="@form.DefaultDatabase" class="form-control font-mono" maxlength="128"
+                                       readonly="@databaseOptional" />
+                                <p class="form-hint">@BackupDisplay.RestoreDatabaseHint(form.DatabaseEngine, databaseOptional)</p>
                                 <span class="field-validation-valid" data-valmsg-for="TargetDatabase"></span>
                             </div>
+                            @if (form.DatabaseEngine == BackupDatabaseEngine.MongoDb)
+                            {
+                                <label class="check-card sm:col-span-2">
+                                    <input type="checkbox" name="DropExisting" value="true" class="form-check" checked />
+                                    <span>
+                                        <span class="check-card-title">Önce sil (--drop)</span>
+                                        <span class="check-card-text">Yedekteki koleksiyonlar hedefte varsa yüklenmeden önce silinir; sonuç yedekle birebir aynı olur.</span>
+                                    </span>
+                                </label>
+                            }
                         }
                         break;
                 }

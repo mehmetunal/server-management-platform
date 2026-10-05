@@ -25,6 +25,7 @@ using ServerManager.Web.Framework.Mvc;
 using ServerManager.Web.Framework.Plugins;
 using ServerManager.Web.Framework.Servers;
 using ServerManager.Web.Hubs;
+using ServerManager.Web.ManagedServices;
 using ServerManager.Web.Middleware;
 using ServerManager.Web.Models;
 using ServerManager.Web.Options;
@@ -61,6 +62,9 @@ try
     builder.Services.AddHostedService<TerminalIdleSweeper>();
     builder.Services.AddSingleton<DeploymentManager>();
     builder.Services.AddHostedService<DeploymentLifecycleWorker>();
+    // Servisler (tek tıkla Docker servisleri)
+    builder.Services.AddSingleton<ManagedServiceManager>();
+    builder.Services.AddHostedService<ManagedServiceLifecycleWorker>();
     builder.Services.PostConfigure<BackupOptions>(options =>
         options.LocalRootPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, options.LocalRootPath)));
     builder.Services.AddSingleton<BackupManager>();
@@ -217,6 +221,7 @@ try
     app.MapHub<MonitoringHub>(MonitoringHub.Path, options => options.CloseOnAuthenticationExpiration = true);
     app.MapHub<TerminalHub>(TerminalHub.Path, options => options.CloseOnAuthenticationExpiration = true);
     app.MapHub<DeploymentHub>(DeploymentHub.Path, options => options.CloseOnAuthenticationExpiration = true);
+    app.MapHub<ServiceHub>(ServiceHub.Path, options => options.CloseOnAuthenticationExpiration = true);
     app.MapPluginEndpoints();
 
     await app.RunAsync();

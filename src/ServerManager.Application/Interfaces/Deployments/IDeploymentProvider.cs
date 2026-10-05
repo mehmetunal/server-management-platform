@@ -20,6 +20,16 @@ public interface IDeploymentProvider
         IDeploymentObserver observer,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Kaynak kod çekmeden ve build etmeden .env'yi (ve compose override'ını) yeniden yazar, container'ları mevcut imajla
+    /// yeniden oluşturur. Ortam değişkeni değişikliklerini uygulamak için kullanılır.
+    /// </summary>
+    Task<ServiceResult<DeploymentRunResult>> RestartAsync(
+        RemoteExecutionContext context,
+        DeploymentPlan plan,
+        IDeploymentObserver observer,
+        CancellationToken cancellationToken = default);
+
     Task<ServiceResult<ProxyStatusDto>> GetProxyStatusAsync(RemoteExecutionContext context, CancellationToken cancellationToken = default);
 
     Task<ServiceResult> InstallProxyAsync(RemoteExecutionContext context, string acmeEmail, TimeSpan timeout, CancellationToken cancellationToken = default);

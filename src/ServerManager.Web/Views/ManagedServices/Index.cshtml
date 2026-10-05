@@ -1,0 +1,34 @@
+@model ManagedServiceIndexViewModel
+@{
+    ViewData["Title"] = "Servisler";
+    ViewData["Page"] = "managed-services";
+    var canManage = User.HasPermission(Permissions.ServicesManage);
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Servisler</h1>
+        <p class="page-lead">Sunuculara tek tıkla kurulan veritabanları (PostgreSQL, MySQL, Redis …) ve uygulamalar (MinIO, n8n …). Her servis Docker container'ı olarak çalışır.</p>
+    </div>
+    @if (canManage)
+    {
+        <a asp-action="Create" asp-route-serverId="@Model.ServerId" class="btn-primary" title="Yeni veritabanı veya uygulama kur">@Icons.Render("plus", "h-4 w-4") Servis ekle</a>
+    }
+</div>
+
+<section class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">Kurulu servisler</h2>
+        <form method="get" asp-action="Index" class="service-filter" data-service-filter>
+            <label for="service-server-filter" class="sr-only">Sunucu</label>
+            <select id="service-server-filter" name="serverId" class="form-control" data-auto-submit>
+                <option value="">Tüm sunucular</option>
+                @foreach (var server in Model.Servers)
+                {
+                    <option value="@server.Id" selected="@(server.Id == Model.ServerId)">@server.Name</option>
+                }
+            </select>
+        </form>
+    </div>
+    <partial name="_ServiceTable" model="Model" />
+</section>

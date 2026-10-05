@@ -21,6 +21,7 @@ public class BackupJobConfiguration : IEntityTypeConfiguration<BackupJob>
         builder.Property(j => j.ContainerName).HasMaxLength(255);
         builder.Property(j => j.DatabaseName).HasMaxLength(128);
         builder.Property(j => j.DatabaseUser).HasMaxLength(128);
+        builder.Property(j => j.DatabaseAuthSource).HasMaxLength(128);
         builder.Property(j => j.DatabaseHost).HasMaxLength(255);
         builder.Property(j => j.ScheduleType).HasConversion<int>();
         builder.Property(j => j.ScheduleDayOfWeek).HasConversion<int?>();

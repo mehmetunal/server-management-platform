@@ -86,23 +86,37 @@
 
             <div data-source-mode="@database">
                 <label asp-for="DatabaseEngine" class="form-label">Veritabanı *</label>
-                <select asp-for="DatabaseEngine" class="form-control" asp-items="BackupDisplay.EngineOptions(Model.DatabaseEngine)"></select>
+                <select asp-for="DatabaseEngine" class="form-control" data-backup-engine data-engine-defaults="@BackupDisplay.EngineDefaultsJson()"
+                        asp-items="BackupDisplay.EngineOptions(Model.DatabaseEngine)"></select>
+                @foreach (var engine in Enum.GetValues<BackupDatabaseEngine>())
+                {
+                    <p class="form-hint" data-engine-mode="@((int)engine)">@BackupDisplay.EngineHint(engine)</p>
+                }
             </div>
             <div data-source-mode="@database">
                 <label asp-for="ContainerName" class="form-label">Container</label>
                 <input asp-for="ContainerName" class="form-control font-mono" maxlength="255" placeholder="ör. myapp-db-1" />
-                <p class="form-hint">Doluysa pg_dump / mysqldump container içinde çalışır. Boşsa sunucuda kurulu istemci kullanılır.</p>
+                <p class="form-hint">Doluysa yedekleme aracı container içinde (docker exec) çalışır. Boşsa sunucuda kurulu istemci kullanılır.</p>
                 <span asp-validation-for="ContainerName" class="field-validation-error"></span>
             </div>
-            <div data-source-mode="@database">
-                <label asp-for="DatabaseName" class="form-label">Veritabanı adı *</label>
+            <div data-source-mode="@database" data-engine-mode="@BackupDisplay.EngineModes(BackupDatabaseEngine.PostgreSql, BackupDatabaseEngine.MySql, BackupDatabaseEngine.MongoDb, BackupDatabaseEngine.SqlServer)">
+                <label asp-for="DatabaseName" class="form-label">Veritabanı adı<span data-engine-mode="@BackupDisplay.EngineModes(BackupDatabaseEngine.PostgreSql, BackupDatabaseEngine.MySql, BackupDatabaseEngine.SqlServer)"> *</span></label>
                 <input asp-for="DatabaseName" class="form-control font-mono" maxlength="128" />
+                <p class="form-hint" data-engine-mode="@((int)BackupDatabaseEngine.MongoDb)">Boşsa tüm veritabanları yedeklenir (admin içindeki kullanıcılar dahil).</p>
                 <span asp-validation-for="DatabaseName" class="field-validation-error"></span>
             </div>
             <div data-source-mode="@database">
-                <label asp-for="DatabaseUser" class="form-label">Kullanıcı *</label>
-                <input asp-for="DatabaseUser" class="form-control font-mono" maxlength="128" autocomplete="off" />
+                <label asp-for="DatabaseUser" class="form-label">Kullanıcı<span data-engine-mode="@BackupDisplay.EngineModes(BackupDatabaseEngine.PostgreSql, BackupDatabaseEngine.MySql, BackupDatabaseEngine.SqlServer)"> *</span></label>
+                <input asp-for="DatabaseUser" class="form-control font-mono" maxlength="128" autocomplete="off" data-engine-user />
+                <p class="form-hint" data-engine-mode="@((int)BackupDatabaseEngine.MongoDb)">Kimlik doğrulama kapalıysa boş bırakın.</p>
+                <p class="form-hint" data-engine-mode="@((int)BackupDatabaseEngine.Redis)">Redis 6+ ACL kullanıcısı; yalnızca requirepass kullanılıyorsa boş bırakın.</p>
                 <span asp-validation-for="DatabaseUser" class="field-validation-error"></span>
+            </div>
+            <div data-source-mode="@database" data-engine-mode="@((int)BackupDatabaseEngine.MongoDb)">
+                <label asp-for="DatabaseAuthSource" class="form-label">Kimlik doğrulama veritabanı</label>
+                <input asp-for="DatabaseAuthSource" class="form-control font-mono" maxlength="63" placeholder="@BackupDatabaseEngines.DefaultMongoAuthSource" />
+                <p class="form-hint">Kullanıcının tanımlı olduğu veritabanı (authSource). Boşsa @BackupDatabaseEngines.DefaultMongoAuthSource.</p>
+                <span asp-validation-for="DatabaseAuthSource" class="field-validation-error"></span>
             </div>
             <div data-source-mode="@database">
                 <label asp-for="DatabasePassword" class="form-label">Parola</label>
@@ -125,9 +139,10 @@
                 </div>
                 <div>
                     <label asp-for="DatabasePort" class="form-label">Port</label>
-                    <input asp-for="DatabasePort" type="number" min="1" max="65535" class="form-control" />
+                    <input asp-for="DatabasePort" type="number" min="1" max="65535" class="form-control" data-engine-port />
                 </div>
                 <p class="form-hint col-span-3">Yalnızca container boşken kullanılır; boşsa yerel bağlantı denenir.</p>
+                <p class="form-hint col-span-3" data-engine-mode="@BackupDisplay.EngineModes(BackupDatabaseEngine.Redis, BackupDatabaseEngine.SqlServer)">Bu veritabanının yedek dosyası sunucunun kendi diskinden okunur; uzak adres kullanılamaz (boş, localhost veya 127.0.0.1).</p>
                 <span asp-validation-for="DatabaseHost" class="field-validation-error col-span-3"></span>
                 <span asp-validation-for="DatabasePort" class="field-validation-error col-span-3"></span>
             </div>

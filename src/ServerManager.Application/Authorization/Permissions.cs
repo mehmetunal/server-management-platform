@@ -35,6 +35,9 @@ public static class Permissions
     public const string DeploymentManage = "deployment.manage";
     public const string DeploymentExecute = "deployment.execute";
 
+    /// <summary>Proje ortam değişkeni değerlerini görme ve .env olarak dışa aktarma (yazma DeploymentManage ile).</summary>
+    public const string DeploymentSecrets = "deployment.secrets";
+
     public const string AlertView = "alert.view";
     public const string AlertAcknowledge = "alert.acknowledge";
     public const string AlertManage = "alert.manage";
@@ -68,6 +71,12 @@ public static class Permissions
     public const string SettingsView = "settings.view";
     public const string SettingsManage = "settings.manage";
 
+    // Servisler (tek tıkla Docker servisleri)
+    public const string ServicesView = "services.view";
+    public const string ServicesManage = "services.manage";
+    public const string ServicesConsole = "services.console";
+    public const string ServicesRevealSecrets = "services.reveal_secrets";
+
     public static readonly IReadOnlyList<string> All =
     [
         DashboardView,
@@ -95,6 +104,7 @@ public static class Permissions
         DeploymentView,
         DeploymentManage,
         DeploymentExecute,
+        DeploymentSecrets,
         AlertView,
         AlertAcknowledge,
         AlertManage,
@@ -117,7 +127,11 @@ public static class Permissions
         CloudManage,
         CloudProvision,
         SettingsView,
-        SettingsManage
+        SettingsManage,
+        ServicesView,
+        ServicesManage,
+        ServicesConsole,
+        ServicesRevealSecrets
     ];
 
     public static readonly IReadOnlyDictionary<string, string> DisplayNames = new Dictionary<string, string>
@@ -146,7 +160,8 @@ public static class Permissions
         [FilePermissions] = "Dosya izinleri ve sahiplik değiştirme (chmod / chown)",
         [DeploymentView] = "Deployment projeleri, geçmişi ve logları görüntüleme",
         [DeploymentManage] = "Deployment projesi ekleme, düzenleme, silme (Git erişim anahtarı ve ortam değişkenleri dahil)",
-        [DeploymentExecute] = "Deployment başlatma, iptal etme ve yeniden dağıtma",
+        [DeploymentExecute] = "Deployment başlatma, iptal etme, yeniden dağıtma, geri dönüş ve yeniden başlatma",
+        [DeploymentSecrets] = "Proje ortam değişkeni değerlerini görme ve .env olarak indirme",
         [AlertView] = "Alarmlar, uptime kontrolleri ve SSL sertifikalarını görüntüleme",
         [AlertAcknowledge] = "Alarmı üstlenme (görüldü olarak işaretleme)",
         [AlertManage] = "Alarm kuralları, bildirim kanalları, uptime ve SSL kontrollerini yönetme",
@@ -169,6 +184,10 @@ public static class Permissions
         [CloudManage] = "Bulut sağlayıcı hesabı ekleme, düzenleme, silme ve eşitleme",
         [CloudProvision] = "Bulut sağlayıcıda yeni sunucu oluşturma",
         [SettingsView] = "Sistem ayarlarını ve uygulama bilgisini görüntüleme",
-        [SettingsManage] = "İzleme, alarm, yedekleme, tarama ve bulut aralıklarını değiştirme"
+        [SettingsManage] = "İzleme, alarm, yedekleme, tarama ve bulut aralıklarını değiştirme",
+        [ServicesView] = "Servisleri (veritabanı ve uygulamalar), loglarını ve işlem geçmişini görüntüleme",
+        [ServicesManage] = "Servis kurma, ayarlarını değiştirip yeniden oluşturma, sürüm yükseltme, durdurma ve kaldırma",
+        [ServicesConsole] = "Servis konsolunu açma (psql, mysql, redis-cli …)",
+        [ServicesRevealSecrets] = "Servis parolalarını ve parolalı bağlantı adreslerini görüntüleme"
     };
 }

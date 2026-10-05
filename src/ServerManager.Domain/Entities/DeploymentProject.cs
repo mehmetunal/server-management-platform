@@ -56,6 +56,19 @@ public class DeploymentProject : BaseEntity
 
     public string? EncryptedEnvironment { get; set; }
 
+    /// <summary>Depoya push gelince (webhook) proje dalı otomatik deploy edilir.</summary>
+    public bool AutoDeployOnPush { get; set; }
+
+    /// <summary>Webhook imzası (GitHub HMAC) / belirteci (GitLab) için gizli anahtar; şifreli saklanır.</summary>
+    public string? EncryptedWebhookSecret { get; set; }
+
+    public DateTime? WebhookLastDeliveryAt { get; set; }
+
+    public bool? WebhookLastDeliverySucceeded { get; set; }
+
+    /// <summary>Son webhook teslimatının kısa sonucu (ör. "Deploy başlatıldı: abc1234", "İmza doğrulanamadı").</summary>
+    public string? WebhookLastDeliveryMessage { get; set; }
+
     public bool IsDeleted { get; set; }
 
     public DateTime? DeletedAt { get; set; }

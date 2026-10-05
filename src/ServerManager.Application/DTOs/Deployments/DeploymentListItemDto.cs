@@ -30,5 +30,10 @@ public class DeploymentListItemDto
 
     public DateTime? CompletedAt { get; init; }
 
+    public DeploymentKind Kind { get; init; }
+
+    /// <summary>Önceki başarılı sürüm: "Bu sürüme geri dön" gösterilir (projenin şu an çalışan sürümü değil).</summary>
+    public bool CanRollback { get; set; }
+
     public bool IsRunning => Status is DeploymentStatus.Started or DeploymentStatus.Building or DeploymentStatus.Deploying;
 }

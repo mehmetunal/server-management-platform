@@ -15,4 +15,9 @@ public static class RateLimitPolicies
     public const string AuditAction = "audit-action";
     public const string SystemAction = "system-action";
     public const string AgentReport = "agent-report";
+
+    /// <summary>Anonim proje webhook'u; IP başına.</summary>
+    public const string ProjectWebhook = "project-webhook";
+
+    public const string ServiceAction = "service-action";
 }

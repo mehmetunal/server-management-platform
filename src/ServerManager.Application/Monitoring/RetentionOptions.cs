@@ -17,6 +17,9 @@ public sealed class RetentionOptions
     /// <summary>Süresi dolsa bile log metni korunan son yedek/geri yükleme sayısı (iş başına).</summary>
     public const int ProtectedBackupRunLogsPerJob = 10;
 
+    /// <summary>Süresi dolsa bile log metni korunan son servis işlemi sayısı (servis başına).</summary>
+    public const int ProtectedServiceOperationLogsPerService = 10;
+
     /// <summary>Biten deployment'ların log metni; kayıt (durum, commit, süre) korunur.</summary>
     public int DeploymentLogDays { get; set; } = 90;
 
@@ -31,6 +34,9 @@ public sealed class RetentionOptions
 
     /// <summary>Çözülmüş alarm kayıtları; açık alarmlar silinmez.</summary>
     public int AlertEventDays { get; set; } = 90;
+
+    /// <summary>Biten servis işlemlerinin (Servisler: kurulum, yükseltme, kaldırma) log metni; kayıt korunur.</summary>
+    public int ServiceOperationLogDays { get; set; } = 90;
 
     /// <summary>Gün değerinden silme sınırını hesaplar; 0 veya negatif değer süresiz saklama demektir (null).</summary>
     public static DateTime? Cutoff(int days, DateTime nowUtc) => days <= 0 ? null : nowUtc.AddDays(-days);

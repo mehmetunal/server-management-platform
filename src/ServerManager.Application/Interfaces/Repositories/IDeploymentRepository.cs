@@ -19,6 +19,9 @@ public interface IDeploymentRepository
     /// <summary>Silinmiş projeler dahil; slug Docker kaynak adlarında kullanıldığı için tekrar kullanılmaz.</summary>
     Task<bool> SlugExistsAsync(string slug, CancellationToken cancellationToken = default);
 
+    /// <summary>Projeye bağlı (kaldırılmamış) en az bir yönetilen servis var mı; varsa container'lar sm-services ağına katılır.</summary>
+    Task<bool> HasServiceLinksAsync(Guid projectId, CancellationToken cancellationToken = default);
+
     Task AddProjectAsync(DeploymentProject project, CancellationToken cancellationToken = default);
 
     Task<PagedResult<Deployment>> SearchDeploymentsAsync(DeploymentFilterDto filter, CancellationToken cancellationToken = default);
@@ -28,6 +31,12 @@ public interface IDeploymentRepository
     Task<Deployment?> GetRunningDeploymentAsync(Guid projectId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyDictionary<Guid, Deployment>> GetLatestDeploymentsAsync(IReadOnlyCollection<Guid> projectIds, CancellationToken cancellationToken = default);
+
+    /// <summary>Projede en son başarıyla tamamlanan deployment (sunucuda çalışan sürüm); log yüklenmez.</summary>
+    Task<Deployment?> GetLastSuccessfulDeploymentAsync(Guid projectId, CancellationToken cancellationToken = default);
+
+    /// <summary>Her proje için en son başarılı deployment'ın kimliği.</summary>
+    Task<IReadOnlyDictionary<Guid, Guid>> GetCurrentDeploymentIdsAsync(IReadOnlyCollection<Guid> projectIds, CancellationToken cancellationToken = default);
 
     Task AddDeploymentAsync(Deployment deployment, CancellationToken cancellationToken = default);
 

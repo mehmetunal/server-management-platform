@@ -151,8 +151,79 @@ public class DeploymentCommandsTests
         Assert.Contains("sm-proxy.override.yml", DeploymentCommands.ComposeUp(plan), StringComparison.Ordinal);
         Assert.Contains("--no-build", DeploymentCommands.ComposeUp(plan, noBuild: true), StringComparison.Ordinal);
         var run = DeploymentCommands.DockerRun(plan, Sha);
-        Assert.Contains("--network sm-proxy", run, StringComparison.Ordinal);
+        Assert.Contains("--network 'sm-proxy'", run, StringComparison.Ordinal);
+        Assert.DoesNotContain("sm-services", run, StringComparison.Ordinal);
         Assert.Contains("traefik.enable=true", run, StringComparison.Ordinal);
+    }
+
+    private static DeploymentPlan Linked(bool withRoute)
+    {
+        var plan = Plan(environment: "A=1\n");
+        return new DeploymentPlan
+        {
+            Slug = plan.Slug,
+            Source = plan.Source,
+            Branch = plan.Branch,
+            DeployPath = plan.DeployPath,
+            BuildType = DeploymentBuildType.Dockerfile,
+            Environment = plan.Environment,
+            JoinServicesNetwork = true,
+            Routes = withRoute
+                ?
+                [
+                    new DeploymentRoute
+                    {
+                        RouterName = "api-abcd1234",
+                        Host = "api.ornek.com",
+                        ContainerPort = 8080,
+                        TlsMode = DeploymentTlsMode.Cloudflare
+                    }
+                ]
+                : []
+        };
+    }
+
+    [Fact]
+    public void Linked_project_without_routes_runs_on_the_services_network_and_creates_it_if_missing()
+    {
+        var run = DeploymentCommands.DockerRun(Linked(withRoute: false), Sha);
+
+        Assert.StartsWith("sh -c ", run, StringComparison.Ordinal);
+        Assert.Contains("docker network inspect " + Inner("sm-services") + " >/dev/null 2>&1 || docker network create --label sm.managed=true " + Inner("sm-services"), run, StringComparison.Ordinal);
+        Assert.Contains("--network " + Inner("sm-services"), run, StringComparison.Ordinal);
+        Assert.DoesNotContain("network connect", run, StringComparison.Ordinal);
+        Assert.Contains("set -e", run, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Linked_project_with_routes_starts_on_proxy_network_and_connects_to_services_network()
+    {
+        var run = DeploymentCommands.DockerRun(Linked(withRoute: true), Sha);
+
+        Assert.Contains("--network " + Inner("sm-proxy"), run, StringComparison.Ordinal);
+        Assert.Contains("docker network connect " + Inner("sm-services") + " " + Inner("sm-api"), run, StringComparison.Ordinal);
+        Assert.True(run.IndexOf("docker run", StringComparison.Ordinal) < run.IndexOf("network connect", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Ensure_services_network_is_idempotent_and_compose_uses_override_for_linked_projects()
+    {
+        Assert.Equal(
+            "sh -c 'set -e\ndocker network inspect '\"'\"'sm-services'\"'\"' >/dev/null 2>&1 || docker network create --label sm.managed=true '\"'\"'sm-services'\"'\"' >/dev/null\n'",
+            DeploymentCommands.EnsureServicesNetwork());
+
+        var plan = Plan();
+        var compose = new DeploymentPlan
+        {
+            Slug = plan.Slug,
+            Source = plan.Source,
+            Branch = plan.Branch,
+            DeployPath = plan.DeployPath,
+            BuildType = DeploymentBuildType.DockerCompose,
+            ComposeFile = plan.ComposeFile,
+            JoinServicesNetwork = true
+        };
+        Assert.Contains("sm-proxy.override.yml", DeploymentCommands.ComposeUp(compose), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -211,5 +282,58 @@ public class DeploymentCommandsTests
         Assert.Contains("[ -L \"$P\" ]", command, StringComparison.Ordinal);
         Assert.True(check < command.IndexOf("docker compose", StringComparison.Ordinal));
         Assert.True(check < command.IndexOf("rm -rf", StringComparison.Ordinal));
+    }
+
+    private static DeploymentPlan ComposePlan(string? environment) => new()
+    {
+        Slug = "api",
+        Source = new GitSource { RepositoryUrl = "https://github.com/acme/api.git" },
+        Branch = "main",
+        DeployPath = "/srv/apps/api",
+        BuildType = DeploymentBuildType.DockerCompose,
+        ComposeFile = "deploy/compose.yml",
+        Environment = environment
+    };
+
+    [Fact]
+    public void Compose_uses_the_panel_override_whenever_environment_exists()
+    {
+        var withEnv = ComposePlan("A=1\n");
+
+        Assert.Contains("-f '/srv/apps/api/sm-proxy.override.yml'", DeploymentCommands.ComposeBuild(withEnv), StringComparison.Ordinal);
+        Assert.Contains("-f '/srv/apps/api/sm-proxy.override.yml'", DeploymentCommands.ComposeUp(withEnv, noBuild: true), StringComparison.Ordinal);
+        Assert.DoesNotContain("override", DeploymentCommands.ComposeUp(ComposePlan(null)), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Compose_service_listing_reads_only_the_users_compose_file()
+    {
+        var command = DeploymentCommands.ComposeServices(ComposePlan("A=1\n"));
+
+        Assert.Equal(
+            "docker compose --progress plain --project-name sm-api --project-directory '/srv/apps/api' -f '/srv/apps/api/deploy/compose.yml' config --services",
+            command);
+        Assert.Equal("/srv/apps/api/.env", DeploymentCommands.EnvironmentFilePath("/srv/apps/api"));
+    }
+
+    [Fact]
+    public void Commit_image_commands_use_the_short_sha_tag()
+    {
+        Assert.Equal("docker image inspect sm-api:0123456789ab >/dev/null", DeploymentCommands.CommitImageExists("api", Sha));
+        Assert.Equal("docker tag sm-api:0123456789ab sm-api:latest", DeploymentCommands.TagCommitImageAsLatest("api", Sha));
+    }
+
+    [Fact]
+    public void Image_pruning_keeps_latest_current_and_newest_tags()
+    {
+        var command = DeploymentCommands.PruneCommitImages("api", Sha, 5);
+
+        Assert.StartsWith("sh -c ", command, StringComparison.Ordinal);
+        Assert.Contains("image=" + Inner("sm-api"), command, StringComparison.Ordinal);
+        Assert.Contains("current=" + Inner("0123456789ab"), command, StringComparison.Ordinal);
+        Assert.Contains("latest|", command, StringComparison.Ordinal);
+        Assert.Contains("-le 5 ]", command, StringComparison.Ordinal);
+        Assert.Contains("docker rmi \"$image:$tag\"", command, StringComparison.Ordinal);
+        Assert.DoesNotContain("rmi -f", command, StringComparison.Ordinal);
     }
 }

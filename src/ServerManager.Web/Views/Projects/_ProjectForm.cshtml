@@ -208,42 +208,34 @@
         <section class="panel">
             <div class="panel-header"><h2 class="panel-title">Ortam değişkenleri</h2></div>
             <div class="panel-body space-y-4">
-                @if (edit?.HasEnvironment == true)
+                @if (edit is not null)
+                {
+                    @* Düzenlemede ortam değişkenleri proje sayfasındaki sekmeden tek tek yönetilir; bu form onlara dokunmaz. *@
+                    @if (edit.EnvironmentKeys.Count > 0)
+                    {
+                        <div class="flex flex-wrap gap-1">
+                            @foreach (var key in edit.EnvironmentKeys)
+                            {
+                                <span class="tag">@key</span>
+                            }
+                        </div>
+                    }
+                    <p class="form-hint">
+                        Değişkenleri eklemek, değiştirmek, silmek veya .env içe/dışa aktarmak için proje sayfasındaki
+                        <a href="@Url.Action("Details", new { id = edit.Id })#environment" class="panel-link">Ortam değişkenleri</a> sekmesini kullanın.
+                    </p>
+                }
+                else
                 {
                     <div>
-                        <p class="form-label">Kayıtlı anahtarlar</p>
-                        @if (edit.EnvironmentKeys.Count > 0)
-                        {
-                            <div class="flex flex-wrap gap-1">
-                                @foreach (var key in edit.EnvironmentKeys)
-                                {
-                                    <span class="tag">@key</span>
-                                }
-                            </div>
-                        }
-                        else
-                        {
-                            <p class="form-hint">Değerler çözülemedi; yeniden girin.</p>
-                        }
+                        <label asp-for="Environment" class="form-label">.env içeriği</label>
+                        <textarea asp-for="Environment" class="form-control form-control-mono" rows="8" spellcheck="false" autocomplete="off" placeholder="DATABASE_URL=postgres://...&#10;API_KEY=..."></textarea>
+                        <p class="form-hint">
+                            İsteğe bağlı başlangıç değerleri. Proje oluşturulduktan sonra değişkenler proje sayfasındaki "Ortam değişkenleri" sekmesinden yönetilir.
+                            Her deployment'ta proje klasörüne <span class="font-mono">.env</span> olarak yazılır (yalnızca SSH kullanıcısı okuyabilir); değerler şifreli saklanır.
+                        </p>
+                        <span asp-validation-for="Environment" class="field-validation-error"></span>
                     </div>
-                }
-                <div>
-                    <label asp-for="Environment" class="form-label">.env içeriği</label>
-                    <textarea asp-for="Environment" class="form-control form-control-mono" rows="8" spellcheck="false" autocomplete="off" placeholder="DATABASE_URL=postgres://...&#10;API_KEY=..."></textarea>
-                    <p class="form-hint">
-                        @(edit?.HasEnvironment == true ? "Boş bırakırsanız kayıtlı değerler korunur; yazarsanız tamamı değişir. " : "")Her deployment'ta proje klasörüne <span class="font-mono">.env</span> olarak yazılır (yalnızca SSH kullanıcısı okuyabilir). Değerler şifreli saklanır ve geri gösterilmez.
-                    </p>
-                    <span asp-validation-for="Environment" class="field-validation-error"></span>
-                </div>
-                @if (edit?.HasEnvironment == true)
-                {
-                    <label class="check-card">
-                        <input name="RemoveEnvironment" value="true" type="checkbox" class="form-check" checked="@edit.RemoveEnvironment" />
-                        <span>
-                            <span class="check-card-title">Kayıtlı değişkenleri kaldır</span>
-                            <span class="check-card-text">Sunucudaki mevcut .env dosyasına dokunulmaz.</span>
-                        </span>
-                    </label>
                 }
             </div>
         </section>

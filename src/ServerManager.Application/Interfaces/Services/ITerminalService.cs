@@ -23,6 +23,9 @@ public interface ITerminalService
         ITerminalOutputSink sink,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Başka bir modülün açtığı oturumu (ör. servis konsolu) terminal geçmişine kaydeder.</summary>
+    Task RecordSessionAsync(TerminalHandle handle, TerminalActor actor, CancellationToken cancellationToken = default);
+
     Task CompleteSessionAsync(TerminalHandle handle, TerminalActor actor, string? reason, CancellationToken cancellationToken = default);
 
     Task RecordCommandsAsync(IReadOnlyList<TerminalCommandEntry> entries, CancellationToken cancellationToken = default);

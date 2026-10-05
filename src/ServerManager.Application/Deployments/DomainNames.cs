@@ -9,6 +9,9 @@ public static partial class DomainNames
 {
     public const string ProxyContainer = "sm-traefik";
     public const string ProxyNetwork = "sm-proxy";
+
+    /// <summary>Yönetilen servislerin (Servisler modülü) panel ağı; servise bağlı projelerin container'ları da katılır.</summary>
+    public const string ServicesNetwork = "sm-services";
     public const string TraefikImage = "traefik:v3.5";
     public const string DynamicDirectory = "/var/lib/sm-traefik/dynamic";
     public const string CertificateDirectory = "/var/lib/sm-traefik/letsencrypt";

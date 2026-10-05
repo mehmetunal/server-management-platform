@@ -100,7 +100,8 @@ public static class DeploymentMappings
         FailureReason = deployment.FailureReason,
         UserName = deployment.UserName,
         StartedAt = deployment.StartedAt,
-        CompletedAt = deployment.CompletedAt
+        CompletedAt = deployment.CompletedAt,
+        Kind = deployment.Kind
     };
 
     public static DeploymentDetailsDto ToDetailsDto(this Deployment deployment, DeploymentProject? project, bool includeLog) => new()
@@ -118,6 +119,7 @@ public static class DeploymentMappings
         UserName = deployment.UserName,
         StartedAt = deployment.StartedAt,
         CompletedAt = deployment.CompletedAt,
+        Kind = deployment.Kind,
         BuildType = deployment.BuildType,
         RequestedCommit = deployment.RequestedCommit,
         CommitAuthor = deployment.CommitAuthor,

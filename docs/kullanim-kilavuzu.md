@@ -41,7 +41,8 @@ Sunucuyu silmek için adını birebir yazmanız istenir. Kayıt gizlenir; deneti
 | Files | SFTP dosya yöneticisi |
 | Deployments | Bu sunucuya giden dağıtımlar |
 | Security | Güvenlik taraması |
-| Servisler, Process'ler, Loglar | systemd, süreç listesi, journal ve `/var/log` |
+| Servisler | Bu sunucuya tek tıkla kurulan veritabanı ve uygulama servisleri |
+| Sistem Servisleri, Process'ler, Loglar | systemd/OpenRC, süreç listesi, journal ve `/var/log` |
 | Activity | Bu sunucuyla ilgili denetim kayıtları |
 | Dokploy, Dokku | Eklenti açıksa kurulum ve durum |
 
@@ -110,7 +111,7 @@ Tür seçin:
 
 - **Dosya:** sunucudaki klasörler. Hariç tutmak için `*.log` gibi desen yazabilirsiniz. Okuma için çoğu zaman sudo gerekir.
 - **Docker volume:** volume adı. Çalışan uygulamayı durdurmaz. İçinde veritabanı dosyası varsa tutarlı kopya için veritabanı türünü kullanın.
-- **Veritabanı:** PostgreSQL veya MySQL/MariaDB. Container içinde veya sunucunun kendi istemcisiyle. Parola komut satırına yazılmaz.
+- **Veritabanı:** PostgreSQL, MySQL/MariaDB, MongoDB, Redis veya SQL Server. Container içinde veya sunucunun kendi istemcisiyle. Parola komut satırına yazılmaz. MongoDB'de veritabanı adı boşsa tümü yedeklenir. Redis ve SQL Server aynı sunucuda çalışmalıdır. Redis yedeği panelden geri yüklenmez; geri yükleme sayfası elle yapılacak adımları gösterir.
 
 Zamanlama: elle, saatlik, günlük veya haftalık. Saklama: son N kopya ve isteğe bağlı olarak N günden eskiler. En yeni başarılı kopya bu kuralla silinmez.
 
@@ -128,9 +129,28 @@ Geçmişten indirebilir, şifreliyse çözülmüş indirebilir ve geri yükleyeb
 6. İlk domainden önce **Vekil kur**. Bu, sunucuda `sm-traefik` adlı Traefik'i 80 ve 443'e alır. Port doluysa kurulum durur.
 7. Proje silinirken kutu işaretlenmezse yalnızca panel kaydı kapanır. Kutu işaretlenirse sunucudaki klasör, container, imaj, volume ve domain yönlendirmesi de silinir. Deployment geçmişi kalır.
 
+8. **Ortam değişkenleri** sekmesinde değişken ekleyin, değiştirin veya `.env` içe aktarın. Değişiklik bir sonraki deploy'da ya da **Uygula / Yeniden başlat** ile (build olmadan) sunucuya yazılır. Compose projesinde `.env` tüm servislere aktarılır.
+9. **Çalışma logları** sekmesinde container seçip son satırları, yalnızca hata/uyarıları veya canlı akışı izleyin.
+10. **Otomatik deploy** sekmesinde webhook'u açın; gösterilen adres ve gizli anahtarı GitHub'da *Settings → Webhooks* (içerik türü `application/json`, yalnızca push) veya GitLab'da *Settings → Webhooks* ("Secret token", Push events) içine girin. Panel ters vekil arkasındaysa yönetici `Deployment:PublicBaseUrl` değerini ayarlamalıdır.
+11. Deployment geçmişinde **Bu sürüme geri dön** önceki başarılı sürümü yeniden çalıştırır. Dockerfile projesinde imaj sunucuda duruyorsa build yapılmaz; saklanan imaj sayısı `Deployment:KeepImageCount` ile sınırlıdır.
+
 Build komutu hedef sunucuda çalışır. Bu yetkiyi yalnızca sunucuya komut yazmasına güvendiğiniz role verin. Let's Encrypt için domain'in A kaydı bu sunucuya doğrudan bakmalıdır. Turuncu bulut açıksa Cloudflare türünü seçin.
 
-## 10. Toplu komut ve şablon
+## 10. Servisler
+
+Menüde **Servisler** veya sunucu sayfasındaki **Servisler** sekmesi; tek tıkla PostgreSQL, MySQL, MariaDB, Redis, MongoDB, SQL Server, MinIO, RabbitMQ, Adminer, pgAdmin, Uptime Kuma ve n8n kurar. (systemd servisleri artık **Sistem Servisleri** adıyla durur.)
+
+1. **Servis ekle** → şablonu seçin. Sunucu, ad, sürüm ve veri saklama (Docker volume veya sunucu klasörü) girin. Parola otomatik üretilir.
+2. **Ağ ve portlar:** port yayınlanırsa varsayılan olarak yalnızca sunucudan (`127.0.0.1`) erişilir. **Dışarıya aç** tüm internete açar; bu durumda **izinli IP** listesi girin. Docker portları UFW'yi atlar; panel kısıtlamayı `DOCKER-USER` kurallarıyla yapar ve sunucu açılışında `sm-services-firewall` systemd birimiyle geri yükler.
+3. Veritabanı şablonlarında **Otomatik yedek** kutusunu işaretleyip depolama hedefi, saat (veya saat aralığı), saklanacak yedek sayısı ve isteğe bağlı şifreleme parolası seçin. İş, kurulum başarıyla bitince oluşur.
+4. **Kur**. Adımlar canlı görünür; sayfayı kapatsanız da kurulum sürer.
+5. Servis sayfası: **Genel** (durum, iç/dış adres, maskeli bağlantı adresi; **Parolayı göster** yetki ister ve kayda geçer), **Loglar**, **İşlemler**, **Ayarlar** (değişken, port, IP listesi, sınırlar; kaydedince container veri korunarak yeniden oluşturulur), **Sürüm** (önce yedek alın; ana sürüm değişiminde ayrıca onay istenir), **Konsol** (psql, mysql, redis-cli …), **Tehlikeli bölge** (adı yazarak kaldırma; "Veriyi de sil" geri alınamaz).
+6. **Projeye bağla:** Genel sekmesinde aynı sunucudaki projeyi seçin, eklenecek değişkenleri işaretleyin ve gerekirse adlarını değiştirin (ör. `DATABASE_URL`). Var olan anahtarların değiştirilip değiştirilmeyeceğini seçin. **Hemen uygula** projeyi build etmeden yeniden başlatır. Proje container'ları `sm-services` ağına katılır ve servise container adıyla (`sm-svc-…`) bağlanır. Proje sayfasının **Ortam değişkenleri** sekmesinde **Bağlı servisler** görünür; **Bağı kaldır** değişkenleri silmez, kutu işaretlenirse yalnızca bağlarken eklenenleri siler.
+7. Veritabanı servisinin Genel sekmesindeki **Yedekleme** kartı servisi yedekleyen işleri gösterir; **Yedek işi oluştur** ile sonradan iş eklenir.
+
+Projeye bağlamak için hem servis yönetimi hem proje düzenleme yetkisi, yedek işi için yedek yönetimi yetkisi gerekir; yetkisi olmayan kullanıcı bu düğmeleri görmez.
+
+## 11. Toplu komut ve şablon
 
 **Toplu komut** seçilen sunucularda aynı betiği çalıştırır. Onay penceresi komutu ve sunucu listesini gösterir. Beş veya daha fazla sunucuda sayıyı yazmanız istenir.
 
@@ -143,7 +163,7 @@ Build komutu hedef sunucuda çalışır. Bu yetkiyi yalnızca sunucuya komut yaz
 
 Şablona parola veya API anahtarı yazmayın. Metin şifrelenmeden durur.
 
-## 11. Bulut
+## 12. Bulut
 
 **Sağlayıcılar** Hetzner Cloud, DigitalOcean, Vultr, Linode ve Scaleway hesaplarını tutar. Eklenti kapalıysa hesap listede kalır, eşitleme ve yeni makine çalışmaz.
 
@@ -154,7 +174,7 @@ Build komutu hedef sunucuda çalışır. Bu yetkiyi yalnızca sunucuya komut yaz
 
 **Maliyet** sayfası para birimine göre toplar. Doları liraya çevirmez.
 
-## 12. Dokploy ve Dokku
+## 13. Dokploy ve Dokku
 
 İkisi de sunucu sekmesidir. Sistem yöneticisi eklentiyi kapatırsa sekme kaybolur; sunucudaki kurulum silinmez.
 
@@ -162,11 +182,11 @@ Build komutu hedef sunucuda çalışır. Bu yetkiyi yalnızca sunucuya komut yaz
 
 **Dokku.** Sekme sürümü ve uygulama listesini okur. Kurulu değilse **Dokku kur** resmi betiği sudo ile başlatır. Çıktı sayfada yenilenir. Uygulama satırından süreç yeniden başlatılır.
 
-## 13. Güvenlik taraması
+## 14. Güvenlik taraması
 
 **Güvenlik** sayfası veya sunucunun Security sekmesi SSH ayarı, açık port, güvenlik duvarı ve bekleyen güncelleme gibi maddeleri tarar. Tarama öncesi bağlantı testi yapılmış olmalıdır. Bulgu, sunucuyu kendiliğinden değiştirmez.
 
-## 14. Kullanıcı, denetim, ayarlar
+## 15. Kullanıcı, denetim, ayarlar
 
 **Kullanıcılar** yalnızca sistem yöneticisindedir. Rol değişikliği ve pasifleştirme anında değil, en geç bir dakika içinde açık oturumu düşürür.
 
@@ -176,7 +196,7 @@ Build komutu hedef sunucuda çalışır. Bu yetkiyi yalnızca sunucuya komut yaz
 
 **Eklentiler** yalnızca sistem yöneticisindedir. Kur, tabloları ve izinleri ekler. Devre dışı bırakmak sayfayı kapatır, veriyi silmez. Kaldırma düğmesi yoktur.
 
-## 15. Sık iş sırası
+## 16. Sık iş sırası
 
 Yeni bir uygulama sunucusu:
 

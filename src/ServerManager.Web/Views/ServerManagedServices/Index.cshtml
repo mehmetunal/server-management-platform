@@ -1,0 +1,32 @@
+@model ManagedServiceIndexViewModel
+@inject ServerManager.Application.Plugins.IPluginCatalog PluginCatalog
+@{
+    var page = Model.Page!;
+    var server = page.Server;
+    ViewData["Title"] = $"{server.Name} · Servisler";
+    ViewData["Page"] = "managed-services";
+    var canManage = User.HasPermission(Permissions.ServicesManage);
+    var dokployEnabled = PluginCatalog.IsEnabled("DevOps.Dokploy");
+    var dokkuEnabled = PluginCatalog.IsEnabled("DevOps.Dokku");
+}
+
+<partial name="_ServerHeader" model="page" />
+
+<div class="service-probe" data-service-probe
+     data-url="@Url.Action("Probe", "ManagedServices", new { serverId = server.Id })"
+     data-docker-url="@Url.Action("Index", "Docker", new { id = server.Id })"
+     data-dokploy-url="@(dokployEnabled ? Url.Action("Index", "Dokploy", new { id = server.Id }) : null)"
+     data-dokku-url="@(dokkuEnabled ? Url.Action("Index", "Dokku", new { id = server.Id }) : null)"
+     data-has-services="@(Model.Services.Count > 0 ? "true" : "false")">
+</div>
+
+<section class="panel">
+    <div class="panel-header">
+        <h2 class="panel-title">Servisler</h2>
+        @if (canManage)
+        {
+            <a asp-controller="ManagedServices" asp-action="Create" asp-route-serverId="@server.Id" class="btn-primary btn-sm" title="Bu sunucuya veritabanı veya uygulama kur">@Icons.Render("plus", "h-4 w-4") Servis ekle</a>
+        }
+    </div>
+    <partial name="~/Views/ManagedServices/_ServiceTable.cshtml" model="Model" />
+</section>

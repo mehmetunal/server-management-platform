@@ -30,6 +30,9 @@ public class BackupJob : BaseEntity
 
     public string? DatabaseUser { get; set; }
 
+    /// <summary>MongoDB: kullanıcının tanımlı olduğu kimlik doğrulama veritabanı (boşsa admin).</summary>
+    public string? DatabaseAuthSource { get; set; }
+
     public string? EncryptedDatabasePassword { get; set; }
 
     public string? DatabaseHost { get; set; }

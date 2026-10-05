@@ -67,7 +67,13 @@ public class DeploymentService : IDeploymentService
     public async Task<PagedResult<DeploymentListItemDto>> SearchAsync(DeploymentFilterDto filter, CancellationToken cancellationToken = default)
     {
         var page = await _repository.SearchDeploymentsAsync(filter, cancellationToken);
-        return page.Map(d => d.ToListItemDto());
+        var current = await _repository.GetCurrentDeploymentIdsAsync(page.Items.Select(d => d.ProjectId).Distinct().ToList(), cancellationToken);
+        return page.Map(d =>
+        {
+            var item = d.ToListItemDto();
+            item.CanRollback = RollbackPlanner.CanOfferRollback(d, current.TryGetValue(d.ProjectId, out var id) ? id : null);
+            return item;
+        });
     }
 
     public async Task<ServiceResult<DeploymentDetailsDto>> GetAsync(Guid id, bool includeLog, CancellationToken cancellationToken = default)
@@ -77,7 +83,44 @@ public class DeploymentService : IDeploymentService
             return ServiceResult<DeploymentDetailsDto>.NotFound("Deployment kaydı bulunamadı.");
 
         var project = await _repository.GetProjectAsync(deployment.ProjectId, cancellationToken);
-        return ServiceResult<DeploymentDetailsDto>.Success(deployment.ToDetailsDto(project, includeLog));
+        var details = deployment.ToDetailsDto(project, includeLog);
+        if (project is not null && deployment.Status == DeploymentStatus.Succeeded)
+        {
+            var current = await _repository.GetLastSuccessfulDeploymentAsync(project.Id, cancellationToken);
+            details.CanRollback = RollbackPlanner.CanOfferRollback(deployment, current?.Id);
+        }
+
+        return ServiceResult<DeploymentDetailsDto>.Success(details);
+    }
+
+    public async Task<ServiceResult<Guid>> BeginRollbackAsync(Guid deploymentId, DeploymentActor actor, CancellationToken cancellationToken = default)
+    {
+        var source = await _repository.GetDeploymentAsync(deploymentId, cancellationToken);
+        if (source is null)
+            return ServiceResult<Guid>.NotFound("Deployment kaydı bulunamadı.");
+
+        var project = await _repository.GetProjectAsync(source.ProjectId, cancellationToken);
+        var error = RollbackPlanner.Validate(source, project);
+        if (error is not null)
+            return ServiceResult<Guid>.Failure(error, project is null ? ServiceErrorType.NotFound : ServiceErrorType.Failure);
+
+        return await BeginCoreAsync(project!, source.CommitSha, source.Id, actor, cancellationToken, DeploymentKind.Rollback, source);
+    }
+
+    public async Task<ServiceResult<Guid>> BeginRestartAsync(Guid projectId, DeploymentActor actor, CancellationToken cancellationToken = default)
+    {
+        var project = await _repository.GetProjectAsync(projectId, cancellationToken);
+        if (project is null)
+            return ServiceResult<Guid>.NotFound("Proje bulunamadı.");
+
+        if (project.BuildType == DeploymentBuildType.Commands)
+            return ServiceResult<Guid>.Failure("Komutla dağıtılan projede yeniden başlatma yapılmaz; değişiklikleri uygulamak için deploy edin.");
+
+        var current = await _repository.GetLastSuccessfulDeploymentAsync(projectId, cancellationToken);
+        if (current is null)
+            return ServiceResult<Guid>.Failure("Projenin başarılı bir deployment'ı yok; önce deploy edin.");
+
+        return await BeginCoreAsync(project, current.CommitSha, current.Id, actor, cancellationToken, DeploymentKind.Restart, current);
     }
 
     public async Task<ServiceResult<Guid>> BeginAsync(Guid projectId, StartDeploymentDto dto, DeploymentActor actor, CancellationToken cancellationToken = default)
@@ -148,7 +191,14 @@ public class DeploymentService : IDeploymentService
     public Task<int> InterruptRunningAsync(CancellationToken cancellationToken = default) =>
         _repository.InterruptRunningDeploymentsAsync(UtcNow, InterruptedReason, cancellationToken);
 
-    private async Task<ServiceResult<Guid>> BeginCoreAsync(DeploymentProject project, string? commit, Guid? sourceDeploymentId, DeploymentActor actor, CancellationToken cancellationToken)
+    private async Task<ServiceResult<Guid>> BeginCoreAsync(
+        DeploymentProject project,
+        string? commit,
+        Guid? sourceDeploymentId,
+        DeploymentActor actor,
+        CancellationToken cancellationToken,
+        DeploymentKind kind = DeploymentKind.Deploy,
+        Deployment? source = null)
     {
         if (await _repository.GetRunningDeploymentAsync(project.Id, cancellationToken) is not null)
             return ServiceResult<Guid>.Failure(RunningConflictMessage, ServiceErrorType.Conflict);
@@ -163,21 +213,32 @@ public class DeploymentService : IDeploymentService
             Branch = project.Branch,
             RequestedCommit = commit,
             SourceDeploymentId = sourceDeploymentId,
+            Kind = kind,
             Status = DeploymentStatus.Started,
             UserId = actor.UserId,
             UserName = actor.UserName,
             IpAddress = actor.IpAddress,
             StartedAt = UtcNow
         };
+
+        // Geri dönüş ve yeniden başlatmada kaynak kod okunmayabilir; commit bilgisi kaynak kayıttan alınır.
+        if (kind != DeploymentKind.Deploy && source is not null)
+            ApplyCommit(deployment, source.CommitSha, source.CommitAuthor, source.CommitMessage);
+
         await _repository.AddDeploymentAsync(deployment, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
 
         var target = commit is null ? $"Dal: {project.Branch}" : $"Commit: {GitRefs.ShortSha(commit)}";
-        var details = sourceDeploymentId is null ? target : $"{target} | Yeniden deploy (kaynak: {sourceDeploymentId})";
-        await AuditAsync(AuditActions.DeploymentStart, deployment, details, true, actor, cancellationToken);
+        var (action, details, message) = kind switch
+        {
+            DeploymentKind.Rollback => (AuditActions.DeploymentRollback, $"{target} | Geri dönüş (hedef: {sourceDeploymentId})", "Geri dönüş başlatıldı."),
+            DeploymentKind.Restart => (AuditActions.DeploymentRestart, $"{target} | Build olmadan yeniden başlatma", "Yeniden başlatma başlatıldı."),
+            _ => (AuditActions.DeploymentStart, sourceDeploymentId is null ? target : $"{target} | Yeniden deploy (kaynak: {sourceDeploymentId})", "Deployment başlatıldı.")
+        };
+        await AuditAsync(action, deployment, details, true, actor, cancellationToken);
 
-        _logger.LogInformation("Deployment başlatıldı. DeploymentId: {DeploymentId}, ProjectId: {ProjectId}", deployment.Id, project.Id);
-        return ServiceResult<Guid>.Success(deployment.Id, "Deployment başlatıldı.");
+        _logger.LogInformation("Deployment başlatıldı. DeploymentId: {DeploymentId}, ProjectId: {ProjectId}, Kind: {Kind}", deployment.Id, project.Id, kind);
+        return ServiceResult<Guid>.Success(deployment.Id, message);
     }
 
     private async Task<DeploymentRunResult> ExecuteAsync(Deployment deployment, DeploymentRecorder recorder, CancellationToken cancellationToken)
@@ -189,7 +250,14 @@ public class DeploymentService : IDeploymentService
             return Failed("Proje bulunamadı veya silinmiş.");
 
         var target = deployment.RequestedCommit is null ? $"{project.Branch} dalının son commit'i" : $"commit {GitRefs.ShortSha(deployment.RequestedCommit)}";
-        await recorder.InfoAsync($"{project.Name} → {deployment.ServerName} ({target})", cancellationToken);
+        var kindText = deployment.Kind switch
+        {
+            DeploymentKind.Rollback => "Geri dönüş: ",
+            DeploymentKind.Restart => "Build olmadan yeniden başlatma: ",
+            _ => string.Empty
+        };
+        await recorder.InfoAsync($"{kindText}{project.Name} → {deployment.ServerName} ({target})", cancellationToken);
+        var restart = deployment.Kind == DeploymentKind.Restart;
 
         var connection = await _connectionProvider.GetAsync(project.ServerId, cancellationToken);
         if (!connection.IsSuccess)
@@ -209,7 +277,7 @@ public class DeploymentService : IDeploymentService
         }
 
         var username = GitRepositoryUrls.TokenUsername(project.GitProvider, project.GitUsername);
-        if (project.GitIntegration is not null)
+        if (project.GitIntegration is not null && !restart)
         {
             var integration = _gitIntegrations.Find(project.GitIntegration);
             if (integration is null)
@@ -235,6 +303,10 @@ public class DeploymentService : IDeploymentService
             routes = loaded.Data ?? [];
         }
 
+        var joinServices = project.BuildType != DeploymentBuildType.Commands && await _repository.HasServiceLinksAsync(project.Id, cancellationToken);
+        if (joinServices)
+            await recorder.InfoAsync("Projeye bağlı servisler var; container'lar sm-services ağına katılacak.", cancellationToken);
+
         var plan = new DeploymentPlan
         {
             Slug = project.Slug,
@@ -256,12 +328,17 @@ public class DeploymentService : IDeploymentService
             UseSudoForCommands = project.UseSudoForCommands,
             Environment = environment,
             Routes = routes,
+            JoinServicesNetwork = joinServices,
+            PreferExistingImage = deployment.Kind == DeploymentKind.Rollback,
+            KeepImageCount = Math.Max(0, _options.KeepImageCount),
             GitTimeout = TimeSpan.FromSeconds(Math.Max(30, _options.GitTimeoutSeconds)),
             BuildTimeout = TimeSpan.FromMinutes(Math.Max(1, _options.BuildTimeoutMinutes)),
             DeployTimeout = TimeSpan.FromMinutes(Math.Max(1, _options.DeployTimeoutMinutes))
         };
 
-        var run = await _provider.DeployAsync(connection.Data!.Context, plan, recorder, cancellationToken);
+        var run = restart
+            ? await _provider.RestartAsync(connection.Data!.Context, plan, recorder, cancellationToken)
+            : await _provider.DeployAsync(connection.Data!.Context, plan, recorder, cancellationToken);
         return run.IsSuccess ? run.Data! : Failed(run.Message ?? "Deployment çalıştırılamadı.");
     }
 

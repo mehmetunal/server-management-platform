@@ -2731,7 +2731,7 @@ Proje ayarları:
 - **Kayıtlı erişim anahtarı:** düzenlemede boş bırakılırsa korunur. Depo adresinin sunucusu (host) değişirse kayıtlı anahtar yeni adrese gönderilmez; yeni anahtar girilmeli veya "kaldır" seçilmelidir. Bağlantılı kaynağa geçildiğinde kayıtlı anahtar silinir.
 - **Build türü:** Docker Compose (compose dosyası; proje adı `sm-<proje>`), Dockerfile (image `sm-<proje>:<kısa-sha>` ve `:latest`, tek container `sm-<proje>`, `--restart unless-stopped`, `sm.project` etiketi, isteğe bağlı port eşlemeleri) veya Komutlar (proje klasöründe `sh` ile çalışan build ve deploy komutları; isteğe bağlı sudo).
 - **Sunucudaki klasör:** mutlak yol; sistem klasörleri (`/etc`, `/usr`, `/bin`, `/root` vb.) reddedilir. SSH kullanıcısının yazabildiği bir yer olmalıdır.
-- **Ortam değişkenleri:** `.env` içeriği; değerler `Security:MasterKey` ile şifrelenir ve arayüzde geri gösterilmez (yalnızca anahtar adları listelenir). Düzenlemede boş bırakılırsa korunur, yazılırsa tamamı değişir.
+- **Ortam değişkenleri:** oluşturma formunda isteğe bağlı başlangıç `.env` içeriği; sonrası proje sayfasındaki **Ortam değişkenleri** sekmesinden yönetilir (bkz. [aşağıda](#ortam-değişkenleri-çalışma-logları-otomatik-deploy-ve-geri-dönüş)). Değerler `Security:MasterKey` ile şifrelenir.
 
 Deployment akışı (aşamalar ekranda adım adım görünür):
 
@@ -2744,7 +2744,7 @@ Deployment akışı (aşamalar ekranda adım adım görünür):
 
 - **Belirli commit:** Deploy formuna tam SHA girilebilir; geçmişteki bir deployment "Yeniden deploy" ile aynı commit'e, projenin güncel ayarlarıyla dağıtılır. SHA ile fetch, Git sunucusunun buna izin vermesini gerektirir (GitHub/GitLab izin verir; kendi sunucunuzda `uploadpack.allowReachableSHA1InWant`).
 - **İptal:** çalışan komut durdurulur, kayıt "İptal edildi" ve iptal eden kullanıcıyla saklanır. Sunucuda o ana kadar yapılanlar (çekilen kod, build edilen image) geri alınmaz. Uygulama kapanırken süren deployment "Kesildi" olarak işaretlenir; açılışta yarım kalan kayıtlar da "Kesildi"ye çekilir.
-- **Audit:** `project.create/update/delete`, `deployment.start`, `deployment.complete` (sonuç ve commit ile), `deployment.cancel`.
+- **Audit:** `project.create/update/delete`, `deployment.start`, `deployment.rollback`, `deployment.restart`, `deployment.complete` (sonuç ve commit ile), `deployment.cancel`, `project.env_update/env_reveal/env_export`, `project.webhook_update`, `project.service_link/service_unlink`.
 
 Güvenlik notları:
 
@@ -2762,6 +2762,17 @@ Güvenlik notları:
 | `DeployTimeoutMinutes` | `10` | Deploy adımının zaman aşımı |
 | `MaxStoredLogKilobytes` | `1024` | Deployment kaydında saklanan log (son kısım; çalışırken 10 saniyede bir kaydedilir) |
 | `AcmeEmail` | boş | Let's Encrypt (ACME) hesap e-postası. **Yapılandırılmalıdır:** boşsa vekil (Traefik) kurulumu "Let's Encrypt e-postası yapılandırılmamış (Deployment:AcmeEmail)" hatasıyla durur |
+| `KeepImageCount` | `5` | Dockerfile projelerinde başarılı deploy sonrası saklanan commit imajı (`sm-<proje>:<kısa-sha>`) sayısı; eskiler silinir, `latest` ve çalışan imaj korunur. `0` silmeyi kapatır |
+| `PublicBaseUrl` | boş | Webhook adresinde kullanılacak panel adresi (ör. `https://panel.ornek.com`); boşsa isteğin adresi kullanılır |
+
+#### Ortam değişkenleri, çalışma logları, otomatik deploy ve geri dönüş
+
+- **Ortam değişkenleri sekmesi:** anahtar/değer tablosu; tek değişken ekleme, değer değiştirme, silme, `.env` yapıştırarak veya dosya seçerek içe aktarma (yalnızca yenileri ekle / var olanları değiştir / tümünü değiştir) ve `.env` olarak indirme. Kayıt tek şifreli `.env` metnidir; her değişiklikte çözülüp satır bazında düzenlenir (yorumlar ve sıra korunur). Değerler maskelidir; "Göster" ve ".env indir" `deployment.secrets` yetkisi ister ve audit'e yazılır. Yazma `deployment.manage` ister. Değişiklikler sonraki deploy'da veya **Uygula / Yeniden başlat** ile sunucuya yazılır.
+- **Compose ve .env:** compose `.env`'yi yalnızca `${DEĞİŞKEN}` yerleştirmesi için okur. Panel bu yüzden `docker compose config --services` ile servisleri okur ve `sm-proxy.override.yml` içinde **tüm servislere** `env_file: [<klasör>/.env]` ekler (servisin kendi `environment:` değerleri önceliklidir). Projeye bağlı servis varsa tüm servisler `sm-services` ağına da alınır (bkz. [Projeye bağla](#projeye-bağla)). Override ortam değişkeni kaydı, domain veya bağlı servis olduğunda yazılır, hiçbiri yoksa silinir.
+- **Uygula / Yeniden başlat:** kaynak kod çekilmeden ve build yapılmadan `.env` ve override yeniden yazılır; Compose'da `up -d --no-build --remove-orphans` (yapılandırması değişen servisler yeniden oluşturulur), Dockerfile'da container `latest` imajıyla yeniden oluşturulur. Deployment kaydı "Yeniden başlatma" türüyle, canlı logla açılır; süren deployment varsa başlamaz. `deployment.execute` ister.
+- **Çalışma logları sekmesi:** projenin container'ları (Compose: `com.docker.compose.project=sm-<proje>`, Dockerfile: `sm-<proje>`) listelenir; seçilen container için son N satır, arama, "yalnızca hata/uyarı" (error, fatal, panic, exception, warn), stderr filtresi, canlı takip ve indirme. `deployment.view` ve `docker.view` ister.
+- **Push ile otomatik deploy:** proje başına açılır; ilk açılışta 64 karakterlik gizli anahtar üretilir (şifreli saklanır, yalnızca üretildiğinde gösterilir, yenilenebilir). Adres `POST /api/webhooks/projects/{id}` (anonim, IP başına dakikada 30 istek, gövde en fazla 5 MB). GitHub `X-Hub-Signature-256` (HMAC-SHA256, sabit zamanlı karşılaştırma) veya GitLab `X-Gitlab-Token` doğrulanır. Yalnızca proje dalına gelen push deploy edilir (push'taki commit); diğer olaylar ve dallar `200` ile yok sayılır, ping `200`, imza hatası `401`, kapalıysa `403`. Deploy başlarsa `202`. **Süren deployment varsa** yeni deploy başlatılmaz; proje başına **tek bir takip deploy'u kuyruğa alınır** (`202`) ve süren deployment bitince dalın son hali deploy edilir (art arda push'larda sonuncusu kaybolmaz). Kuyruğa alınamayan çakışma `409`. Başlatan "webhook" olarak kaydedilir; son teslimatın sonucu sekmede görünür. GitHub App eklentisi webhook kullanmaz; depo webhook'u proje başına ayrı tanımlanır. Kurulum: GitHub'da depo *Settings → Webhooks → Add webhook*: Payload URL sekmedeki adres, Content type `application/json`, Secret paneldeki anahtar, "Just the push event". GitLab'da *Settings → Webhooks*: URL, "Secret token" ve "Push events" (isteğe bağlı dal filtresi). Panel ters vekil arkasındaysa adresin doğru üretilmesi için `Deployment:PublicBaseUrl` doldurulmalıdır.
+- **Geri dönüş:** deployment geçmişinde, çalışan sürüm dışındaki başarılı deployment'larda **Bu sürüme geri dön**. Yeni kayıt "Geri dönüş" türüyle açılır. Dockerfile'da `sm-<proje>:<kısa-sha>` imajı duruyorsa kaynak kod ve build atlanır, imaj `latest` olarak etiketlenip çalıştırılır; yoksa commit yeniden çekilip build edilir. Compose ve komut projelerinde commit çekilip build edilir. Ortam değişkenleri ve domainler projenin güncel ayarlarından gelir.
 
 #### Domain, Traefik ve Let's Encrypt
 
@@ -2776,6 +2787,64 @@ Docker Compose ve Dockerfile projelerine proje detayındaki **Domain** kartında
 - **Uygulama:** Compose dosyası değiştirilmez; yanına `sm-proxy.override.yml` yazılır ve `docker compose -f <compose> -f sm-proxy.override.yml` ile kullanılır. Dockerfile projesinde container `--network sm-proxy` ve Traefik etiketleriyle başlatılır. Yönlendirme ilk başarılı deployment'tan sonra uygulanır; domain eklendiğinde veya değiştiğinde karttan yeniden uygulanabilir. Domain'i olmayan proje eskisi gibi yalnızca port eşlemesi veya compose ile çalışır.
 - **Proje silme:** domain kayıtları yumuşak silinir ve projenin yönlendirmesi kaldırılmaya çalışılır; `sm-traefik` durdurulmaz.
 - **Audit:** `deployment_proxy.install`, `deployment_domain.create`, `deployment_domain.update`, `deployment_domain.delete`.
+
+### Servisler
+
+Sunuculara tek tıkla Docker tabanlı veritabanı ve uygulama servisleri kurar. Menüde **Servisler** sayfası, sunucu detayında **Servisler** sekmesi bulunur (systemd/OpenRC servisleri ayrı olarak **Sistem Servisleri** adıyla durur; adresleri değişmedi). Container adı `sm-svc-<kısa-ad>`, varsayılan veri volume'u `sm-svc-<kısa-ad>-data`'dır; kısa ad servis adından üretilir ve sonradan değişmez.
+
+| İzin | Kapsam | Varsayılan roller |
+| --- | --- | --- |
+| `services.view` | Servis listesi, detay, loglar, işlem geçmişi | SuperAdmin, Admin, Operator, Developer, Viewer |
+| `services.manage` | Kurma, ayarları değiştirip yeniden oluşturma, sürüm yükseltme, başlatma/durdurma, kaldırma | SuperAdmin, Admin, Operator |
+| `services.console` | Servis konsolu (psql, mysql, redis-cli …) | SuperAdmin, Admin, Operator |
+| `services.reveal_secrets` | Parola ve parolalı bağlantı adreslerini görme | SuperAdmin, Admin |
+
+**Şablonlar:** veritabanları PostgreSQL (`postgres`), MySQL (`mysql`), MariaDB (`mariadb`), Redis (`redis`), MongoDB (`mongo`), SQL Server (`mcr.microsoft.com/mssql/server`, varsayılan Developer sürümü); uygulamalar MinIO, RabbitMQ, Adminer, pgAdmin, Uptime Kuma ve n8n. Her şablonun sürüm listesi, portları, veri klasörü, kimlik bilgisi → ortam değişkeni eşlemesi, sağlık ve bağlantı testi komutu, konsol komutu ve bağlantı adresi biçimi vardır.
+
+- **Kurulum sihirbazı:** şablon kartı → sunucu (Docker ve mimari ön kontrolü), ad, sürüm (listeden veya Docker Hub etiketi), veri saklama (Docker volume veya sunucu klasörü), kimlik bilgileri (parola otomatik üretilir), ağ/port, kaynak sınırları ve ek ortam değişkenleri. Kurulum arka planda sürer; adımlar (Docker, port kontrolü, imaj, ağ ve volume, container, sağlık, bağlantı testi) `/hubs/services` ile canlı izlenir, sayfa kapansa da devam eder.
+- **Portlar ve "Dışarıya aç":** yayınlanan portlar varsayılan olarak `127.0.0.1`'e bağlanır (yalnızca sunucudan veya SSH tüneliyle erişilir). "Dışarıya aç" seçilirse `0.0.0.0`'a bağlanır. 1024 altı sunucu portları `ManagedServices:AllowPrivilegedHostPorts` açık değilse reddedilir; kurulumdan önce portun boş olduğu kontrol edilir. Yayınlanmayan portlara yalnızca aynı Docker ağındaki container'lar erişir.
+- **IP izin listesi:** Docker'ın yayınladığı portlar UFW/INPUT kurallarını **atlar**. Dışarıya açık portlar için izinli IP/CIDR listesi verilirse kurallar `DOCKER-USER` zincirine yazılır (her port için DROP, izinli kaynaklar için üstte RETURN; NAT öncesi hedef porta göre `--ctstate DNAT --ctorigdstport` ile eşleşir, iç ağ trafiği etkilenmez). Kurallar servis etiketiyle (`sm-svc-<kısa-ad>`) yönetilir, idempotenttir ve yeniden başlatmada `sm-services-firewall.service` systemd birimiyle geri yüklenir. Kurallar kaybolursa servis sayfası uyarır ve "Kuralları yeniden uygula" sunar. Liste boş ve port dışarıya açıksa sayfada uyarı gösterilir.
+- **Ağ:** her servis panel ağı `sm-services`'e katılır (yoksa oluşturulur); istenirse `sm-proxy` ve sunucudaki başka mevcut ağlara da eklenir. Aynı ağdaki uygulamalar servise container adıyla (`sm-svc-db:5432`) bağlanır.
+- **Volume:** Docker volume veya sunucu klasörü. Veri yeniden oluşturma ve sürüm yükseltmede korunur.
+- **Ortam değişkenleri:** kimlik bilgileri ve ek değişkenler `Security:MasterKey` ile şifreli saklanır; sunucuda `/var/lib/sm-services/<kısa-ad>/.env` dosyasına stdin ile (izin `600`) yazılır, komut satırına ve loglara girmez (log çıktısı maskelenir).
+- **Detay sayfası:** *Genel* (container durumu, sağlık, ağlar, iç/dış adres, kullanıcı, maskeli bağlantı adresleri; "Parolayı göster" `services.reveal_secrets` ister ve audit'e yazılır), *Loglar* (son N satır, arama, hata/uyarı ve stderr filtresi, canlı takip, indirme), *İşlemler* (kurulum, yeniden oluşturma, yükseltme, kaldırma geçmişi ve logları), *Ayarlar* (port, IP listesi, ağ, kaynak sınırları, ek değişkenler; kaydedince container yeniden oluşturulur, volume korunur), *Sürüm* (yeni imaj önce indirilir, indirme başarısızsa mevcut container'a dokunulmaz; ana sürüm değişikliği için ayrıca onay istenir), *Konsol* (şablonun istemcisi container içinde açılır; parola container ortamından okunur, açılış/kapanış ve komutlar kayda alınır), *Tehlikeli bölge* (servis adını yazarak kaldırma; "Veriyi de sil" volume'u veya panelin oluşturduğu sunucu klasörünü siler, geri alınamaz).
+- **Entegrasyon:** `IManagedServiceService.GetConnectionInfoAsync(serviceId)` iç ağ adresini (Host = container adı, Port), kimlik bilgilerini, bağlantı adresini, önerilen ortam değişkenlerini (`DATABASE_URL`, `REDIS_URL`, `ConnectionStrings__Default` …) ve ağları döner; parola içerir, yalnızca sunucu tarafında kullanılmalıdır.
+- **Audit:** `managed_service.create/recreate/upgrade/remove/operation_complete/reveal_secrets/console_open/console_close/container_action/firewall_apply`. Değiştiren işlemler kullanıcı başına dakikada 20 istekle sınırlıdır.
+
+#### Projeye bağla
+
+Servis sayfasının *Genel* sekmesindeki **Projeye bağla**, servisi **aynı sunucudaki** Docker Compose veya Dockerfile projesine bağlar (komutla dağıtılan projelere bağlanmaz). `services.manage` **ve** `deployment.manage` ister; "Hemen uygula" ayrıca `deployment.execute` ister.
+
+1. Proje seçilir; servisin önerdiği ortam değişkenleri parolası `****` ile gizlenmiş önizlemeyle listelenir. Her satır seçilebilir ve anahtar adı değiştirilebilir (ör. `DATABASE_URL` → `APP_DB_URL`); projede zaten olan anahtarlar işaretlenir.
+2. "Projede zaten tanımlı anahtarların değerini değiştir" kapalıysa var olan anahtarlara dokunulmaz. Değerler sunucuda servisin kayıtlı bilgisinden yazılır; parola tarayıcıya hiç gönderilmez.
+3. Bağ kaydedilir (`ProjectServiceLinks`, proje + servis benzersiz) ve hangi anahtarların yazıldığı saklanır. "Hemen uygula" seçilirse proje build edilmeden yeniden başlatılır.
+
+Bağlı servisi olan projede container'lar `sm-services` ağına da katılır: Compose projesinde `sm-proxy.override.yml` **tüm servislere** `networks: [default, (domain varsa sm-proxy), sm-services]` ve dış ağ tanımı ekler; Dockerfile projesinde container domain yoksa `--network sm-services` ile başlatılır, domain varsa `sm-proxy` ile başlatılıp `docker network connect sm-services` ile eklenir. Ağ yoksa (`docker network inspect … || docker network create`) oluşturulur. Değişiklik bir sonraki deploy, "Uygula / Yeniden başlat" veya yönlendirme uygulamasında geçerli olur.
+
+Proje sayfasının *Ortam değişkenleri* sekmesinde **Bağlı servisler** listelenir. **Bağı kaldır** ortam değişkenlerini varsayılan olarak korur; onay penceresindeki kutu işaretlenirse yalnızca bağlarken yazılan anahtarlar silinir. Audit: `project.service_link`, `project.service_unlink` (yalnızca anahtar adları; değer yok). Kaldırılan servisin veya silinen projenin bağları görünmez ve projeyi ağa almaz.
+
+#### Otomatik yedek
+
+Veritabanı şablonlarında (PostgreSQL, MySQL, MariaDB, MongoDB, Redis, SQL Server) kurulum sihirbazında **Otomatik yedek** bölümü vardır (`backup.manage` yoksa gizlidir): depolama hedefi, zamanlama (her gün belirli saatte veya N saatte bir), saklanacak son yedek sayısı ve isteğe bağlı şifreleme parolası (en az 12 karakter). SQL Server'da yedeklenecek veritabanı adı da istenir. Ayarlar kurulumdan önce doğrulanır; yedekleme işi **yalnızca kurulum başarıyla bittikten sonra**, kurulumu başlatan kullanıcı adına `IBackupJobService.CreateForContainerDatabaseAsync` ile açılır ve sonuç canlı kurulum çıktısına yazılır (başarısızsa kurulum etkilenmez).
+
+| Şablon | Motor | Yedek kullanıcısı | Veritabanı |
+| --- | --- | --- | --- |
+| postgres | PostgreSQL | servis kullanıcısı | servis veritabanı |
+| mysql, mariadb | MySQL | `root` (parolası servis parolasıyla aynı) | servis veritabanı |
+| mongodb | MongoDB | servis yönetici kullanıcısı (`authSource=admin`) | tümü |
+| redis | Redis | — (parola) | — |
+| mssql | SQL Server | `sa` | formda girilen |
+
+Mevcut veritabanı servislerinde *Genel* sekmesindeki **Yedekleme** kartı servisi yedekleyen işleri (aynı sunucu + container adı) listeler ve **Yedek işi oluştur** ile aynı formu açar. İş adı `<servis> (sm-svc-<kısa-ad>)` biçimindedir; Yedekleme → İşler sayfasında düzenlenebilir.
+
+| Anahtar (`ManagedServices:`) | Varsayılan | Açıklama |
+| --- | --- | --- |
+| `PullTimeoutMinutes` | `20` | İmaj indirme (`docker pull`) üst sınırı |
+| `CommandTimeoutSeconds` | `120` | Tek docker komutunun (create, start, network …) üst sınırı |
+| `HealthTimeoutSeconds` | `180` | Container'ın sağlıklı olmasının beklendiği en kısa süre (şablon daha uzununu isteyebilir, ör. SQL Server) |
+| `MaxStoredLogKilobytes` | `256` | İşlem başına saklanan en fazla log |
+| `AllowPrivilegedHostPorts` | `false` | 1024 altındaki sunucu portlarına izin verir |
+| `DefaultLogTail` | `200` | Loglar sekmesinde varsayılan satır sayısı |
 
 ### Alarmlar ve izleme
 
@@ -2863,12 +2932,22 @@ Menüde **Yedekleme** altında üç sekme bulunur: **İşler** (yedekleme işler
 | --- | --- | --- | --- |
 | Dosya | Bir veya daha çok mutlak yol, isteğe bağlı hariç tutma desenleri (`*.log`, `cache/`) | `tar -czf -` (GNU veya BusyBox tar) | Okunacak dosyalar için genelde tam sudo veya root |
 | Docker volume | Volume adı | `alpine:3` yardımcı container'ı volume'u salt okunur bağlar ve `tar` ile arşivler (`--network none`, log kapalı) | docker grubu **veya** yalnızca `docker` için sudo |
-| Veritabanı (container) | Container adı, PostgreSQL veya MySQL/MariaDB, veritabanı, kullanıcı, parola | Tek bir `docker exec -i` içinde `pg_dump` / `mariadb-dump` (yoksa `mysqldump`) ve container içindeki `gzip` | docker grubu **veya** yalnızca `docker` için sudo |
+| Veritabanı (container) | Container adı, motor (PostgreSQL, MySQL/MariaDB, MongoDB, Redis, SQL Server), veritabanı, kullanıcı, parola | Tek bir `docker exec -i` içinde motorun aracı (aşağıdaki tablo) ve container içindeki `gzip` | docker grubu **veya** yalnızca `docker` için sudo |
 | Veritabanı (sunucu) | Host, port, veritabanı, kullanıcı, parola | Sunucudaki istemci araçları ve `gzip` | İstemci araçları kurulu olmalı |
 
-- Veritabanı parolası komut satırına yazılmaz: stdin'den okunur ve `PGPASSWORD` / `MYSQL_PWD` ile yalnızca döküm aracına verilir. Parola `Security:MasterKey` ile şifreli saklanır ve arayüzde geri gösterilmez.
+| Motor | Yedek (dosya) | Zorunlu alanlar | Parolanın aktarımı | Geri yükleme |
+| --- | --- | --- | --- | --- |
+| PostgreSQL | `pg_dump --clean --if-exists --no-owner --no-privileges` (`.sql.gz`) | Veritabanı, kullanıcı | `PGPASSWORD` | `psql -v ON_ERROR_STOP=1` |
+| MySQL / MariaDB | `mariadb-dump` (yoksa `mysqldump`) `--single-transaction --routines --triggers` (`.sql.gz`) | Veritabanı, kullanıcı | `MYSQL_PWD` | `mariadb` / `mysql` |
+| MongoDB | `mongodump --archive`, sunucuda gzip (`.archive.gz`). Veritabanı boşsa tümü. Kimlik doğrulama veritabanı varsayılan `admin` | — (parola varsa kullanıcı) | `mktemp -d` (0700) içinde 0600 YAML dosyası + `--config`; çıkışta silinir. MongoDB Database Tools **100.3+** gerekir | `mongorestore --archive`, isteğe bağlı `--drop`; farklı ada `--nsFrom/--nsTo` |
+| Redis | `BGSAVE` → `LASTSAVE` değişene kadar beklenir → `CONFIG GET dir/dbfilename` ile bulunan RDB gzip'lenir (`.rdb.gz`) | — (ACL kullanıcısı isteğe bağlı) | `REDISCLI_AUTH` (`-a` kullanılmaz) | **Elle** (aşağıya bakın) |
+| SQL Server | `sqlcmd` ile `BACKUP DATABASE … WITH COPY_ONLY, INIT` → geçici `/var/opt/mssql/backup/sm-backup-<rastgele>.bak` gzip'lenip aktarılır ve silinir (`.bak.gz`). Sıkıştırma kullanılmaz (Express'te yok) | Veritabanı; kullanıcı (varsayılan `sa`) | `SQLCMDPASSWORD` | `RESTORE … WITH REPLACE` (aşağıya bakın) |
+
+- Veritabanı parolası komut satırına yazılmaz: stdin'in ilk satırından okunur ve yalnızca yukarıdaki ortam değişkeni veya geçici config dosyasıyla araca verilir; hiçbir süreç argv'sinde görünmez. Parola `Security:MasterKey` ile şifreli saklanır ve arayüzde geri gösterilmez.
+- sqlcmd sırasıyla `/opt/mssql-tools18/bin/sqlcmd -C`, `/opt/mssql-tools/bin/sqlcmd` ve PATH'teki `sqlcmd` (go-sqlcmd, `-C`) olarak aranır.
+- Redis ve SQL Server yedek dosyası veritabanı sunucusunun kendi diskinde oluşur; bu yüzden veritabanı aynı sunucuda (container'da veya yerel) çalışmalıdır, uzak adres reddedilir. SQL Server'da yedek klasöründe veritabanı boyutu kadar boş alan gerekir. Redis'te `CONFIG` komutu kapalı/yeniden adlandırılmışsa yedek alınamaz. AOF açık olsa da RDB anlık görüntüsü tüm veriyi içerir.
+- Veritabanı adları motora göre dar kalıplarla doğrulanır (SQL Server: harf/`_` ile başlayan tanımlayıcı, T-SQL'de `[ad]` olarak ve `]` ikilenerek; MongoDB: harf, rakam, `_`, `-`, en fazla 63 karakter).
 - Volume yedeğinden önce volume'un varlığı kontrol edilir; yanlış adla boş bir volume oluşturulup boş yedek alınmaz ("Volume bulunamadı").
-- PostgreSQL dökümü `--clean --if-exists --no-owner --no-privileges`, MySQL dökümü `--single-transaction --routines --triggers` ile alınır.
 - Volume yedeği çalışan container'ı durdurmaz. Sürekli yazılan veriler (ör. veritabanı dosyaları) için tutarlı yedek gerekiyorsa veritabanı yedeği kullanın veya yazan container'ı yedek sırasında durdurun.
 - Yardımcı imaj sunucuda yoksa Docker Hub'dan çekilir; sunucunun Docker Hub'a erişimi yoksa `alpine:3` imajını önceden yükleyin. Rootless Docker'da volume'lar kullanıcının kendi Docker daemon'ındadır; iş o kullanıcıyla bağlanan sunucu kaydıyla tanımlanmalıdır.
 - Sudo yetkisi yetersizse hata Türkçe açıklanır (dosya ve sunucudaki veritabanı yedekleri tam sudo, volume ve container veritabanı yedekleri yalnızca docker yetkisi ister).
@@ -2890,7 +2969,7 @@ Menüde **Yedekleme** altında üç sekme bulunur: **İşler** (yedekleme işler
 | Azure Blob (`Storage.AzureBlob` eklentisi) | Hesap adı, hesap anahtarı, isteğe bağlı hizmet adresi, kapsayıcı, önek | Azure Blob Storage. Adres boşsa `https://<hesap>.blob.core.windows.net` kullanılır. Azurite için adres `http://127.0.0.1:10000/devstoreaccount1` olur. Başarısız yüklemede yarım blob silinir. Anahtar şifrelenir ve geri gösterilmez |
 
 - **Test et** düğmesi hedefe küçük bir dosya yazar, okur ve siler.
-- Nesne adı `{önek}{işKimliği}/{yyyyMMdd-HHmmss}-{kısaKimlik}.tar.gz` (veritabanında `.sql.gz`), şifreliyse sonuna `.smbk` eklenir.
+- Nesne adı `{önek}{işKimliği}/{yyyyMMdd-HHmmss}-{kısaKimlik}.tar.gz` (veritabanında `.sql.gz`; MongoDB `.archive.gz`, Redis `.rdb.gz`, SQL Server `.bak.gz`), şifreliyse sonuna `.smbk` eklenir.
 - S3 bucket'ında yarım kalmış multipart yüklemeleri birkaç gün sonra temizleyen bir yaşam döngüsü kuralı (abort incomplete multipart upload) önerilir; panel hata durumunda yüklemeyi zaten iptal eder, kural yalnızca bağlantı tamamen koptuğunda kalan parçalar içindir.
 - R2 için endpoint `https://<hesap>.r2.cloudflarestorage.com`, bölge `auto`; MinIO/SeaweedFS için path-style açık olmalıdır.
 
@@ -2901,7 +2980,7 @@ Tüm yedekler gzip ile sıkıştırılır. Şifreleme iş başına açılır (va
 - Biçim (`SMBK`, sürüm 1): 36 baytlık başlık (`SMBK` | sürüm | bayrak | 2 boş bayt | PBKDF2 tur sayısı (uint32, big-endian) | 16 bayt salt | 8 bayt nonce öneki), ardından 1 MiB'lık AES-256-GCM parçaları (son-parça bayrağı | uzunluk | şifreli veri | 16 bayt etiket).
 - Anahtar PBKDF2-HMAC-SHA256 (varsayılan 600.000 tur, `Backup:KeyDerivationIterations`) ile türetilir. Her parçanın nonce'u önek + parça sırasıdır; başlık, parça sırası ve son-parça bayrağı ek doğrulama verisidir. Bu sayede parçaların yer değiştirmesi, kesilme ve sona veri ekleme tespit edilir; çözme ilk bozuk parçada durur ve işlem başarısız sayılır.
 - Parola işte `Security:MasterKey` ile şifreli saklanır; her çalışma kendi parolasının kopyasını tutar. İşin parolası sonradan değiştirilse bile eski yedekler kendi parolasıyla açılır.
-- Çalışma ayrıntısındaki **İndir** şifreli dosyayı olduğu gibi, **Çözülmüş indir** ise panelde çözerek `.tar.gz` / `.sql.gz` olarak verir. İndirmelerde SHA-256 özeti çalışma kaydındakiyle karşılaştırılabilir.
+- Çalışma ayrıntısındaki **İndir** şifreli dosyayı olduğu gibi, **Çözülmüş indir** ise panelde çözerek `.tar.gz` / `.sql.gz` (veya `.archive.gz`, `.rdb.gz`, `.bak.gz`) olarak verir. İndirmelerde SHA-256 özeti çalışma kaydındakiyle karşılaştırılabilir.
 
 #### Anahtar kaybı ve kurtarma planı
 
@@ -2916,6 +2995,9 @@ python3 -m pip install cryptography
 SM_BACKUP_PASSPHRASE='...' python3 tools/backup-decrypt.py yedek.tar.gz.smbk yedek.tar.gz   # parola verilmezse sorulur
 tar -xzf yedek.tar.gz -C /geri/yukleme/klasoru        # dosya ve volume yedekleri
 gunzip -c yedek.sql.gz | psql -d hedef_db              # PostgreSQL (MySQL: | mysql hedef_db)
+gunzip -c yedek.archive.gz | mongorestore --archive --drop   # MongoDB
+gunzip -c yedek.bak.gz > yedek.bak                       # SQL Server: RESTORE DATABASE ... FROM DISK = N'.../yedek.bak'
+gunzip -c yedek.rdb.gz > dump.rdb                        # Redis: aşağıdaki elle geri yükleme adımları
 ```
 
 Araç bozuk/eksik dosyada ve yanlış parolada Türkçe hata verir, yarım çıktı bırakmaz; `-` çıktısı stdout'a yazar. Şifrelenmemiş yedekler doğrudan `tar` / `gunzip` ile açılır.
@@ -2928,9 +3010,30 @@ Geçmişteki başarılı bir yedekten **Geri yükle** formu açılır; hedef sun
 | --- | --- | --- |
 | Dosya | Mutlak klasör (varsayılan `/`; `/proc`, `/sys`, `/dev` ve `..` yasak) | Arşiv klasöre açılır, aynı adlı dosyaların üzerine yazılır; arşivde olmayan dosyalar silinmez |
 | Docker volume | Volume adı (varsayılan kaynak volume) | Volume yoksa oluşturulur; içerik üzerine yazılır, fazlalık silinmez |
-| Veritabanı | Container/host ve veritabanı adı | Veritabanı önceden var olmalıdır. PostgreSQL dökümü tabloları silip yeniden oluşturur; hata olursa ilk hatada durur (`ON_ERROR_STOP`) |
+| Veritabanı (PostgreSQL, MySQL) | Container/host ve veritabanı adı | Veritabanı önceden var olmalıdır. PostgreSQL dökümü tabloları silip yeniden oluşturur; hata olursa ilk hatada durur (`ON_ERROR_STOP`) |
+| MongoDB | Container/host, hedef veritabanı, "Önce sil" | Yoksa oluşturulur. "Önce sil" (`--drop`, varsayılan açık) yedekteki koleksiyonları yüklemeden önce siler. Farklı ad yazılırsa `--nsFrom/--nsTo` ile o veritabanına yüklenir. Tüm veritabanlarının yedeği yalnızca özgün adlarıyla yüklenir (admin'deki kullanıcılar dahil) |
+| SQL Server | Container/host, hedef veritabanı | .bak geçici dosyaya açılır, açık bağlantılar kesilir (`SINGLE_USER WITH ROLLBACK IMMEDIATE`), `RESTORE … WITH REPLACE, RECOVERY`, ardından her durumda `MULTI_USER`. Aynı adda veri dosyaları yedekteki yollara; **farklı adda** `RESTORE FILELISTONLY` okunur ve dosyalar örneğin varsayılan veri/log klasörüne `{ad}_{FileId}.mdf/.ndf/.ldf` olarak taşınır (`MOVE`), özgün veritabanına dokunulmaz |
+| Redis | — | Panelden geri yüklenmez (çalışan Redis'e güvenli yükleme için durdurma, dosya değiştirme ve AOF yönetimi gerekir). Sayfada şu yönerge gösterilir: dosyayı indirip açın → Redis'i durdurun → RDB'yi `CONFIG GET dir` klasörüne `dbfilename` adıyla (ör. `/data/dump.rdb`) kopyalayın → AOF açıksa (`appendonly yes`) Redis AOF'u yükler: önce `appendonly no` ile başlatıp veriyi kontrol edin, sonra `CONFIG SET appendonly yes` ile AOF'u yeniden oluşturun → Redis'i başlatın |
 
-Hiçbir yedek veya geri yükleme komutu sunucuda dosya silmez. Geri yükleme de bir çalışma olarak geçmişe ve audit log'a yazılır. Şifreli yedekte parola yanlışsa geri yükleme hedefe veri yazmadan durur; dosya ortasında bozulma varsa bozuk parçada durur ve çalışma başarısız olur (o ana kadar açılan kısım hedefte kalır). Ayrıca depolamadan okunan dosyanın SHA-256 özeti yedek alınırken kaydedilenle karşılaştırılır.
+Yedek/geri yükleme komutları kullanıcı dosyası silmez; yalnızca kendi oluşturdukları geçici dosyaları (MongoDB config, SQL Server .bak) çıkışta siler. Geri yükleme de bir çalışma olarak geçmişe ve audit log'a yazılır. Şifreli yedekte parola yanlışsa geri yükleme hedefe veri yazmadan durur; dosya ortasında bozulma varsa bozuk parçada durur ve çalışma başarısız olur (o ana kadar açılan kısım hedefte kalır). Ayrıca depolamadan okunan dosyanın SHA-256 özeti yedek alınırken kaydedilenle karşılaştırılır.
+
+#### Diğer modüllerden yedekleme işi açma
+
+Container'da çalışan bir veritabanı için iş, form doldurmadan `IBackupJobService.CreateForContainerDatabaseAsync(ContainerDatabaseBackupRequest request, CancellationToken)` ile açılır. İstek `BackupJobSpecs.ForContainerDatabase` ile `BackupJobFormDto`'ya çevrilir ve `CreateAsync` ile aynı doğrulama, parola şifreleme ve audit kaydından geçer; sonuç yeni işin kimliği veya ValidationFailure'dır. Yetki (`backup.manage`) çağıran katmanda kontrol edilir.
+
+```csharp
+var result = await backupJobs.CreateForContainerDatabaseAsync(new ContainerDatabaseBackupRequest(
+    Name: "shop-db günlük", ServerId: serverId, StorageId: storageId,
+    Engine: BackupDatabaseEngine.MongoDb, ContainerName: "shop-mongo-1",
+    DatabaseName: "shop",       // MongoDB'de null = tümü; Redis'te yok sayılır
+    User: null,                 // null = motor varsayılanı (postgres, root, root, sa; Redis'te yok)
+    Password: mongoPassword)
+{
+    AuthDatabase = "admin",
+    ScheduleType = BackupScheduleType.Daily, ScheduleTime = "03:00", KeepLast = 7,
+    EncryptionPassphrase = passphrase   // null = şifreleme kapalı
+});
+```
 
 **Alarm:** "Yedekleme başarısız" kuralı (varsayılan Kritik, kanal atanmamış) bir işin son yedeği başarısız olunca alarm açar; aynı iş başarılı yedek alınca kapanır.
 
@@ -3016,14 +3119,14 @@ Her kullanıcı sağ üstteki menüden **Hesabım** sayfasında parolasını de�
 
 ### Sunucu sistem sekmeleri
 
-Sunucu sayfasındaki **Services**, **Processes**, **Logs**, **Network** ve **Storage** sekmeleri bilgileri SSH ile anlık okur; ajan veya ek paket gerekmez. `UseSudo` açıksa önce `sudo -n` ile denenir, yetki yoksa normal kullanıcıyla okunur.
+Sunucu sayfasındaki **Sistem Servisleri**, **Processes**, **Logs**, **Network** ve **Storage** sekmeleri bilgileri SSH ile anlık okur; ajan veya ek paket gerekmez. `UseSudo` açıksa önce `sudo -n` ile denenir, yetki yoksa normal kullanıcıyla okunur.
 
 | İzin | Kapsam | Varsayılan roller |
 | --- | --- | --- |
 | `system.view` | Servis, process, log, ağ ve disk bilgilerini görüntüleme | SuperAdmin, Admin, Operator, Developer |
 | `system.manage` | Servis başlatma/durdurma/yeniden başlatma, process sonlandırma | SuperAdmin, Admin, Operator |
 
-- **Services:** systemd (`systemctl`) veya OpenRC (`rc-status`) otomatik algılanır. Çalışma durumu ve açılışta başlama bilgisi gösterilir; durum ve ada göre süzülebilir. Durdurma işlemi servis adının yazılmasını ister. Servis yöneticisi olmayan sunucularda (ör. container) açıklama gösterilir.
+- **Sistem Servisleri:** systemd (`systemctl`) veya OpenRC (`rc-status`) otomatik algılanır. Çalışma durumu ve açılışta başlama bilgisi gösterilir; durum ve ada göre süzülebilir. Durdurma işlemi servis adının yazılmasını ister. Servis yöneticisi olmayan sunucularda (ör. container) açıklama gösterilir.
 - **Processes:** procps `ps` varsa CPU'ya göre, BusyBox'ta belleğe göre sıralı en fazla 500 process listelenir. Sonlandırma varsayılan olarak SIGTERM gönderir; onay penceresindeki seçenekle SIGKILL gönderilebilir. PID 1 sonlandırılamaz.
 - **Logs:** journald varsa `journalctl` (birim ve önem filtresiyle), yoksa `/var/log` altındaki dosyalar okunur. Yalnızca `/var/log/` altındaki, `..` içermeyen yollar kabul edilir. Satır sayısı 10–2000 arasıdır; metin filtresi sunucudan dönen satırlara uygulanır.
 - **Network:** arayüzler (durum, MAC, MTU, adresler, alınan/gönderilen bayt), rotalar, DNS sunucuları ve dinlenen portlar (`ss` veya `netstat`).
@@ -3039,7 +3142,7 @@ Servis kontrolü ve process sonlandırma audit log'a yazılır (`system.service_
 
 - Sunucu formunda grup, **aylık maliyet** (0–1.000.000) ve para birimi (USD, EUR, TRY, GBP) seçilir. Maliyet girilip para birimi seçilmezse USD kabul edilir.
 - Sunucu listesi gruba göre süzülebilir; grup kartlarında sunucu sayısı, erişilebilir sunucu sayısı ve para birimine göre toplam aylık maliyet görünür.
-- Menüdeki **Docker, İmajlar, Volume'lar, Ağlar, Terminal, Dosyalar, Servisler, Process'ler, Loglar** ve **Metrikler** bağlantıları önce sunucu seçiciyi açar; seçilen sunucunun ilgili sekmesine gider. Seçici, kullanıcının o özellik için izni yoksa menüde görünmez.
+- Menüdeki **Docker, İmajlar, Volume'lar, Ağlar, Terminal, Dosyalar, Sistem Servisleri, Process'ler, Loglar** ve **Metrikler** bağlantıları önce sunucu seçiciyi açar; seçilen sunucunun ilgili sekmesine gider. Seçici, kullanıcının o özellik için izni yoksa menüde görünmez.
 
 ### Toplu komut ve şablonlar
 
@@ -3389,6 +3492,7 @@ Geçmiş kayıtları `Retention:` anahtarlarıyla gün cinsinden sınırlanır; 
 | `CommandRunDays` | Toplu komut çalıştırma geçmişi |
 | `TerminalSessionDays` | Terminal oturum ve komut geçmişi |
 | `AlertEventDays` | Alarm olayları |
+| `ServiceOperationLogDays` | Servisler modülünün işlem kayıtları ve logları |
 
 Varsayılan değerler `appsettings.json` dosyasındadır.
 

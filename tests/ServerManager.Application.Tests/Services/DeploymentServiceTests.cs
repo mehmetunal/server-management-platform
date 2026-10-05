@@ -319,4 +319,119 @@ public class DeploymentServiceTests
         Assert.Equal(ServiceErrorType.NotFound, result.ErrorType);
         await _provider.DidNotReceiveWithAnyArgs().DeployAsync(default!, default!, default!, Ct);
     }
+
+    private Deployment SucceededSource()
+    {
+        var source = Started();
+        source.Status = DeploymentStatus.Succeeded;
+        source.CommitSha = ProjectTestData.Sha;
+        source.CommitMessage = "Önceki sürüm";
+        source.CommitAuthor = "Ayşe";
+        return source;
+    }
+
+    [Fact]
+    public async Task Rollback_creates_rollback_record_with_target_commit_and_audits()
+    {
+        var source = SucceededSource();
+        Deployment? added = null;
+        await _repository.AddDeploymentAsync(Arg.Do<Deployment>(d => added = d), Arg.Any<CancellationToken>());
+
+        var result = await _service.BeginRollbackAsync(source.Id, _actor, Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(DeploymentKind.Rollback, added!.Kind);
+        Assert.Equal(ProjectTestData.Sha, added.RequestedCommit);
+        Assert.Equal(source.Id, added.SourceDeploymentId);
+        Assert.Equal("Önceki sürüm", added.CommitMessage);
+        await _auditLog.Received(1).LogAsync(Arg.Is<AuditEntry>(e => e.Action == AuditActions.DeploymentRollback), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Rollback_to_failed_deployment_is_rejected()
+    {
+        var source = SucceededSource();
+        source.Status = DeploymentStatus.Failed;
+
+        var result = await _service.BeginRollbackAsync(source.Id, _actor, Ct);
+
+        Assert.False(result.IsSuccess);
+        await _repository.DidNotReceiveWithAnyArgs().AddDeploymentAsync(default!, Ct);
+    }
+
+    [Fact]
+    public async Task Rollback_respects_running_deployment_conflict()
+    {
+        var source = SucceededSource();
+        _repository.GetRunningDeploymentAsync(_project.Id, Arg.Any<CancellationToken>()).Returns(new Deployment { ProjectId = _project.Id });
+
+        var result = await _service.BeginRollbackAsync(source.Id, _actor, Ct);
+
+        Assert.Equal(ServiceErrorType.Conflict, result.ErrorType);
+    }
+
+    [Fact]
+    public async Task Rollback_run_asks_provider_to_prefer_existing_image()
+    {
+        var deployment = Started(ProjectTestData.Sha);
+        deployment.Kind = DeploymentKind.Rollback;
+        _provider.DeployAsync(_context, Arg.Any<DeploymentPlan>(), Arg.Any<IDeploymentObserver>(), Arg.Any<CancellationToken>())
+            .Returns(ServiceResult<DeploymentRunResult>.Success(new DeploymentRunResult { Succeeded = true, CommitSha = ProjectTestData.Sha }));
+        using var cancellation = new DeploymentCancellation(CancellationToken.None);
+
+        await _service.RunAsync(deployment.Id, _actor, _observer, cancellation);
+
+        await _provider.Received(1).DeployAsync(
+            _context,
+            Arg.Is<DeploymentPlan>(p => p.PreferExistingImage && p.Commit == ProjectTestData.Sha && p.KeepImageCount == 5),
+            Arg.Any<IDeploymentObserver>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Restart_requires_a_successful_deployment()
+    {
+        var result = await _service.BeginRestartAsync(_project.Id, _actor, Ct);
+
+        Assert.False(result.IsSuccess);
+        await _repository.DidNotReceiveWithAnyArgs().AddDeploymentAsync(default!, Ct);
+    }
+
+    [Fact]
+    public async Task Restart_records_current_commit_and_runs_without_build()
+    {
+        var current = SucceededSource();
+        _repository.GetLastSuccessfulDeploymentAsync(_project.Id, Arg.Any<CancellationToken>()).Returns(current);
+        Deployment? added = null;
+        await _repository.AddDeploymentAsync(Arg.Do<Deployment>(d => added = d), Arg.Any<CancellationToken>());
+
+        var begin = await _service.BeginRestartAsync(_project.Id, _actor, Ct);
+
+        Assert.True(begin.IsSuccess);
+        Assert.Equal(DeploymentKind.Restart, added!.Kind);
+        Assert.Equal(ProjectTestData.Sha, added.RequestedCommit);
+        await _auditLog.Received(1).LogAsync(Arg.Is<AuditEntry>(e => e.Action == AuditActions.DeploymentRestart), Arg.Any<CancellationToken>());
+
+        _repository.GetDeploymentAsync(added.Id, Arg.Any<CancellationToken>()).Returns(added);
+        _project.EncryptedEnvironment = _protector.Protect("A=2\n");
+        _provider.RestartAsync(_context, Arg.Any<DeploymentPlan>(), Arg.Any<IDeploymentObserver>(), Arg.Any<CancellationToken>())
+            .Returns(ServiceResult<DeploymentRunResult>.Success(new DeploymentRunResult { Succeeded = true, CommitSha = ProjectTestData.Sha }));
+        using var cancellation = new DeploymentCancellation(CancellationToken.None);
+
+        var run = await _service.RunAsync(added.Id, _actor, _observer, cancellation);
+
+        Assert.True(run.IsSuccess);
+        await _provider.Received(1).RestartAsync(_context, Arg.Is<DeploymentPlan>(p => p.Environment == "A=2\n"), Arg.Any<IDeploymentObserver>(), Arg.Any<CancellationToken>());
+        await _provider.DidNotReceiveWithAnyArgs().DeployAsync(default!, default!, default!, Ct);
+    }
+
+    [Fact]
+    public async Task Restart_is_not_offered_for_command_projects()
+    {
+        _project.BuildType = DeploymentBuildType.Commands;
+
+        var result = await _service.BeginRestartAsync(_project.Id, _actor, Ct);
+
+        Assert.False(result.IsSuccess);
+    }
 }

@@ -29,7 +29,8 @@ Soldaki menü, hesabınızın yetkisine göre değişir. Göremediğiniz bir say
 | Projeler, Deployment'lar | Bir uygulamayı sunucuya gönderme ve geçmişi |
 | Terminal | Sunucuya tarayıcıdan komut yazma |
 | Dosyalar | Sunucudaki klasörlere göz atma, dosya açma ve indirme |
-| Servisler, Process'ler, Loglar | Sunucuda çalışan işler ve kayıtlar |
+| Servisler | Tek tıkla kurulan veritabanları ve uygulamalar |
+| Sistem Servisleri, Process'ler, Loglar | Sunucuda çalışan işler ve kayıtlar |
 | Toplu komut | Aynı işi birden çok sunucuda birden yaptırma |
 | Metrikler | İşlemci, bellek ve disk doluluk grafikleri |
 | Uptime | Bir sitenin veya kapının açık olup olmadığı |

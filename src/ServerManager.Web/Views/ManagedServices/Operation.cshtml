@@ -1,0 +1,106 @@
+@model ManagedServiceOperationViewModel
+@{
+    var operation = Model.Operation;
+    var service = Model.Service;
+    var kind = ManagedServiceDisplay.KindText(operation.Kind);
+    ViewData["Title"] = $"{operation.ServiceName} · {kind}";
+    ViewData["Page"] = "managed-service-operation";
+    var steps = ManagedServiceDisplay.Steps(operation.Kind);
+    var target = operation.ToTag is not null && operation.FromTag is not null && operation.FromTag != operation.ToTag
+        ? $"{operation.FromTag} → {operation.ToTag}"
+        : operation.ToTag ?? operation.FromTag;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/lib/xterm/xterm.css" />
+}
+
+<div class="page-header">
+    <div>
+        @if (service is not null)
+        {
+            <a asp-action="Details" asp-route-id="@service.Id" class="back-link" title="Servis sayfasına dön">@Icons.Render("chevron-left", "h-4 w-4") @service.Name</a>
+        }
+        else
+        {
+            <a asp-action="Index" class="back-link" title="Servis listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Servisler</a>
+        }
+        <h1 class="page-title">@kind <span class="text-lg text-slate-500">@operation.ServiceName</span></h1>
+        <p class="page-lead">İşlem sunucuda arka planda çalışır; sayfayı kapatsanız da sürer. Parolalar çıktıda <span class="font-mono">****</span> olarak gizlenir.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+        <a asp-action="OperationLog" asp-route-id="@operation.Id" class="btn-ghost" data-operation-log hidden="@operation.IsRunning" title="İşlem logunu metin dosyası olarak indir">@Icons.Render("download", "h-4 w-4") Log indir</a>
+        @if (service is not null)
+        {
+            <a asp-action="Details" asp-route-id="@service.Id" class="btn-secondary" data-operation-service hidden="@operation.IsRunning" title="Servis sayfasını aç">@Icons.Render("database", "h-4 w-4") Servise git</a>
+        }
+    </div>
+</div>
+
+<div class="service-operation-view" data-operation-view
+     data-operation-id="@operation.Id"
+     data-kind="@operation.Kind"
+     data-hub-url="@Url.Content("~" + ServiceHub.Path)"
+     data-steps="@string.Join(',', steps.Select(s => s.Stage.ToString()))"
+     data-docker-url="@Url.Action("Index", "Docker", new { id = operation.ServerId })"
+     data-list-url="@Url.Action("Index", "ServerManagedServices", new { id = operation.ServerId })">
+
+    <ol class="wizard-steps" aria-label="İşlem adımları">
+        @for (var i = 0; i < steps.Count; i++)
+        {
+            <li class="wizard-step" data-step="@steps[i].Stage">
+                <span class="wizard-step-marker">@(i + 1)</span>
+                <span class="wizard-step-label">@steps[i].Label</span>
+            </li>
+        }
+    </ol>
+
+    <div class="service-operation-grid">
+        <section class="panel service-operation-log">
+            <div class="panel-header">
+                <h2 class="panel-title">Çıktı</h2>
+                <span class="@ManagedServiceDisplay.OperationStatusBadgeClass(operation.Status)" data-operation-status><span class="badge-dot"></span><span data-operation-status-text>@ManagedServiceDisplay.OperationStatusText(operation.Status)</span></span>
+            </div>
+            <div class="log-console" data-operation-console></div>
+            <div class="service-operation-result" data-operation-result hidden>
+                <p data-operation-result-text></p>
+                <a class="panel-link" data-operation-docker-link hidden>Docker sekmesini aç</a>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header"><h2 class="panel-title">Özet</h2></div>
+            <dl class="panel-body detail-list">
+                <div><dt class="detail-term">Servis</dt><dd class="detail-value">@operation.ServiceName</dd></div>
+                @if (service is not null)
+                {
+                    <div><dt class="detail-term">Tür</dt><dd class="detail-value">@service.TemplateName</dd></div>
+                    <div><dt class="detail-term">Sunucu</dt><dd class="detail-value">@service.ServerName</dd></div>
+                    <div><dt class="detail-term">Container</dt><dd class="detail-value font-mono">@service.ContainerName</dd></div>
+                }
+                @if (target is not null)
+                {
+                    <div><dt class="detail-term">Sürüm</dt><dd class="detail-value font-mono">@target</dd></div>
+                }
+                @if (operation.Kind == ManagedServiceOperationKind.Remove)
+                {
+                    <div><dt class="detail-term">Veri</dt><dd class="detail-value">@(operation.RemoveData ? "Silinecek" : "Korunacak")</dd></div>
+                }
+                <div><dt class="detail-term">Başlatan</dt><dd class="detail-value">@(operation.UserName ?? "—") <span class="font-mono text-xs text-slate-500">@operation.IpAddress</span></dd></div>
+                <div><dt class="detail-term">Başlangıç</dt><dd class="detail-value">@DateDisplay.Format(operation.StartedAt, "dd.MM.yyyy HH:mm:ss")</dd></div>
+                <div><dt class="detail-term">Bitiş</dt><dd class="detail-value">@DateDisplay.Format(operation.FinishedAt, "dd.MM.yyyy HH:mm:ss")</dd></div>
+                <div><dt class="detail-term">Süre</dt><dd class="detail-value">@(operation.IsRunning ? "Sürüyor" : ManagedServiceDisplay.Duration(operation.StartedAt, operation.FinishedAt))</dd></div>
+                @if (!string.IsNullOrEmpty(operation.FailureReason))
+                {
+                    <div><dt class="detail-term">Neden</dt><dd class="detail-value service-error-text">@operation.FailureReason</dd></div>
+                }
+            </dl>
+        </section>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/lib/signalr/signalr.min.js"></script>
+    <script src="~/lib/xterm/xterm.js"></script>
+    <script src="~/lib/xterm/addon-fit.js"></script>
+}

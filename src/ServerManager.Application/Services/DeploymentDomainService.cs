@@ -323,6 +323,7 @@ public class DeploymentDomainService : IDeploymentDomainService
             PortMappings = ports,
             Environment = project.EncryptedEnvironment is null ? null : string.Empty,
             Routes = routes.Data!,
+            JoinServicesNetwork = project.BuildType != DeploymentBuildType.Commands && await _projects.HasServiceLinksAsync(project.Id, cancellationToken),
             DeployTimeout = TimeSpan.FromMinutes(Math.Max(1, _options.DeployTimeoutMinutes))
         };
 

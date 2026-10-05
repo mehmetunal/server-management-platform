@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 using ServerManager.Application.Authorization;
+using ServerManager.Application.Deployments;
 using ServerManager.Domain.Enums;
 using ServerManager.Application.DTOs.Deployments;
 using ServerManager.Application.Interfaces;
@@ -26,6 +28,11 @@ public class ProjectsController : Controller
     private readonly DeploymentManager _deploymentManager;
     private readonly ICurrentUserService _currentUser;
     private readonly IGitIntegrationRegistry _gitIntegrations;
+    private readonly IProjectEnvironmentService _environment;
+    private readonly IProjectWebhookService _webhooks;
+    private readonly DeploymentOptions _deploymentOptions;
+
+    private readonly IProjectServiceLinkService _serviceLinks;
 
     public ProjectsController(
         IProjectService projectService,
@@ -33,8 +40,16 @@ public class ProjectsController : Controller
         IDeploymentService deploymentService,
         DeploymentManager deploymentManager,
         ICurrentUserService currentUser,
-        IGitIntegrationRegistry gitIntegrations)
+        IGitIntegrationRegistry gitIntegrations,
+        IProjectEnvironmentService environment,
+        IProjectWebhookService webhooks,
+        IOptions<DeploymentOptions> deploymentOptions,
+        IProjectServiceLinkService serviceLinks)
     {
+        _serviceLinks = serviceLinks;
+        _environment = environment;
+        _webhooks = webhooks;
+        _deploymentOptions = deploymentOptions.Value;
         _gitIntegrations = gitIntegrations;
         _projectService = projectService;
         _domains = domains;
@@ -65,11 +80,27 @@ public class ProjectsController : Controller
 
         var filter = new DeploymentFilterDto { ProjectId = id, PageSize = 10 };
         var deployments = await _deploymentService.SearchAsync(filter, cancellationToken);
+        var environment = await _environment.GetAsync(id, cancellationToken);
+        var webhook = await _webhooks.GetAsync(id, cancellationToken);
+        if (!environment.IsSuccess || !webhook.IsSuccess)
+            return NotFound();
+
         return View(new ProjectDetailsViewModel
         {
             Project = project.Data!,
             Domains = await _domains.ListAsync(id, cancellationToken),
-            Deployments = new DeploymentListViewModel { Deployments = deployments, Filter = filter, ShowProject = false }
+            Deployments = new DeploymentListViewModel { Deployments = deployments, Filter = filter, ShowProject = false },
+            Environment = new EnvironmentPanelViewModel
+            {
+                Environment = environment.Data!,
+                CanManage = User.HasPermission(Permissions.DeploymentManage),
+                CanReveal = User.HasPermission(Permissions.DeploymentSecrets),
+                CanApply = User.HasPermission(Permissions.DeploymentExecute),
+                RunningDeploymentId = project.Data!.RunningDeploymentId
+            },
+            Webhook = WebhookPanelViewModel.Create(webhook.Data!, ProjectWebhookController.WebhookUrl(this, _deploymentOptions, id), User.HasPermission(Permissions.DeploymentManage)),
+            ServiceLinks = await _serviceLinks.ListForProjectAsync(id, cancellationToken),
+            CanManageServiceLinks = User.HasPermission(Permissions.ServicesManage) && User.HasPermission(Permissions.DeploymentManage)
         });
     }
 

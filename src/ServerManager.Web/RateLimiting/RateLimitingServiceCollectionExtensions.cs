@@ -34,6 +34,17 @@ public static class RateLimitingServiceCollectionExtensions
                         QueueLimit = 0
                     }));
 
+            // Proje push webhook'u (anonim, imzayla doğrulanır): Git sağlayıcısının IP'si başına dakikada 30 istek.
+            options.AddPolicy(RateLimitPolicies.ProjectWebhook, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 30,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0
+                    }));
+
             options
                 .AddPerUserPolicy(RateLimitPolicies.ConnectionTest, 10)
                 .AddPerUserPolicy(RateLimitPolicies.MetricsCollect, 10)
@@ -45,7 +56,8 @@ public static class RateLimitingServiceCollectionExtensions
                 .AddPerUserPolicy(RateLimitPolicies.BackupAction, 20)
                 .AddPerUserPolicy(RateLimitPolicies.SecurityScan, 10)
                 .AddPerUserPolicy(RateLimitPolicies.AuditAction, 10)
-                .AddPerUserPolicy(RateLimitPolicies.SystemAction, 20);
+                .AddPerUserPolicy(RateLimitPolicies.SystemAction, 20)
+                .AddPerUserPolicy(RateLimitPolicies.ServiceAction, 20);
 
             options.OnRejected = async (context, cancellationToken) =>
             {

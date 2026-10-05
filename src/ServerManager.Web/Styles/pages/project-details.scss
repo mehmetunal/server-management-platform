@@ -1,4 +1,37 @@
 @use "deployments-shared";
+@use "log-viewer";
+
+.env-key {
+  @apply whitespace-nowrap font-mono text-sm font-medium text-slate-900 dark:text-slate-100;
+}
+
+.env-value {
+  @apply max-w-[28rem] break-all font-mono text-xs text-slate-600 dark:text-slate-300;
+}
+
+.env-mask {
+  @apply select-none tracking-widest text-slate-400;
+}
+
+.env-import {
+  @apply min-h-40 font-mono text-xs;
+}
+
+.log-container-select {
+  @apply w-auto max-w-[16rem] py-1.5 font-mono text-xs;
+}
+
+.webhook-url {
+  @apply flex items-center gap-2;
+}
+
+.webhook-secret {
+  @apply break-all rounded-lg bg-slate-50 p-3 font-mono text-sm text-slate-800 dark:bg-slate-950/60 dark:text-slate-100;
+}
+
+.webhook-steps {
+  @apply list-decimal space-y-1 pl-5 text-sm text-slate-600 dark:text-slate-300;
+}
 
 .project-details-grid {
   @apply grid grid-cols-1 gap-6 xl:grid-cols-3;

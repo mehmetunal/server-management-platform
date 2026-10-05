@@ -1,0 +1,92 @@
+@model ManagedServiceIndexViewModel
+@{
+    var canManage = User.HasPermission(Permissions.ServicesManage);
+}
+
+@if (Model.Services.Count == 0)
+{
+    <div class="empty-state">
+        <span class="empty-state-icon">@Icons.Render("database", "h-6 w-6")</span>
+        <p class="empty-state-title">Henüz servis yok</p>
+        <p>PostgreSQL, Redis, MinIO gibi servisleri tek tıkla kurabilirsiniz.</p>
+        @if (canManage)
+        {
+            <a asp-controller="ManagedServices" asp-action="Create" asp-route-serverId="@Model.ServerId" class="btn-primary btn-sm" title="Yeni servis kur">@Icons.Render("plus", "h-4 w-4") Servis ekle</a>
+        }
+    </div>
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Servis</th>
+                    @if (Model.ShowServer)
+                    {
+                        <th>Sunucu</th>
+                    }
+                    <th>Sürüm</th>
+                    <th>Durum</th>
+                    <th>Portlar</th>
+                    <th><span class="sr-only">İşlemler</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var service in Model.Services)
+                {
+                    <tr>
+                        <td>
+                            <div class="service-cell">
+                                <partial name="~/Views/ManagedServices/_ServiceLogo.cshtml" model="service.Template" />
+                                <div class="min-w-0">
+                                    <a asp-controller="ManagedServices" asp-action="Details" asp-route-id="@service.Id" class="service-name" title="Servis ayrıntılarını aç">@service.Name</a>
+                                    <p class="service-meta">@service.TemplateName · <span class="font-mono">@service.ContainerName</span></p>
+                                </div>
+                            </div>
+                        </td>
+                        @if (Model.ShowServer)
+                        {
+                            <td class="whitespace-nowrap text-sm">
+                                <a asp-controller="ServerManagedServices" asp-action="Index" asp-route-id="@service.ServerId" class="panel-link" title="Sunucunun servislerini aç">@service.ServerName</a>
+                            </td>
+                        }
+                        <td><span class="tag">@service.ImageTag</span></td>
+                        <td class="whitespace-nowrap">
+                            <span class="@ManagedServiceDisplay.StatusBadgeClass(service.Status)" title="@service.LastError"><span class="badge-dot"></span>@ManagedServiceDisplay.StatusText(service.Status)</span>
+                        </td>
+                        <td>
+                            @if (service.Ports.Count == 0)
+                            {
+                                <span class="text-xs text-slate-500" title="Port yayınlanmadı; yalnızca Docker ağından erişilebilir">Yalnızca iç ağ</span>
+                            }
+                            else
+                            {
+                                <div class="service-ports">
+                                    @foreach (var port in service.Ports)
+                                    {
+                                        <span class="service-port @(service.ExposePublicly ? "is-public" : "")" title="@(service.ExposePublicly ? (service.HasAllowList ? "Dışarıya açık (IP kısıtlamalı)" : "Dışarıya açık (herkese)") : "Yalnızca sunucudan (127.0.0.1)")">@port.HostPort</span>
+                                    }
+                                </div>
+                            }
+                        </td>
+                        <td class="whitespace-nowrap text-right">
+                            @if (service.WebUiUrl is not null)
+                            {
+                                <a href="@service.WebUiUrl" target="_blank" rel="noopener noreferrer" class="btn-ghost btn-sm" title="Web arayüzünü yeni sekmede aç">@Icons.Render("link", "h-4 w-4") Aç</a>
+                            }
+                            @if (canManage && !service.IsBusy && service.Status != ManagedServiceStatus.Removed)
+                            {
+                                <button type="button" class="btn-ghost btn-sm" data-ajax-action title="Container'ı yeniden başlat"
+                                        data-url="@Url.Action("ContainerAction", "ManagedServices", new { id = service.Id })" data-field-action="Restart">
+                                    <span class="spinner" data-spinner hidden></span>@Icons.Render("refresh", "h-4 w-4")
+                                </button>
+                            }
+                            <a asp-controller="ManagedServices" asp-action="Details" asp-route-id="@service.Id" class="btn-ghost btn-sm" title="Detay">@Icons.Render("eye", "h-4 w-4")</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

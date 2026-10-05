@@ -15,6 +15,7 @@ using ServerManager.Application.Interfaces.Security;
 using ServerManager.Application.Interfaces.Services;
 using ServerManager.Application.Interfaces.Ssh;
 using ServerManager.Application.Mappings;
+using ServerManager.Application.Validators.Backups;
 using ServerManager.Domain.Entities;
 using ServerManager.Domain.Enums;
 
@@ -122,8 +123,8 @@ public class BackupRunService : IBackupRunService
             UserName = actor.UserName,
             StartedAt = UtcNow
         };
-        run.ObjectKey = BackupNames.ObjectKey(job.Id, run.Id, run.StartedAt, job.SourceType, run.IsEncrypted);
-        run.FileName = BackupNames.FileName(job.Name, run.StartedAt, job.SourceType, run.IsEncrypted);
+        run.ObjectKey = BackupNames.ObjectKey(job.Id, run.Id, run.StartedAt, job.SourceType, run.IsEncrypted, job.DatabaseEngine);
+        run.FileName = BackupNames.FileName(job.Name, run.StartedAt, job.SourceType, run.IsEncrypted, job.DatabaseEngine);
 
         await _repository.AddRunAsync(run, cancellationToken);
         await _repository.SaveChangesAsync(cancellationToken);
@@ -185,7 +186,8 @@ public class BackupRunService : IBackupRunService
             DefaultContainer = job?.ContainerName,
             DefaultDatabase = job?.DatabaseName,
             DatabaseEngine = job?.DatabaseEngine,
-            CanRestoreDatabase = job is { DatabaseEngine: not null, DatabaseUser: not null }
+            CanRestoreDatabase = job is not null && HasDatabaseConnection(job) && BackupDatabaseEngines.SupportsRestore(job.DatabaseEngine),
+            ManualRestoreGuidance = job?.DatabaseEngine == BackupDatabaseEngine.Redis ? BackupDatabaseEngines.RedisManualRestoreGuidance : null
         });
     }
 
@@ -678,9 +680,14 @@ public class BackupRunService : IBackupRunService
             DatabaseUser = job.DatabaseUser,
             DatabasePassword = password.Data,
             DatabaseHost = job.DatabaseHost,
-            DatabasePort = job.DatabasePort
+            DatabasePort = job.DatabasePort,
+            DatabaseAuthSource = job.DatabaseAuthSource
         });
     }
+
+    /// <summary>Redis ve MongoDB'de kullanıcı isteğe bağlıdır; diğer motorlarda iş kullanıcı adını içermelidir.</summary>
+    private static bool HasDatabaseConnection(BackupJob job) =>
+        job.DatabaseEngine is { } engine && (job.DatabaseUser is not null || !BackupDatabaseEngines.RequiresUser(engine));
 
     private ServiceResult<BackupSourceSpec> BuildRestoreTarget(BackupRun source, BackupJob? job, BackupRestoreDto dto)
     {
@@ -700,8 +707,19 @@ public class BackupRunService : IBackupRunService
                     : ServiceResult<BackupSourceSpec>.Success(new BackupSourceSpec { Type = BackupSourceType.DockerVolume, VolumeName = volume });
 
             case BackupSourceType.Database:
-                if (job is not { DatabaseEngine: not null, DatabaseUser: not null })
+                if (job is null || !HasDatabaseConnection(job))
                     return ServiceResult<BackupSourceSpec>.Failure("Veritabanı bilgileri bulunamadı; yedeği indirip elle geri yükleyin.");
+                if (!BackupDatabaseEngines.SupportsRestore(job.DatabaseEngine))
+                    return ServiceResult<BackupSourceSpec>.Failure(BackupDatabaseEngines.RedisManualRestoreGuidance);
+
+                var engine = job.DatabaseEngine!.Value;
+                var targetDatabase = dto.TargetDatabase ?? job.DatabaseName;
+                if (engine == BackupDatabaseEngine.MongoDb && job.DatabaseName is null && dto.TargetDatabase is not null)
+                    return ServiceResult<BackupSourceSpec>.Failure("Bu yedek tüm MongoDB veritabanlarını içeriyor; yalnızca özgün adlarıyla geri yüklenebilir. Hedef veritabanını boş bırakın.");
+                if (BackupDatabaseEngines.RequiresDatabaseName(engine) && targetDatabase is null)
+                    return ServiceResult<BackupSourceSpec>.Failure("Hedef veritabanını girin.");
+                if (targetDatabase is not null && !BackupInputPatterns.IsValidDatabaseName(engine, targetDatabase))
+                    return ServiceResult<BackupSourceSpec>.Failure(BackupInputPatterns.DatabaseNameMessage(engine));
 
                 var password = UnprotectDatabasePassword(job);
                 if (!password.IsSuccess)
@@ -711,10 +729,13 @@ public class BackupRunService : IBackupRunService
                 return ServiceResult<BackupSourceSpec>.Success(new BackupSourceSpec
                 {
                     Type = BackupSourceType.Database,
-                    Engine = job.DatabaseEngine,
+                    Engine = engine,
                     ContainerName = container,
-                    DatabaseName = dto.TargetDatabase ?? job.DatabaseName,
+                    DatabaseName = targetDatabase,
+                    SourceDatabaseName = job.DatabaseName,
+                    DropExisting = dto.DropExisting,
                     DatabaseUser = job.DatabaseUser,
+                    DatabaseAuthSource = job.DatabaseAuthSource,
                     DatabasePassword = password.Data,
                     DatabaseHost = container is null ? job.DatabaseHost : null,
                     DatabasePort = container is null ? job.DatabasePort : null
@@ -729,7 +750,8 @@ public class BackupRunService : IBackupRunService
     {
         BackupSourceType.Files => target.TargetDirectory == "/" ? "(özgün konumlar)" : $"klasör: {target.TargetDirectory}",
         BackupSourceType.DockerVolume => $"volume: {target.VolumeName}",
-        BackupSourceType.Database => $"{BackupSourceDescriber.EngineName(target.Engine)}: {target.DatabaseName}" +
+        BackupSourceType.Database => $"{BackupSourceDescriber.EngineName(target.Engine)}: {BackupSourceDescriber.DatabaseLabel(target.Engine, target.DatabaseName)}" +
+                                     (target is { Engine: BackupDatabaseEngine.MongoDb, DropExisting: true } ? " (--drop)" : string.Empty) +
                                      (string.IsNullOrEmpty(target.ContainerName) ? string.Empty : $" (container: {target.ContainerName})"),
         _ => string.Empty
     };

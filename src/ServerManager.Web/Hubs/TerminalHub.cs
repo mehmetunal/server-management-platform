@@ -51,6 +51,17 @@ public sealed class TerminalHub : Hub
         return new TerminalStartResponse(result.IsSuccess, result.Message, result.IsSuccess ? result.Data : null);
     }
 
+    /// <summary>Servis konsolu: komut şablondan seçilir; istemci yalnızca servis kimliğini verir.</summary>
+    [HasPermission(Permissions.ServicesConsole)]
+    public async Task<TerminalStartResponse> StartServiceConsole(Guid serviceId, int columns, int rows)
+    {
+        if (CurrentUser() is not { } user)
+            return new TerminalStartResponse(false, "Oturum bilgisi okunamadı.");
+
+        var result = await _manager.StartServiceConsoleAsync(user, serviceId, columns, rows, Context.ConnectionAborted);
+        return new TerminalStartResponse(result.IsSuccess, result.Message, result.IsSuccess ? result.Data : null);
+    }
+
     // Attach/Input/Resize/Confirm hem sunucu hem container oturumlarında kullanılır; gereken yetki (terminal.execute
     // veya docker.terminal) oturum türüne bağlı olduğu için öznitelikle değil TerminalManager içinde denetlenir.
     // Stop yetki istemez: kullanıcı yalnızca kendi bağlantısına bağlı oturumu kapatabilir.

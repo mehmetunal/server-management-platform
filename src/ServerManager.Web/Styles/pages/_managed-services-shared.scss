@@ -1,0 +1,59 @@
+// Servisler modülünün ortak stilleri (liste, form, detay, işlem sayfaları).
+
+.service-logo {
+  @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold uppercase tracking-tight text-white shadow-sm;
+  background-color: var(--service-color, #64748b);
+}
+
+.service-cell {
+  @apply flex min-w-0 items-center gap-3;
+}
+
+.service-name {
+  @apply whitespace-nowrap font-medium text-slate-900 hover:text-brand-600 dark:text-slate-100 dark:hover:text-brand-400;
+}
+
+.service-meta {
+  @apply mt-0.5 max-w-[22rem] truncate text-xs text-slate-500 dark:text-slate-400;
+}
+
+.service-ports,
+.service-port-summary {
+  @apply flex flex-wrap gap-1.5;
+}
+
+.service-port {
+  @apply inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300;
+
+  &.is-public {
+    @apply bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300;
+  }
+}
+
+.service-filter {
+  @apply w-56;
+}
+
+.service-probe {
+  @apply mb-6 space-y-3;
+
+  &:empty {
+    @apply hidden;
+  }
+}
+
+.service-probe-loading {
+  @apply text-sm text-slate-500;
+}
+
+.service-error-text {
+  @apply text-red-600 dark:text-red-400;
+}
+
+.service-title-row {
+  @apply flex flex-wrap items-center gap-3;
+}
+
+.service-title {
+  @apply flex items-center gap-3;
+}

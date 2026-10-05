@@ -1,0 +1,161 @@
+@model ManagedServiceDetailsViewModel
+@{
+    var service = Model.Service;
+    var canApply = User.HasPermission(Permissions.DeploymentExecute);
+    var detailsUrl = Url.Action("Details", new { id = service.Id });
+}
+
+<section class="panel mt-6" data-service-links>
+    <div class="panel-header">
+        <h2 class="panel-title">Bağlı projeler</h2>
+        @if (Model.CanLink)
+        {
+            <button type="button" class="btn-secondary btn-sm" data-link-open data-url="@Url.Action("LinkPreview", new { id = service.Id })" title="Bu servisin bağlantı bilgisini aynı sunucudaki bir projenin ortam değişkenlerine ekle">
+                <span class="spinner" data-spinner hidden></span>@Icons.Render("link", "h-4 w-4") Projeye bağla
+            </button>
+        }
+    </div>
+    @if (Model.Links.Count == 0)
+    {
+        <div class="empty-state"><p>Bu servis henüz bir projeye bağlı değil.</p></div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Proje</th>
+                        <th>Eklenen değişkenler</th>
+                        <th>Bağlayan</th>
+                        <th><span class="sr-only">İşlemler</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var link in Model.Links)
+                    {
+                        <tr>
+                            <td><a asp-controller="Projects" asp-action="Details" asp-route-id="@link.ProjectId" class="service-name">@link.ProjectName</a></td>
+                            <td class="font-mono text-xs">@(link.EnvironmentKeys.Count == 0 ? "—" : string.Join(", ", link.EnvironmentKeys))</td>
+                            <td class="text-sm">@(link.CreatedBy ?? "—") · <span title="@DateDisplay.Format(link.CreatedAt)">@DateDisplay.Relative(link.CreatedAt)</span></td>
+                            <td class="whitespace-nowrap text-right">
+                                @if (Model.CanLink)
+                                {
+                                    <button type="button" class="btn-ghost btn-sm" data-ajax-action
+                                            data-url="@Url.Action("Unlink", new { linkId = link.Id })"
+                                            data-confirm-title="Bağ kaldırılsın mı?"
+                                            data-confirm-message="@link.ProjectName projesinin bu servisle bağı kaldırılacak. Proje bir sonraki deploy veya yeniden başlatmada sm-services ağından çıkar (başka bağlı servis yoksa)."
+                                            data-confirm-check="Bağlarken eklenen ortam değişkenlerini de sil"
+                                            data-check-field="removeKeys"
+                                            data-confirm-label="Bağı kaldır"
+                                            data-redirect="@detailsUrl"
+                                            title="Bağı kaldır">
+                                        @Icons.Render("x", "h-4 w-4")
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (Model.CanLink)
+    {
+        <form class="panel-body service-form-stack border-t border-slate-200 dark:border-slate-800" method="post" action="@Url.Action("Link", new { id = service.Id })"
+              data-link-form hidden novalidate autocomplete="off" data-can-apply="@(canApply ? "true" : "false")">
+            <p class="alert-error" data-form-error hidden></p>
+            <div class="service-form-grid">
+                <div>
+                    <label for="link-project" class="form-label">Proje *</label>
+                    <select id="link-project" name="ProjectId" class="form-control" data-link-project></select>
+                    <p class="form-hint">Yalnızca aynı sunucudaki (Compose veya Dockerfile ile dağıtılan) projeler listelenir.</p>
+                    <span class="field-validation-valid" data-valmsg-for="ProjectId"></span>
+                </div>
+                <div class="service-form-stack">
+                    <label class="check-inline"><input type="checkbox" class="form-check" name="Overwrite" value="true" /> Projede zaten tanımlı anahtarların değerini değiştir</label>
+                    @if (canApply)
+                    {
+                        <label class="check-inline"><input type="checkbox" class="form-check" name="ApplyNow" value="true" /> Hemen uygula (projeyi build etmeden yeniden başlat)</label>
+                    }
+                </div>
+            </div>
+            <div>
+                <p class="form-label">Eklenecek ortam değişkenleri</p>
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th><span class="sr-only">Ekle</span></th>
+                                <th>Anahtar</th>
+                                <th>Değer (önizleme)</th>
+                            </tr>
+                        </thead>
+                        <tbody data-link-variables></tbody>
+                    </table>
+                </div>
+                <p class="form-hint">Değerler sunucuda servisin kayıtlı bilgisinden yazılır; parola tarayıcıya gönderilmez. Anahtar adlarını değiştirebilirsiniz. <span class="text-amber-600" data-link-conflict-hint hidden>İşaretli anahtarlar projede zaten var.</span></p>
+                <span class="field-validation-valid" data-valmsg-for="Variables"></span>
+            </div>
+            <p class="form-hint">
+                Bağlı projenin container'ları <span class="font-mono">@ManagedServiceNames.ServicesNetwork</span> ağına katılır ve servise
+                <span class="font-mono">@service.ContainerName</span> adıyla ulaşır. Değişiklik bir sonraki deploy veya "Uygula / Yeniden başlat" ile uygulanır.
+            </p>
+            <div class="flex flex-wrap gap-2">
+                <button type="submit" class="btn-primary" title="Servisi projeye bağla"><span class="spinner" data-spinner hidden></span>@Icons.Render("link", "h-4 w-4") Bağla</button>
+                <button type="button" class="btn-secondary" data-link-cancel title="Formu kapat">Vazgeç</button>
+            </div>
+        </form>
+    }
+</section>
+
+@if (Model.CanBackup)
+{
+    var askDatabase = string.IsNullOrEmpty(service.Database) && ManagedServiceBackups.EngineFor(service.TemplateKey) is { } backupEngine && BackupDatabaseEngines.RequiresDatabaseName(backupEngine);
+    <section class="panel mt-6" data-service-backups>
+        <div class="panel-header">
+            <h2 class="panel-title">Yedekleme</h2>
+            <button type="button" class="btn-secondary btn-sm" data-backup-open title="Bu veritabanı için zamanlanmış yedekleme işi oluştur">@Icons.Render("plus", "h-4 w-4") Yedek işi oluştur</button>
+        </div>
+        @if (Model.BackupJobs.Count == 0)
+        {
+            <div class="empty-state"><p>Bu servisi yedekleyen bir iş yok.</p></div>
+        }
+        else
+        {
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>İş</th>
+                            <th>Depolama</th>
+                            <th>Son çalışma</th>
+                            <th>Sonraki</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var job in Model.BackupJobs)
+                        {
+                            <tr>
+                                <td><a asp-controller="BackupJobs" asp-action="Details" asp-route-id="@job.Id" class="service-name">@job.Name</a>@(job.IsEnabled ? "" : " (kapalı)")</td>
+                                <td class="text-sm">@job.StorageName</td>
+                                <td class="text-sm">@(job.LastRunAt is { } last ? DateDisplay.Relative(last) : "—")@(job.LastRunStatus is { } status ? $" · {BackupDisplay.StatusText(status)}" : "")</td>
+                                <td class="text-sm">@(job.NextRunAt is { } next ? DateDisplay.Format(next, "dd.MM.yyyy HH:mm") : "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        <form class="panel-body border-t border-slate-200 dark:border-slate-800" method="post" action="@Url.Action("CreateBackupJob", new { id = service.Id })"
+              data-backup-form hidden novalidate autocomplete="off">
+            <p class="alert-error mb-4" data-form-error hidden></p>
+            <partial name="_BackupFields" model="new ManagedServiceBackupFieldsModel(Model.BackupStorages, askDatabase, WithToggle: false)" />
+            <div class="mt-4 flex flex-wrap gap-2">
+                <button type="submit" class="btn-primary" title="Yedekleme işini oluştur"><span class="spinner" data-spinner hidden></span> Oluştur</button>
+                <button type="button" class="btn-secondary" data-backup-cancel title="Formu kapat">Vazgeç</button>
+            </div>
+        </form>
+    </section>
+}

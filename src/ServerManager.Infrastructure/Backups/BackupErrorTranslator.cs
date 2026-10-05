@@ -32,8 +32,16 @@ public static class BackupErrorTranslator
             return "Container bulunamadı veya çalışmıyor.";
         if (Contains(stderr, "is not running"))
             return "Container çalışmıyor.";
-        if (Contains(stderr, "password authentication failed") || Contains(stderr, "Access denied for user"))
+        if (Contains(stderr, "password authentication failed") || Contains(stderr, "Access denied for user")
+            || Contains(stderr, "Login failed for user") || Contains(stderr, "Authentication failed")
+            || Contains(stderr, "NOAUTH") || Contains(stderr, "WRONGPASS"))
             return "Veritabanı kullanıcı adı veya parolası hatalı.";
+        if (Contains(stderr, "unknown option") && Contains(stderr, "config"))
+            return "Sunucudaki MongoDB araçları --config seçeneğini desteklemiyor; MongoDB Database Tools 100.3 veya üstü gerekir (parola komut satırına yazılmadığı için zorunludur).";
+        if (Contains(stderr, "cannot be overwritten") || Contains(stderr, "is being used by database"))
+            return "SQL Server veri dosyaları başka bir veritabanı tarafından kullanılıyor; .bak dosyasını indirip RESTORE ... WITH MOVE ile elle yükleyin.";
+        if (Contains(stderr, "Operating system error 5") || (Contains(stderr, "Msg 3201") && Contains(stderr, "Access is denied")))
+            return $"SQL Server {BackupCommands.SqlServerBackupDirectory} klasörüne erişemedi (izin); klasörün mssql kullanıcısına ait olduğundan emin olun.";
         if (Contains(stderr, "Unknown database") || (Contains(stderr, "database") && Contains(stderr, "does not exist")))
             return "Veritabanı bulunamadı.";
         if (Contains(stderr, "role") && Contains(stderr, "does not exist"))

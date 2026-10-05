@@ -53,6 +53,14 @@
                 @Icons.Render("refresh", "h-4 w-4") Yeniden deploy
             </button>
         }
+        @if (canExecute && deployment.CanRollback)
+        {
+            <button type="button" class="btn-secondary" data-deployment-rollback data-url="@Url.Action("Rollback", new { id = deployment.Id })"
+                    data-project="@deployment.ProjectName" data-commit="@DeploymentDisplay.ShortSha(deployment.CommitSha)"
+                    title="Projeyi bu deployment'ın sürümüne geri döndür (Dockerfile'da imaj duruyorsa build yapılmaz)">
+                @Icons.Render("refresh", "h-4 w-4") Bu sürüme geri dön
+            </button>
+        }
         <a asp-action="Log" asp-route-id="@deployment.Id" class="btn-ghost" data-deployment-log hidden="@deployment.IsRunning" title="Deployment logunu metin dosyası olarak indir">@Icons.Render("download", "h-4 w-4") Log indir</a>
     </div>
 </div>
@@ -90,6 +98,10 @@
                 <div><dt class="detail-term">Proje</dt><dd class="detail-value">@deployment.ProjectName</dd></div>
                 <div><dt class="detail-term">Sunucu</dt><dd class="detail-value">@deployment.ServerName</dd></div>
                 <div><dt class="detail-term">Tür</dt><dd class="detail-value">@DeploymentDisplay.BuildTypeText(deployment.BuildType)</dd></div>
+                @if (deployment.Kind != DeploymentKind.Deploy)
+                {
+                    <div><dt class="detail-term">İşlem</dt><dd class="detail-value" title="@DeploymentDisplay.KindHint(deployment.Kind)">@DeploymentDisplay.KindText(deployment.Kind)</dd></div>
+                }
                 <div><dt class="detail-term">Dal</dt><dd class="detail-value"><span class="tag">@deployment.Branch</span></dd></div>
                 <div>
                     <dt class="detail-term">Commit</dt>
@@ -122,7 +134,7 @@
                 <div><dt class="detail-term">Süre</dt><dd class="detail-value">@(deployment.IsRunning ? "Sürüyor" : DeploymentDisplay.Duration(deployment.StartedAt, deployment.CompletedAt))</dd></div>
                 @if (deployment.SourceDeploymentId is Guid sourceId)
                 {
-                    <div><dt class="detail-term">Kaynak</dt><dd class="detail-value"><a asp-action="Details" asp-route-id="@sourceId" class="panel-link" title="Yeniden dağıtılan önceki deployment'ı aç">Önceki deployment</a></dd></div>
+                    <div><dt class="detail-term">@(deployment.Kind == DeploymentKind.Rollback ? "Dönülen sürüm" : "Kaynak")</dt><dd class="detail-value"><a asp-action="Details" asp-route-id="@sourceId" class="panel-link" title="Kaynak alınan önceki deployment'ı aç">Önceki deployment</a></dd></div>
                 }
                 @if (!string.IsNullOrEmpty(deployment.CancelledBy))
                 {

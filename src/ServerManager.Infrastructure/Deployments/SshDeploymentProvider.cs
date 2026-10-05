@@ -116,6 +116,58 @@ public sealed class SshDeploymentProvider : IDeploymentProvider
         CancellationToken cancellationToken = default) =>
         _runner.RunAsync(context, (executor, ct) => RunAsync(executor, plan, observer, ct), cancellationToken);
 
+    public Task<ServiceResult<DeploymentRunResult>> RestartAsync(
+        RemoteExecutionContext context,
+        DeploymentPlan plan,
+        IDeploymentObserver observer,
+        CancellationToken cancellationToken = default) =>
+        _runner.RunAsync(context, (executor, ct) => RestartCoreAsync(executor, plan, observer, ct), cancellationToken);
+
+    /// <summary>
+    /// Kaynak kod ve build olmadan: .env ve compose override yeniden yazılır, container'lar mevcut imajla yeniden oluşturulur.
+    /// Compose'da <c>up -d --no-build</c> yapılandırması (ortam değişkenleri dahil) değişen servisleri yeniden oluşturur.
+    /// </summary>
+    private static async Task<ServiceResult<DeploymentRunResult>> RestartCoreAsync(
+        IRemoteCommandExecutor executor,
+        DeploymentPlan plan,
+        IDeploymentObserver observer,
+        CancellationToken cancellationToken)
+    {
+        Func<string, CancellationToken, Task> forward = (text, ct) => observer.OnOutputAsync(DeploymentConsole.NormalizeNewLines(text), ct);
+        if (plan.BuildType == DeploymentBuildType.Commands)
+            return Failed("Komutla dağıtılan projede yeniden başlatma yapılmaz; deploy edin.", null);
+
+        var ready = plan.BuildType == DeploymentBuildType.Dockerfile
+            ? await executor.ExecuteAsync(new RemoteCommand(DeploymentCommands.ImageExists(plan.Slug), ShortTimeout, Elevate: true), cancellationToken)
+            : await executor.ExecuteAsync(new RemoteCommand(DeploymentCommands.ComposeFileExists(plan), ShortTimeout, Elevate: true), cancellationToken);
+        if (!ready.IsSuccess)
+            return Failed("Sunucuda dağıtılmış bir uygulama bulunamadı; önce deploy edin.", ready.ExitCode, plan.Commit);
+
+        var env = await WriteEnvironmentAsync(executor, plan, observer, cancellationToken);
+        if (env is not null)
+            return Failed(env.Value.Reason, env.Value.ExitCode, plan.Commit);
+
+        var overrideFile = await SyncComposeOverrideAsync(executor, plan, observer, cancellationToken);
+        if (overrideFile is not null)
+            return Failed(overrideFile.Value.Reason, overrideFile.Value.ExitCode, plan.Commit);
+
+        await observer.OnStageAsync(DeploymentStage.Deploying, "Container'lar yeniden oluşturuluyor", cancellationToken);
+        if (plan.Routes.Count > 0)
+        {
+            var files = await SyncProxyFilesAsync(executor, plan, observer, cancellationToken);
+            if (files is not null)
+                return Failed(files.Value.Reason, files.Value.ExitCode, plan.Commit);
+        }
+
+        var run = plan.BuildType == DeploymentBuildType.DockerCompose
+            ? await RunDockerAsync(executor, DeploymentCommands.ComposeUp(plan, noBuild: true), "Yeniden başlatma", plan.DeployTimeout, observer, forward, cancellationToken)
+            : await ReplaceContainerAsync(executor, plan, "latest", observer, forward, cancellationToken);
+        if (run is not null)
+            return Failed(run.Value.Reason, run.Value.ExitCode, plan.Commit);
+
+        return ServiceResult<DeploymentRunResult>.Success(new DeploymentRunResult { Succeeded = true, ExitCode = 0, CommitSha = plan.Commit });
+    }
+
     private static async Task<ServiceResult<DeploymentRunResult>> RunAsync(
         IRemoteCommandExecutor executor,
         DeploymentPlan plan,
@@ -123,6 +175,15 @@ public sealed class SshDeploymentProvider : IDeploymentProvider
         CancellationToken cancellationToken)
     {
         Func<string, CancellationToken, Task> forward = (text, ct) => observer.OnOutputAsync(DeploymentConsole.NormalizeNewLines(text), ct);
+
+        if (plan.PreferExistingImage && plan.BuildType == DeploymentBuildType.Dockerfile && GitRefs.IsValidCommit(plan.Commit))
+        {
+            var exists = await executor.ExecuteAsync(new RemoteCommand(DeploymentCommands.CommitImageExists(plan.Slug, plan.Commit!), ShortTimeout, Elevate: true), cancellationToken);
+            if (RollbackPlanner.Choose(plan.BuildType, exists.IsSuccess) == RollbackStrategy.RunExistingImage)
+                return await RunExistingImageAsync(executor, plan, observer, forward, cancellationToken);
+
+            await observer.OnOutputAsync(DeploymentConsole.Info($"{GitRefs.ShortSha(plan.Commit)} imajı sunucuda yok; commit yeniden çekilip build edilecek."), cancellationToken);
+        }
 
         await observer.OnStageAsync(DeploymentStage.Source, "Kaynak kod alınıyor", cancellationToken);
         var prepare = await executor.ExecuteAsync(new RemoteCommand(DeploymentCommands.PrepareWorkspace(plan.DeployPath), ShortTimeout), cancellationToken);
@@ -158,15 +219,14 @@ public sealed class SshDeploymentProvider : IDeploymentProvider
         var by = author is null ? string.Empty : $" ({author})";
         await observer.OnOutputAsync(DeploymentConsole.Success($"Commit {GitRefs.ShortSha(sha)}: {subject}{by}"), cancellationToken);
 
-        if (plan.Environment is not null)
-        {
-            var env = await executor.ExecuteAsync(
-                new RemoteCommand(DeploymentCommands.WriteEnvironmentFile(plan.DeployPath), ShortTimeout, StandardInput: plan.Environment), cancellationToken);
-            if (!env.IsSuccess)
-                return Failed(".env dosyası yazılamadı: " + DeploymentErrorTranslator.TranslateGit(env, ShortTimeout), env.ExitCode, sha, author, subject);
+        var env = await WriteEnvironmentAsync(executor, plan, observer, cancellationToken);
+        if (env is not null)
+            return Failed(env.Value.Reason, env.Value.ExitCode, sha, author, subject);
 
-            await observer.OnOutputAsync(DeploymentConsole.Info(".env dosyası yazıldı (yalnızca SSH kullanıcısı okuyabilir)."), cancellationToken);
-        }
+        // Override build'den önce yazılır: compose build/up aynı dosya listesini kullanır.
+        var overrideFile = await SyncComposeOverrideAsync(executor, plan, observer, cancellationToken);
+        if (overrideFile is not null)
+            return Failed(overrideFile.Value.Reason, overrideFile.Value.ExitCode, sha, author, subject);
 
         await observer.OnStageAsync(DeploymentStage.Building, "Build", cancellationToken);
         var build = await BuildAsync(executor, plan, sha, observer, forward, cancellationToken);
@@ -177,6 +237,9 @@ public sealed class SshDeploymentProvider : IDeploymentProvider
         var deploy = await DeployAsync(executor, plan, sha, observer, forward, cancellationToken);
         if (deploy is not null)
             return Failed(deploy.Value.Reason, deploy.Value.ExitCode, sha, author, subject);
+
+        if (plan.BuildType == DeploymentBuildType.Dockerfile)
+            await PruneImagesAsync(executor, plan, sha, observer, cancellationToken);
 
         return ServiceResult<DeploymentRunResult>.Success(new DeploymentRunResult
         {
@@ -223,7 +286,7 @@ public sealed class SshDeploymentProvider : IDeploymentProvider
     {
         if (plan.Routes.Count > 0 && plan.BuildType is DeploymentBuildType.DockerCompose or DeploymentBuildType.Dockerfile)
         {
-            var synced = await SyncRoutingAsync(executor, plan, observer, cancellationToken);
+            var synced = await SyncProxyFilesAsync(executor, plan, observer, cancellationToken);
             if (synced is not null)
                 return synced;
         }
@@ -233,16 +296,107 @@ public sealed class SshDeploymentProvider : IDeploymentProvider
             case DeploymentBuildType.DockerCompose:
                 return await RunDockerAsync(executor, DeploymentCommands.ComposeUp(plan), "Deploy", plan.DeployTimeout, observer, forward, cancellationToken);
             case DeploymentBuildType.Dockerfile:
-                var removeCommand = DeploymentCommands.DockerRemoveContainer(plan.Slug);
-                await observer.OnOutputAsync(DeploymentConsole.Info("$ " + removeCommand), cancellationToken);
-                var remove = await executor.ExecuteAsync(new RemoteCommand(removeCommand, ShortTimeout, Elevate: true), cancellationToken);
-                if (!remove.IsSuccess && !remove.Stderr.Contains("No such container", StringComparison.OrdinalIgnoreCase))
-                    return (DeploymentErrorTranslator.TranslateDocker(remove, "Eski container'ın kaldırılması", ShortTimeout), remove.ExitCode);
-
-                return await RunDockerAsync(executor, DeploymentCommands.DockerRun(plan, sha), "Deploy", plan.DeployTimeout, observer, forward, cancellationToken);
+                return await ReplaceContainerAsync(executor, plan, sha, observer, forward, cancellationToken);
             default:
                 return await RunUserCommandAsync(executor, plan, plan.DeployCommand ?? string.Empty, "Deploy", plan.DeployTimeout, observer, forward, cancellationToken);
         }
+    }
+
+    /// <summary>Dockerfile projesinde eski container'ı kaldırıp <paramref name="imageTag"/> (kısa SHA veya latest) imajıyla yenisini çalıştırır.</summary>
+    private static async Task<(string Reason, int? ExitCode)?> ReplaceContainerAsync(
+        IRemoteCommandExecutor executor,
+        DeploymentPlan plan,
+        string imageTag,
+        IDeploymentObserver observer,
+        Func<string, CancellationToken, Task> forward,
+        CancellationToken cancellationToken)
+    {
+        var removeCommand = DeploymentCommands.DockerRemoveContainer(plan.Slug);
+        await observer.OnOutputAsync(DeploymentConsole.Info("$ " + removeCommand), cancellationToken);
+        var remove = await executor.ExecuteAsync(new RemoteCommand(removeCommand, ShortTimeout, Elevate: true), cancellationToken);
+        if (!remove.IsSuccess && !remove.Stderr.Contains("No such container", StringComparison.OrdinalIgnoreCase))
+            return (DeploymentErrorTranslator.TranslateDocker(remove, "Eski container'ın kaldırılması", ShortTimeout), remove.ExitCode);
+
+        return await RunDockerAsync(executor, DeploymentCommands.DockerRun(plan, imageTag), "Deploy", plan.DeployTimeout, observer, forward, cancellationToken);
+    }
+
+    /// <summary>Geri dönüş: commit imajı sunucuda duruyor; kaynak kod ve build atlanır, imaj latest yapılıp çalıştırılır.</summary>
+    private static async Task<ServiceResult<DeploymentRunResult>> RunExistingImageAsync(
+        IRemoteCommandExecutor executor,
+        DeploymentPlan plan,
+        IDeploymentObserver observer,
+        Func<string, CancellationToken, Task> forward,
+        CancellationToken cancellationToken)
+    {
+        var sha = plan.Commit!;
+        await observer.OnStageAsync(DeploymentStage.Source, "Kayıtlı imaj kullanılıyor", cancellationToken);
+        await observer.OnOutputAsync(DeploymentConsole.Success($"{DeploymentNames.ImageName(plan.Slug)}:{GitRefs.ShortSha(sha)} imajı sunucuda mevcut; kaynak kod çekilmeyecek ve build yapılmayacak."), cancellationToken);
+        await observer.OnCommitAsync(new DeploymentCommit(sha, null, null), cancellationToken);
+
+        var env = await WriteEnvironmentAsync(executor, plan, observer, cancellationToken);
+        if (env is not null)
+            return Failed(env.Value.Reason, env.Value.ExitCode, sha);
+
+        await observer.OnStageAsync(DeploymentStage.Deploying, "Deploy", cancellationToken);
+        var tag = await RunDockerAsync(executor, DeploymentCommands.TagCommitImageAsLatest(plan.Slug, sha), "İmaj etiketleme", ShortTimeout, observer, forward, cancellationToken);
+        if (tag is not null)
+            return Failed(tag.Value.Reason, tag.Value.ExitCode, sha);
+
+        if (plan.Routes.Count > 0)
+        {
+            var files = await SyncProxyFilesAsync(executor, plan, observer, cancellationToken);
+            if (files is not null)
+                return Failed(files.Value.Reason, files.Value.ExitCode, sha);
+        }
+
+        var run = await ReplaceContainerAsync(executor, plan, sha, observer, forward, cancellationToken);
+        if (run is not null)
+            return Failed(run.Value.Reason, run.Value.ExitCode, sha);
+
+        await PruneImagesAsync(executor, plan, sha, observer, cancellationToken);
+        return ServiceResult<DeploymentRunResult>.Success(new DeploymentRunResult { Succeeded = true, ExitCode = 0, CommitSha = sha });
+    }
+
+    /// <summary>Eski commit imajlarını siler; hata deployment'ı başarısız yapmaz.</summary>
+    private static async Task PruneImagesAsync(
+        IRemoteCommandExecutor executor,
+        DeploymentPlan plan,
+        string currentSha,
+        IDeploymentObserver observer,
+        CancellationToken cancellationToken)
+    {
+        if (plan.KeepImageCount <= 0)
+            return;
+
+        var prune = await executor.ExecuteAsync(
+            new RemoteCommand(DeploymentCommands.PruneCommitImages(plan.Slug, currentSha, plan.KeepImageCount), ShortTimeout, Elevate: true), cancellationToken);
+        if (!prune.IsSuccess)
+        {
+            await observer.OnOutputAsync(DeploymentConsole.Info("Eski imajlar temizlenemedi; deployment etkilenmedi."), cancellationToken);
+            return;
+        }
+
+        var removed = prune.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (removed.Length > 0)
+            await observer.OnOutputAsync(DeploymentConsole.Info($"Son {plan.KeepImageCount} imaj saklandı; silinen eski imajlar: {string.Join(", ", removed)}"), cancellationToken);
+    }
+
+    private static async Task<(string Reason, int? ExitCode)?> WriteEnvironmentAsync(
+        IRemoteCommandExecutor executor,
+        DeploymentPlan plan,
+        IDeploymentObserver observer,
+        CancellationToken cancellationToken)
+    {
+        if (plan.Environment is null)
+            return null;
+
+        var env = await executor.ExecuteAsync(
+            new RemoteCommand(DeploymentCommands.WriteEnvironmentFile(plan.DeployPath), ShortTimeout, StandardInput: plan.Environment), cancellationToken);
+        if (!env.IsSuccess)
+            return (".env dosyası yazılamadı: " + DeploymentErrorTranslator.TranslateGit(env, ShortTimeout), env.ExitCode);
+
+        await observer.OnOutputAsync(DeploymentConsole.Info(".env dosyası yazıldı (yalnızca SSH kullanıcısı okuyabilir)."), cancellationToken);
+        return null;
     }
 
     private static async Task<(string Reason, int? ExitCode)?> RunDockerAsync(
@@ -278,7 +432,8 @@ public sealed class SshDeploymentProvider : IDeploymentProvider
         return output.IsSuccess ? null : (DeploymentErrorTranslator.TranslateCommand(output, step, timeout), output.ExitCode);
     }
 
-    private static async Task<(string Reason, int? ExitCode)?> SyncRoutingAsync(
+    /// <summary>Traefik dinamik dosyalarını (özel sertifikalar) eşitler.</summary>
+    private static async Task<(string Reason, int? ExitCode)?> SyncProxyFilesAsync(
         IRemoteCommandExecutor executor,
         DeploymentPlan plan,
         IDeploymentObserver observer,
@@ -286,29 +441,87 @@ public sealed class SshDeploymentProvider : IDeploymentProvider
     {
         var missing = plan.BuildType == DeploymentBuildType.DockerCompose ? TraefikRoutes.FindRouteWithoutService(plan.Routes) : null;
         if (missing is not null)
-            return ($"{missing.Host} domaininde Compose servis adı yok; domaini düzenleyip servis adını girin (ör. web).", null);
+            return (MissingServiceMessage(missing), null);
 
         await observer.OnOutputAsync(DeploymentConsole.Info("Vekil dosyaları güncelleniyor."), cancellationToken);
         var files = await executor.ExecuteAsync(
             new RemoteCommand(DeploymentCommands.SyncProxyFiles(plan.Slug), ShortTimeout, Elevate: true, StandardInput: TraefikRoutes.CertificateInput(plan.Slug, plan.Routes)),
             cancellationToken);
-        if (!files.IsSuccess)
-            return (DeploymentErrorTranslator.TranslateDocker(files, "Vekil dosyaları", ShortTimeout), files.ExitCode);
+        return files.IsSuccess ? null : (DeploymentErrorTranslator.TranslateDocker(files, "Vekil dosyaları", ShortTimeout), files.ExitCode);
+    }
 
+    /// <summary>
+    /// Compose projesinde panel override'ını yazar veya (ortam değişkeni ve domain yoksa) siler. Ortam değişkeni varsa
+    /// <c>docker compose config --services</c> ile servisler okunur ve .env hepsine <c>env_file</c> olarak eklenir.
+    /// </summary>
+    private static async Task<(string Reason, int? ExitCode)?> SyncComposeOverrideAsync(
+        IRemoteCommandExecutor executor,
+        DeploymentPlan plan,
+        IDeploymentObserver observer,
+        CancellationToken cancellationToken)
+    {
         if (plan.BuildType != DeploymentBuildType.DockerCompose)
             return null;
 
-        if (plan.Routes.Count == 0)
+        var missing = TraefikRoutes.FindRouteWithoutService(plan.Routes);
+        if (missing is not null)
+            return (MissingServiceMessage(missing), null);
+
+        var hasEnvironment = plan.Environment is not null;
+        if (!ComposeOverride.IsNeeded(hasEnvironment, plan.Routes, plan.JoinServicesNetwork))
         {
             var remove = await executor.ExecuteAsync(new RemoteCommand(DeploymentCommands.RemoveOverride(plan.DeployPath), ShortTimeout, Elevate: true), cancellationToken);
-            return remove.IsSuccess ? null : (DeploymentErrorTranslator.TranslateDocker(remove, "Yönlendirme dosyası", ShortTimeout), remove.ExitCode);
+            return remove.IsSuccess ? null : (DeploymentErrorTranslator.TranslateDocker(remove, "Compose override dosyası", ShortTimeout), remove.ExitCode);
+        }
+
+        IReadOnlyList<string> services = [];
+        if (hasEnvironment || plan.JoinServicesNetwork)
+        {
+            var list = await executor.ExecuteAsync(new RemoteCommand(DeploymentCommands.ComposeServices(plan), ShortTimeout, Elevate: true), cancellationToken);
+            if (!list.IsSuccess)
+                return ("Compose servisleri okunamadı: " + DeploymentErrorTranslator.TranslateDocker(list, "Compose yapılandırması", ShortTimeout), list.ExitCode);
+
+            services = ComposeOverride.ParseServices(list.Stdout);
+            if (hasEnvironment)
+            {
+                await observer.OnOutputAsync(DeploymentConsole.Info(services.Count == 0
+                    ? "Compose dosyasında servis bulunamadı; ortam değişkenleri aktarılmadı."
+                    : $"Ortam değişkenleri (.env) tüm servislere aktarılıyor: {string.Join(", ", services)}"), cancellationToken);
+            }
+        }
+
+        if (plan.JoinServicesNetwork)
+        {
+            var network = await executor.ExecuteAsync(new RemoteCommand(DeploymentCommands.EnsureServicesNetwork(), ShortTimeout, Elevate: true), cancellationToken);
+            if (!network.IsSuccess)
+                return (DeploymentErrorTranslator.TranslateDocker(network, "Servis ağı (" + DomainNames.ServicesNetwork + ")", ShortTimeout), network.ExitCode);
+
+            await observer.OnOutputAsync(DeploymentConsole.Info(
+                $"Projeye bağlı servisler var; servisler {DomainNames.ServicesNetwork} ağına katılıyor: {string.Join(", ", services)}"), cancellationToken);
+        }
+
+        string content;
+        try
+        {
+            content = ComposeOverride.Build(
+                hasEnvironment ? services : [],
+                DeploymentCommands.EnvironmentFilePath(plan.DeployPath),
+                plan.Routes,
+                plan.JoinServicesNetwork ? services : null);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return (ex.Message, null);
         }
 
         var write = await executor.ExecuteAsync(
-            new RemoteCommand(DeploymentCommands.WriteOverride(plan.DeployPath), ShortTimeout, Elevate: true, StandardInput: TraefikRoutes.ComposeOverride(plan.Routes)),
+            new RemoteCommand(DeploymentCommands.WriteOverride(plan.DeployPath), ShortTimeout, Elevate: true, StandardInput: content),
             cancellationToken);
-        return write.IsSuccess ? null : (DeploymentErrorTranslator.TranslateDocker(write, "Yönlendirme dosyası", ShortTimeout), write.ExitCode);
+        return write.IsSuccess ? null : (DeploymentErrorTranslator.TranslateDocker(write, "Compose override dosyası", ShortTimeout), write.ExitCode);
     }
+
+    private static string MissingServiceMessage(DeploymentRoute route) =>
+        $"{route.Host} domaininde Compose servis adı yok; domaini düzenleyip servis adını girin (ör. web).";
 
     private static async Task<ServiceResult<string>> ApplyRoutingCoreAsync(
         IRemoteCommandExecutor executor,
@@ -336,7 +549,8 @@ public sealed class SshDeploymentProvider : IDeploymentProvider
             return ServiceResult<string>.Failure(DomainNames.NotReadyMessage);
 
         var observer = NullDeploymentObserver.Instance;
-        var synced = await SyncRoutingAsync(executor, plan, observer, cancellationToken);
+        var synced = await SyncProxyFilesAsync(executor, plan, observer, cancellationToken)
+                     ?? await SyncComposeOverrideAsync(executor, plan, observer, cancellationToken);
         if (synced is not null)
             return ServiceResult<string>.Failure(synced.Value.Reason);
 

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using ServerManager.Application.Common;
 using ServerManager.Application.DTOs.Terminal;
 using ServerManager.Application.Interfaces.Services;
+using ServerManager.Application.ManagedServices;
 using ServerManager.Application.Terminal;
 using ServerManager.Domain.Enums;
 using ServerManager.Web.Hubs;
@@ -54,10 +55,24 @@ public sealed class TerminalManager
     public int ActiveCount => _sessions.Count;
 
     public Task<ServiceResult<Guid>> StartServerAsync(TerminalUser user, Guid serverId, int columns, int rows, CancellationToken cancellationToken) =>
-        StartAsync(user, (service, actor, sink, ct) => service.OpenServerShellAsync(serverId, columns, rows, actor, sink, ct), cancellationToken);
+        StartAsync(user, (services, actor, sink, ct) => services.GetRequiredService<ITerminalService>().OpenServerShellAsync(serverId, columns, rows, actor, sink, ct), cancellationToken);
 
     public Task<ServiceResult<Guid>> StartContainerAsync(TerminalUser user, Guid serverId, string container, int columns, int rows, CancellationToken cancellationToken) =>
-        StartAsync(user, (service, actor, sink, ct) => service.OpenContainerShellAsync(serverId, container, columns, rows, actor, sink, ct), cancellationToken);
+        StartAsync(user, (services, actor, sink, ct) => services.GetRequiredService<ITerminalService>().OpenContainerShellAsync(serverId, container, columns, rows, actor, sink, ct), cancellationToken);
+
+    /// <summary>
+    /// Servisler › Konsol: servis container'ında şablonun istemci komutunu (psql, redis-cli …) açar. Komut sunucu tarafında
+    /// şablondan seçilir; istemciden yalnızca servis kimliği alınır.
+    /// </summary>
+    public Task<ServiceResult<Guid>> StartServiceConsoleAsync(TerminalUser user, Guid serviceId, int columns, int rows, CancellationToken cancellationToken) =>
+        StartAsync(user, async (services, actor, sink, ct) =>
+        {
+            var serviceActor = new ServiceActor(actor.UserId, actor.UserName, actor.IpAddress);
+            var result = await services.GetRequiredService<IManagedServiceService>().OpenConsoleAsync(serviceId, columns, rows, serviceActor, sink, ct);
+            if (result.IsSuccess)
+                await services.GetRequiredService<ITerminalService>().RecordSessionAsync(result.Data!, actor, ct);
+            return result;
+        }, cancellationToken);
 
     public async Task<TerminalAttachResponse> AttachAsync(TerminalUser user, Guid sessionId, int columns, int rows)
     {
@@ -216,7 +231,7 @@ public sealed class TerminalManager
 
     private async Task<ServiceResult<Guid>> StartAsync(
         TerminalUser user,
-        Func<ITerminalService, TerminalActor, TerminalSessionSink, CancellationToken, Task<ServiceResult<TerminalHandle>>> open,
+        Func<IServiceProvider, TerminalActor, TerminalSessionSink, CancellationToken, Task<ServiceResult<TerminalHandle>>> open,
         CancellationToken cancellationToken)
     {
         if (await _access.IsUserStillValidAsync(user.Principal, cancellationToken) != true)
@@ -240,8 +255,7 @@ public sealed class TerminalManager
         try
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
-            var service = scope.ServiceProvider.GetRequiredService<ITerminalService>();
-            result = await open(service, actor, sink, cancellationToken);
+            result = await open(scope.ServiceProvider, actor, sink, cancellationToken);
             if (result.IsSuccess)
                 _sessions[actor.SessionId] = registration;
         }

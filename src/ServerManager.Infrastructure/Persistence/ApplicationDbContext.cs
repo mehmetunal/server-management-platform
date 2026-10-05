@@ -84,6 +84,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     public DbSet<PanelSetting> PanelSettings => Set<PanelSetting>();
 
+    // Servisler (tek tıkla Docker servisleri)
+    public DbSet<ManagedService> ManagedServices => Set<ManagedService>();
+
+    public DbSet<ManagedServiceOperation> ManagedServiceOperations => Set<ManagedServiceOperation>();
+
+    public DbSet<ProjectServiceLink> ProjectServiceLinks => Set<ProjectServiceLink>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

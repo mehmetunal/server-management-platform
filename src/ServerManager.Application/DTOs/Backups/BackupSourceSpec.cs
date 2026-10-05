@@ -28,6 +28,18 @@ public sealed class BackupSourceSpec
 
     public int? DatabasePort { get; init; }
 
+    /// <summary>MongoDB kimlik doğrulama veritabanı (boşsa admin).</summary>
+    public string? DatabaseAuthSource { get; init; }
+
+    /// <summary>
+    /// MongoDB geri yüklemesi: yedeğin alındığı veritabanı. <see cref="DatabaseName"/> farklıysa ad alanları yeniden adlandırılır
+    /// (<c>--nsFrom/--nsTo</c>); ikisi de boşsa arşivdeki tüm veritabanları özgün adlarıyla yüklenir.
+    /// </summary>
+    public string? SourceDatabaseName { get; init; }
+
+    /// <summary>MongoDB geri yüklemesi: koleksiyonlar yüklenmeden önce silinir (<c>mongorestore --drop</c>).</summary>
+    public bool DropExisting { get; init; }
+
     /// <summary>Dosya geri yüklemesinde arşivin açılacağı klasör ("/" özgün konumlar).</summary>
     public string? TargetDirectory { get; init; }
 

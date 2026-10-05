@@ -1,0 +1,17 @@
+@use "managed-services-shared";
+
+.service-operation-view {
+  @apply space-y-6;
+}
+
+.service-operation-grid {
+  @apply grid grid-cols-1 gap-6 xl:grid-cols-3;
+}
+
+.service-operation-log {
+  @apply overflow-hidden xl:col-span-2;
+}
+
+.service-operation-result {
+  @apply m-4 space-y-1 text-sm;
+}

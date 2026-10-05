@@ -7,6 +7,7 @@ import { navigate } from '../core/navigation.js';
 import { notify } from '../core/notify.js';
 import { refreshRegions } from '../core/regions.js';
 import { createDeploymentHub } from '../features/deployments/deployment-hub.js';
+import { bindRollback } from '../features/deployments/rollback.js';
 
 const STAGES = ['Preparing', 'Source', 'Building', 'Deploying', 'Completed'];
 const STATUS_BADGES = {
@@ -137,5 +138,7 @@ on(document, 'click', '[data-deployment-redeploy]', async (event, button) => {
     });
     if (response?.data) navigate(response.data, response.message);
 });
+
+bindRollback(document);
 
 watch();

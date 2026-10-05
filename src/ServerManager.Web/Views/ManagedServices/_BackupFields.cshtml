@@ -1,0 +1,74 @@
+@model ManagedServiceBackupFieldsModel
+@{
+    var prefix = "AutoBackup.";
+}
+
+<div class="service-form-stack" data-backup-fields>
+    @if (Model.WithToggle)
+    {
+        <label class="check-inline">
+            <input type="checkbox" class="form-check" name="@(prefix)Enabled" value="true" data-backup-toggle />
+            <span>Kurulum başarılı olunca otomatik yedekleme işi oluştur</span>
+        </label>
+    }
+    <div class="service-form-grid" data-backup-body hidden="@Model.WithToggle">
+        @if (Model.Storages.Count == 0)
+        {
+            <p class="alert-warning service-form-wide">
+                Tanımlı yedek depolama hedefi yok. Önce <a asp-controller="BackupStorages" asp-action="Index" class="panel-link">Yedekleme → Depolama</a> sayfasından bir hedef ekleyin.
+            </p>
+        }
+        <div>
+            <label for="backup-storage" class="form-label">Depolama hedefi *</label>
+            <select id="backup-storage" name="@(prefix)StorageId" class="form-control">
+                <option value="">Seçin</option>
+                @foreach (var storage in Model.Storages)
+                {
+                    <option value="@storage.Id">@storage.Name (@storage.ProviderDisplayName)</option>
+                }
+            </select>
+            <span class="field-validation-valid" data-valmsg-for="@(prefix)StorageId"></span>
+        </div>
+        <div>
+            <span class="form-label">Zamanlama</span>
+            <div class="service-radio-group">
+                <label class="check-inline"><input type="radio" class="form-check" name="@(prefix)ScheduleType" value="Daily" checked data-backup-schedule /> Her gün</label>
+                <label class="check-inline"><input type="radio" class="form-check" name="@(prefix)ScheduleType" value="Hourly" data-backup-schedule /> Saat aralıklı</label>
+            </div>
+            <div class="mt-2" data-backup-daily>
+                <label for="backup-time" class="sr-only">Saat</label>
+                <input id="backup-time" type="time" name="@(prefix)ScheduleTime" class="form-control form-control-mono" value="03:00" />
+            </div>
+            <div class="mt-2" data-backup-hourly hidden>
+                <label for="backup-interval" class="sr-only">Aralık (saat)</label>
+                <input id="backup-interval" type="number" name="@(prefix)ScheduleIntervalHours" class="form-control form-control-mono" min="@BackupSchedule.MinIntervalHours" max="@BackupSchedule.MaxIntervalHours" value="6" />
+                <p class="form-hint">Kaç saatte bir yedek alınacağı.</p>
+            </div>
+            <span class="field-validation-valid" data-valmsg-for="@(prefix)ScheduleType"></span>
+        </div>
+        <div>
+            <label for="backup-keep" class="form-label">Saklanacak son yedek sayısı</label>
+            <input id="backup-keep" type="number" name="@(prefix)KeepLast" class="form-control form-control-mono" min="@BackupRetention.MinKeepLast" max="@BackupRetention.MaxKeepLast" value="7" />
+            <span class="field-validation-valid" data-valmsg-for="@(prefix)KeepLast"></span>
+        </div>
+        <div>
+            <label for="backup-passphrase" class="form-label">Şifreleme parolası (isteğe bağlı)</label>
+            <input id="backup-passphrase" type="password" name="@(prefix)EncryptionPassphrase" class="form-control form-control-mono" maxlength="256" autocomplete="new-password" spellcheck="false" />
+            <p class="form-hint">Doluysa yedek AES-256-GCM ile şifrelenir (en az 12 karakter). Parolayı kaybederseniz yedek açılamaz.</p>
+            <span class="field-validation-valid" data-valmsg-for="@(prefix)EncryptionPassphrase"></span>
+        </div>
+        @if (Model.AskDatabaseName)
+        {
+            <div>
+                <label for="backup-database" class="form-label">Yedeklenecek veritabanı *</label>
+                <input id="backup-database" name="@(prefix)DatabaseName" class="form-control form-control-mono" maxlength="128" spellcheck="false" placeholder="ör. app" />
+                <p class="form-hint">Servis bir veritabanı adı tanımlamadığı için yedeklenecek veritabanını yazın; kurulumdan sonra oluşturulmuş olmalıdır.</p>
+                <span class="field-validation-valid" data-valmsg-for="@(prefix)DatabaseName"></span>
+            </div>
+        }
+        <p class="form-hint service-form-wide">
+            Yedek, container içinde motorun kendi aracıyla (pg_dump, mysqldump, mongodump, redis RDB, SQL Server BACKUP) alınır;
+            servis parolası şifreli saklanır ve komut satırına yazılmaz. İş, Yedekleme → İşler sayfasında düzenlenebilir.
+        </p>
+    </div>
+</div>

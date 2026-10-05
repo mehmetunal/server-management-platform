@@ -15,7 +15,11 @@ export function createTerminal(root) {
     const connectButton = qs('[data-terminal-connect]', root);
     const disconnectButton = qs('[data-terminal-disconnect]', root);
     const takeoverButton = qs('[data-terminal-takeover]', root);
-    const storageKey = `terminal:container:${root.dataset.serverId}:${root.dataset.container}`;
+    // data-service-id varsa servis konsolu açılır: komut sunucuda şablondan seçilir, istemci yalnızca servis kimliğini verir.
+    const serviceId = root.dataset.serviceId;
+    const storageKey = serviceId
+        ? `terminal:service:${serviceId}`
+        : `terminal:container:${root.dataset.serverId}:${root.dataset.container}`;
 
     const hub = createTerminalHub(root.dataset.hubUrl);
     let session = null;
@@ -28,7 +32,9 @@ export function createTerminal(root) {
         hub,
         view,
         sessionId: sessionStorage.getItem(storageKey),
-        start: (columns, rows) => hub.invoke('StartContainer', root.dataset.serverId, root.dataset.container, columns, rows),
+        start: (columns, rows) => (serviceId
+            ? hub.invoke('StartServiceConsole', serviceId, columns, rows)
+            : hub.invoke('StartContainer', root.dataset.serverId, root.dataset.container, columns, rows)),
         onSession: id => (id ? sessionStorage.setItem(storageKey, id) : sessionStorage.removeItem(storageKey)),
         onStatus: (state, text) => {
             renderStatus(statusBadge, state, text);

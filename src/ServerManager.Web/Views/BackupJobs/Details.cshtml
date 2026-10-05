@@ -83,8 +83,8 @@
                     <div><dt class="detail-term">Volume</dt><dd class="detail-value font-mono">@details.VolumeName</dd></div>
                     break;
                 case BackupSourceType.Database:
-                    <div><dt class="detail-term">Veritabanı</dt><dd class="detail-value">@BackupDisplay.EngineText(details.DatabaseEngine) · <span class="font-mono">@details.DatabaseName</span></dd></div>
-                    <div><dt class="detail-term">Kullanıcı</dt><dd class="detail-value font-mono">@details.DatabaseUser @(details.HasDatabasePassword ? "(parola kayıtlı)" : string.Empty)</dd></div>
+                    <div><dt class="detail-term">Veritabanı</dt><dd class="detail-value">@BackupDisplay.EngineText(details.DatabaseEngine) · <span class="font-mono">@BackupSourceDescriber.DatabaseLabel(details.DatabaseEngine, details.DatabaseName)</span></dd></div>
+                    <div><dt class="detail-term">Kullanıcı</dt><dd class="detail-value font-mono">@(details.DatabaseUser ?? "—")@(details.DatabaseAuthSource is { } authSource ? $" (authSource: {authSource})" : string.Empty) @(details.HasDatabasePassword ? "(parola kayıtlı)" : string.Empty)</dd></div>
                     <div>
                         <dt class="detail-term">Bağlantı</dt>
                         <dd class="detail-value font-mono">

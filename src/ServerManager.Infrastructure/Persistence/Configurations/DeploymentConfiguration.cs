@@ -21,6 +21,7 @@ public class DeploymentConfiguration : IEntityTypeConfiguration<Deployment>
         builder.Property(d => d.CommitMessage).HasMaxLength(500);
         builder.Property(d => d.CommitAuthor).HasMaxLength(256);
         builder.Property(d => d.Status).HasConversion<int>();
+        builder.Property(d => d.Kind).HasConversion<int>();
         builder.Property(d => d.FailureReason).HasMaxLength(1000);
         builder.Property(d => d.Log).IsRequired();
         builder.Property(d => d.UserId).HasMaxLength(64);

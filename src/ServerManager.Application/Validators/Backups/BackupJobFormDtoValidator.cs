@@ -56,12 +56,35 @@ public sealed class BackupJobFormDtoValidator : AbstractValidator<BackupJobFormD
                 .IsInEnum().WithMessage("Veritabanı türünü seçin.");
 
             RuleFor(x => x.DatabaseName)
-                .NotEmpty().WithMessage("Veritabanı adı zorunludur.")
-                .Matches(BackupInputPatterns.DatabaseName).WithMessage("Veritabanı adı yalnızca harf, rakam, '_', '-', '.', '$' içerebilir ve '-' ile başlayamaz.");
+                .NotEmpty().When(x => BackupDatabaseEngines.RequiresDatabaseName(x.DatabaseEngine))
+                .WithMessage("Veritabanı adı zorunludur.");
+
+            RuleFor(x => x.DatabaseName)
+                .Must((dto, name) => BackupInputPatterns.IsValidDatabaseName(dto.DatabaseEngine, name))
+                .When(x => BackupDatabaseEngines.UsesDatabaseName(x.DatabaseEngine) && !string.IsNullOrEmpty(x.DatabaseName))
+                .WithMessage(x => BackupInputPatterns.DatabaseNameMessage(x.DatabaseEngine));
 
             RuleFor(x => x.DatabaseUser)
-                .NotEmpty().WithMessage("Veritabanı kullanıcısı zorunludur.")
-                .Matches(BackupInputPatterns.DatabaseUser).WithMessage("Kullanıcı adı yalnızca harf, rakam, '_', '-', '.', '@' içerebilir ve '-' ile başlayamaz.");
+                .NotEmpty().When(x => BackupDatabaseEngines.RequiresUser(x.DatabaseEngine))
+                .WithMessage("Veritabanı kullanıcısı zorunludur.");
+
+            RuleFor(x => x.DatabaseUser)
+                .NotEmpty().When(x => x.DatabaseEngine == BackupDatabaseEngine.MongoDb && HasPassword(x))
+                .WithMessage("MongoDB'de parola girildiyse kullanıcı adı da girilmelidir.");
+
+            RuleFor(x => x.DatabaseUser)
+                .Matches(BackupInputPatterns.DatabaseUser).When(x => !string.IsNullOrEmpty(x.DatabaseUser))
+                .WithMessage("Kullanıcı adı yalnızca harf, rakam, '_', '-', '.', '@' içerebilir ve '-' ile başlayamaz.");
+
+            RuleFor(x => x.DatabaseAuthSource)
+                .Matches(BackupInputPatterns.MongoDatabaseName)
+                .When(x => x.DatabaseEngine == BackupDatabaseEngine.MongoDb && !string.IsNullOrEmpty(x.DatabaseAuthSource))
+                .WithMessage("Kimlik doğrulama veritabanı yalnızca harf, rakam, '_', '-' içerebilir (genellikle admin).");
+
+            RuleFor(x => x.DatabaseHost)
+                .Must(BackupInputPatterns.IsLocalHost)
+                .When(x => BackupDatabaseEngines.RequiresLocalServer(x.DatabaseEngine) && string.IsNullOrWhiteSpace(x.ContainerName))
+                .WithMessage(x => $"{BackupSourceDescriber.EngineName(x.DatabaseEngine)} yedek dosyası veritabanı sunucusunun kendi diskinden okunur; veritabanı bu sunucuda çalışmalıdır. Adresi boş bırakın veya localhost / 127.0.0.1 girin.");
 
             RuleFor(x => x.DatabasePassword)
                 .MaximumLength(MaxDatabasePasswordLength).WithMessage($"Parola en fazla {MaxDatabasePasswordLength} karakter olabilir.")
@@ -118,6 +141,9 @@ public sealed class BackupJobFormDtoValidator : AbstractValidator<BackupJobFormD
             .InclusiveBetween(0, BackupRetention.MaxKeepDays)
             .WithMessage($"Saklama süresi 0 ile {BackupRetention.MaxKeepDays} gün arasında olmalıdır.");
     }
+
+    private static bool HasPassword(BackupJobFormDto dto) =>
+        !string.IsNullOrEmpty(dto.DatabasePassword) || (dto.HasStoredDatabasePassword && !dto.ClearDatabasePassword);
 
     public static bool TryParseTime(string? value, out int minuteOfDay)
     {

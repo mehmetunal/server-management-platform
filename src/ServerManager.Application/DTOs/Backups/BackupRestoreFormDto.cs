@@ -19,6 +19,9 @@ public sealed class BackupRestoreFormDto
 
     public BackupDatabaseEngine? DatabaseEngine { get; init; }
 
-    /// <summary>Veritabanı geri yüklemesi için iş (ve kimlik bilgisi) hâlâ kayıtlı mı.</summary>
+    /// <summary>Veritabanı geri yüklemesi için iş (ve kimlik bilgisi) hâlâ kayıtlı mı ve motor panelden geri yüklemeyi destekliyor mu.</summary>
     public bool CanRestoreDatabase { get; init; }
+
+    /// <summary>Panelden geri yüklenemeyen yedekler (ör. Redis) için elle geri yükleme yönergesi.</summary>
+    public string? ManualRestoreGuidance { get; init; }
 }

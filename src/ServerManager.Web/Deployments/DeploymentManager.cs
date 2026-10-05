@@ -22,6 +22,9 @@ public sealed class DeploymentManager : IDisposable
 
     private readonly ConcurrentDictionary<Guid, DeploymentRun> _runs = new();
     private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _projectGates = new();
+
+    /// <summary>Webhook ile gelip süren deployment yüzünden bekleyen tek takip deploy'u (proje başına).</summary>
+    private readonly ConcurrentDictionary<Guid, DeploymentActor> _followUps = new();
     private readonly CancellationTokenSource _stopping = new();
     private readonly IHubContext<DeploymentHub> _hubContext;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -51,6 +54,58 @@ public sealed class DeploymentManager : IDisposable
 
         return await StartCoreAsync(projectId, actor, (service, ct) => service.BeginRedeployAsync(deploymentId, actor, ct), cancellationToken);
     }
+
+    public async Task<ServiceResult<Guid>> RollbackAsync(Guid deploymentId, DeploymentActor actor, CancellationToken cancellationToken)
+    {
+        Guid projectId;
+        await using (var scope = _scopeFactory.CreateAsyncScope())
+        {
+            var source = await scope.ServiceProvider.GetRequiredService<IDeploymentService>().GetAsync(deploymentId, includeLog: false, cancellationToken);
+            if (!source.IsSuccess)
+                return ServiceResult<Guid>.NotFound(source.Message ?? "Deployment kaydı bulunamadı.");
+
+            projectId = source.Data!.ProjectId;
+        }
+
+        return await StartCoreAsync(projectId, actor, (service, ct) => service.BeginRollbackAsync(deploymentId, actor, ct), cancellationToken);
+    }
+
+    /// <summary>Build etmeden .env/override'ı yeniden yazar ve container'ları yeniden oluşturur (ortam değişkenlerini uygulamak için).</summary>
+    public Task<ServiceResult<Guid>> RestartAsync(Guid projectId, DeploymentActor actor, CancellationToken cancellationToken) =>
+        StartCoreAsync(projectId, actor, (service, ct) => service.BeginRestartAsync(projectId, actor, ct), cancellationToken);
+
+    /// <summary>
+    /// Webhook ile deploy. Bu örnekte projenin deployment'ı sürüyorsa yeni deployment başlatılmaz; <b>tek</b> bir takip
+    /// deployment'ı kuyruğa alınır (sonraki push'lar aynı kuyruğu günceller) ve süren deployment bitince dalın son hali
+    /// deploy edilir. Böylece art arda gelen push'lardan sonuncusu kaybolmaz ve deploy'lar üst üste binmez.
+    /// </summary>
+    public async Task<WebhookDeployOutcome> StartFromWebhookAsync(Guid projectId, string? commit, DeploymentActor actor, CancellationToken cancellationToken)
+    {
+        var result = await StartAsync(projectId, new StartDeploymentDto { CommitSha = commit }, actor, cancellationToken);
+        if (result.IsSuccess)
+            return new WebhookDeployOutcome(WebhookDeployStatus.Started, result.Data, "Deploy başlatıldı.");
+
+        if (result.ErrorType != ServiceErrorType.Conflict)
+            return new WebhookDeployOutcome(WebhookDeployStatus.Failed, null, result.Message ?? "Deployment başlatılamadı.");
+
+        if (!HasActiveRun(projectId))
+            return new WebhookDeployOutcome(WebhookDeployStatus.Conflict, null, result.Message ?? "Bu proje için süren bir deployment var.");
+
+        _followUps[projectId] = actor;
+
+        // Süren deployment bu arada bittiyse kuyruğu tüketecek kimse kalmaz; hemen başlatılır.
+        if (!HasActiveRun(projectId) && _followUps.TryRemove(projectId, out _))
+        {
+            var retry = await StartAsync(projectId, new StartDeploymentDto(), actor, cancellationToken);
+            return retry.IsSuccess
+                ? new WebhookDeployOutcome(WebhookDeployStatus.Started, retry.Data, "Deploy başlatıldı.")
+                : new WebhookDeployOutcome(WebhookDeployStatus.Failed, null, retry.Message ?? "Deployment başlatılamadı.");
+        }
+
+        return new WebhookDeployOutcome(WebhookDeployStatus.Queued, null, "Süren deployment bitince dalın son hali deploy edilecek (kuyrukta).");
+    }
+
+    private bool HasActiveRun(Guid projectId) => _runs.Values.Any(r => r.ProjectId == projectId && !r.IsCompleted);
 
     /// <summary>Bellekte izlenen deployment'ın anlık görüntüsü; bu uygulama örneğinde çalışmıyorsa null.</summary>
     public DeploymentJoinResponse? Snapshot(Guid deploymentId) =>
@@ -142,6 +197,30 @@ public sealed class DeploymentManager : IDisposable
         run.Complete(status, result.Message);
         await sink.CompletedAsync(status, result.Message);
         _ = ForgetLaterAsync(run);
+
+        if (!_stopping.IsCancellationRequested && _followUps.TryRemove(run.ProjectId, out var queuedBy))
+            _ = StartFollowUpAsync(run.ProjectId, queuedBy);
+    }
+
+    private async Task StartFollowUpAsync(Guid projectId, DeploymentActor actor)
+    {
+        try
+        {
+            var started = await StartAsync(projectId, new StartDeploymentDto(), actor, _stopping.Token);
+            var message = started.IsSuccess
+                ? "Kuyruktaki push deploy'u başlatıldı (dalın son hali)."
+                : "Kuyruktaki push deploy'u başlatılamadı: " + started.Message;
+
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<IProjectWebhookService>().RecordDeliveryAsync(projectId, started.IsSuccess, message, _stopping.Token);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Kuyruktaki webhook deploy'u başlatılamadı. ProjectId: {ProjectId}", projectId);
+        }
+        catch (OperationCanceledException)
+        {
+        }
     }
 
     private async Task ForgetLaterAsync(DeploymentRun run)

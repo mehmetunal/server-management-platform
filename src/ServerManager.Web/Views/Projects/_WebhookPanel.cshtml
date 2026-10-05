@@ -1,0 +1,106 @@
+@model WebhookPanelViewModel
+@{
+    var hook = Model.Webhook;
+}
+
+<div class="panel-body space-y-5">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <p class="font-medium">
+                @if (hook.AutoDeployOnPush)
+                {
+                    <span class="badge-success"><span class="badge-dot"></span>Açık</span>
+                }
+                else
+                {
+                    <span class="badge-neutral"><span class="badge-dot"></span>Kapalı</span>
+                }
+            </p>
+            <p class="form-hint mt-1">Açıkken yalnızca <span class="tag">@hook.Branch</span> dalına gelen push'lar deploy edilir; diğer dallar ve olaylar yok sayılır.</p>
+        </div>
+        @if (Model.CanManage)
+        {
+            <div class="flex flex-wrap gap-2">
+                @if (hook.AutoDeployOnPush)
+                {
+                    <button type="button" class="btn-secondary btn-sm" data-webhook-toggle data-enabled="false" title="Push ile otomatik deploy'u kapat">@Icons.Render("stop", "h-4 w-4") Kapat</button>
+                }
+                else
+                {
+                    <button type="button" class="btn-primary btn-sm" data-webhook-toggle data-enabled="true" title="Push ile otomatik deploy'u aç; ilk açılışta gizli anahtar üretilir">@Icons.Render("bolt", "h-4 w-4") Aç</button>
+                }
+                @if (hook.HasSecret)
+                {
+                    <button type="button" class="btn-secondary btn-sm" data-webhook-regenerate title="Yeni gizli anahtar üret; eskisiyle imzalanan istekler reddedilir">@Icons.Render("refresh", "h-4 w-4") Anahtarı yenile</button>
+                }
+            </div>
+        }
+    </div>
+
+    <div>
+        <p class="form-label">Webhook adresi</p>
+        <div class="webhook-url">
+            <input class="form-control font-mono text-xs" value="@Model.Url" readonly aria-label="Webhook adresi" data-webhook-url />
+            <button type="button" class="btn-secondary btn-sm" data-copy-text="@Model.Url" title="Adresi panoya kopyala">@Icons.Render("copy", "h-4 w-4")</button>
+        </div>
+    </div>
+
+    <div>
+        <p class="form-label">Gizli anahtar</p>
+        <div data-webhook-secret-box hidden>
+            <div class="alert-warning mb-2">Bu anahtar yalnızca şimdi gösterilir. Git sağlayıcısındaki webhook ayarına yapıştırın.</div>
+            <div class="webhook-url">
+                <code class="webhook-secret flex-1" data-webhook-secret></code>
+                <button type="button" class="btn-secondary btn-sm" data-webhook-secret-copy title="Anahtarı panoya kopyala">@Icons.Render("copy", "h-4 w-4")</button>
+            </div>
+        </div>
+        <p class="text-sm text-slate-600 dark:text-slate-300" data-webhook-secret-state>
+            @(hook.HasSecret ? "Kayıtlı (şifreli saklanır, tekrar gösterilmez). Kaybettiyseniz yenileyin." : "Henüz üretilmedi; otomatik deploy açıldığında üretilir.")
+        </p>
+    </div>
+
+    <div>
+        <p class="form-label">Son teslimat</p>
+        @if (hook.LastDeliveryAt is null)
+        {
+            <p class="text-sm text-slate-500 dark:text-slate-400">Henüz istek gelmedi.</p>
+        }
+        else
+        {
+            <p class="text-sm">
+                <span class="@(hook.LastDeliverySucceeded == true ? "badge-success" : "badge-danger")"><span class="badge-dot"></span>@(hook.LastDeliverySucceeded == true ? "Başarılı" : "Başarısız")</span>
+                <span class="ml-2 text-slate-500" title="@DateDisplay.Format(hook.LastDeliveryAt, "dd.MM.yyyy HH:mm:ss")">@DateDisplay.Relative(hook.LastDeliveryAt.Value)</span>
+            </p>
+            <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">@hook.LastDeliveryMessage</p>
+        }
+    </div>
+
+    <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <div>
+            <p class="form-label">GitHub</p>
+            <ol class="webhook-steps">
+                <li>Depo → <b>Settings → Webhooks → Add webhook</b></li>
+                <li><b>Payload URL</b>: yukarıdaki adres</li>
+                <li><b>Content type</b>: <span class="font-mono">application/json</span></li>
+                <li><b>Secret</b>: gizli anahtar</li>
+                <li><b>Just the push event</b> seçip kaydedin; GitHub'ın gönderdiği ping burada "Ping alındı" olarak görünür.</li>
+            </ol>
+        </div>
+        <div>
+            <p class="form-label">GitLab</p>
+            <ol class="webhook-steps">
+                <li>Proje → <b>Settings → Webhooks → Add new webhook</b></li>
+                <li><b>URL</b>: yukarıdaki adres</li>
+                <li><b>Secret token</b>: gizli anahtar</li>
+                <li><b>Trigger</b>: yalnızca <b>Push events</b> (isterseniz dal filtresi: <span class="font-mono">@hook.Branch</span>)</li>
+                <li>Kaydedip <b>Test → Push events</b> ile deneyin.</li>
+            </ol>
+        </div>
+    </div>
+
+    <p class="form-hint">
+        İstek GitHub'da <span class="font-mono">X-Hub-Signature-256</span> (HMAC-SHA256), GitLab'da <span class="font-mono">X-Gitlab-Token</span> ile doğrulanır.
+        Push geldiğinde bu projede süren bir deployment varsa yeni deploy başlatılmaz; tek bir takip deploy'u kuyruğa alınır ve süren deployment bitince
+        dalın son hali deploy edilir. Deployment geçmişinde başlatan "webhook" olarak görünür.
+    </p>
+</div>

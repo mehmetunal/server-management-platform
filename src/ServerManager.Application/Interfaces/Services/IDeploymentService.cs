@@ -17,6 +17,18 @@ public interface IDeploymentService
     /// <summary>Daha önceki bir deployment'ın commit'ini yeniden dağıtmak için yeni kayıt açar.</summary>
     Task<ServiceResult<Guid>> BeginRedeployAsync(Guid deploymentId, DeploymentActor actor, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Önceki başarılı bir deployment'ın sürümüne geri dönmek için yeni kayıt (<c>Kind = Rollback</c>) açar. Dockerfile
+    /// projesinde o commit'in imajı sunucuda duruyorsa build yapılmaz; yoksa commit yeniden çekilip build edilir.
+    /// </summary>
+    Task<ServiceResult<Guid>> BeginRollbackAsync(Guid deploymentId, DeploymentActor actor, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Ortam değişkenlerini uygulamak için build etmeden yeniden başlatma kaydı (<c>Kind = Restart</c>) açar; çalışan
+    /// sürüm (son başarılı deployment) değişmez.
+    /// </summary>
+    Task<ServiceResult<Guid>> BeginRestartAsync(Guid projectId, DeploymentActor actor, CancellationToken cancellationToken = default);
+
     Task<ServiceResult> RunAsync(Guid deploymentId, DeploymentActor actor, IDeploymentObserver observer, DeploymentCancellation cancellation);
 
     Task<int> InterruptRunningAsync(CancellationToken cancellationToken = default);

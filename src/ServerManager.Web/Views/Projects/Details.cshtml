@@ -6,6 +6,8 @@
     var canManage = User.HasPermission(Permissions.DeploymentManage);
     var canExecute = User.HasPermission(Permissions.DeploymentExecute);
     var listUrl = Url.Action("Index", "Deployments", new { projectId = project.Id, pageSize = 10, embedded = "project" });
+    var canLogs = User.HasPermission(Permissions.DockerView) && project.BuildType != DeploymentBuildType.Commands;
+    var envModel = Model.Environment;
 }
 
 <div class="page-header">
@@ -43,9 +45,20 @@
 
 @if (project.EnvironmentUnreadable)
 {
-    <div class="alert-warning mb-6">Kayıtlı ortam değişkenleri veya erişim anahtarı çözülemedi (şifreleme anahtarı değişmiş olabilir). Projeyi düzenleyip yeniden girin.</div>
+    <div class="alert-warning mb-6">Kayıtlı ortam değişkenleri çözülemedi (şifreleme anahtarı değişmiş olabilir). Ortam değişkenleri sekmesinden yeniden girin.</div>
 }
 
+<nav class="tab-list mb-6" aria-label="Proje sekmeleri" data-tabs>
+    <button type="button" class="tab is-active" data-tab="overview" title="Kaynak, build, domainler ve deployment geçmişi">Genel</button>
+    <button type="button" class="tab" data-tab="environment" title="Ortam değişkenlerini yönet (.env)">Ortam değişkenleri</button>
+    @if (canLogs)
+    {
+        <button type="button" class="tab" data-tab="logs" title="Projenin container loglarını izle (docker logs)">Çalışma logları</button>
+    }
+    <button type="button" class="tab" data-tab="webhook" title="Push ile otomatik deploy (webhook)">Otomatik deploy</button>
+</nav>
+
+<div data-tab-panel="overview">
 <div class="project-details-grid">
     <div class="project-details-main">
         <section class="panel">
@@ -221,7 +234,10 @@
         }
 
         <section class="panel">
-            <div class="panel-header"><h2 class="panel-title">Ortam değişkenleri</h2></div>
+            <div class="panel-header">
+                <h2 class="panel-title">Ortam değişkenleri</h2>
+                <button type="button" class="btn-ghost btn-sm" data-open-tab="environment" title="Ortam değişkenleri sekmesini aç">@Icons.Render("key", "h-4 w-4") Yönet</button>
+            </div>
             <div class="panel-body">
                 @if (project.EnvironmentKeys.Count > 0)
                 {
@@ -231,7 +247,7 @@
                             <span class="tag">@key</span>
                         }
                     </div>
-                    <p class="form-hint mt-3">Değerler şifreli saklanır ve gösterilmez.</p>
+                    <p class="form-hint mt-3">Değerler şifreli saklanır; yetkiniz varsa sekmeden tek tek görebilirsiniz.</p>
                 }
                 else
                 {
@@ -259,3 +275,156 @@
         <partial name="~/Views/Deployments/_DeploymentList.cshtml" model="Model.Deployments" />
     </div>
 </section>
+</div>
+
+<div data-tab-panel="environment" hidden>
+    <partial name="_LinkedServices" model="Model" />
+    <section class="panel" data-env
+             data-panel-url="@Url.Action("Panel", "ProjectEnvironment", new { id = project.Id })"
+             data-reveal-url="@Url.Action("Reveal", "ProjectEnvironment", new { id = project.Id })"
+             data-delete-url="@Url.Action("Delete", "ProjectEnvironment", new { id = project.Id })">
+        <div class="panel-header">
+            <h2 class="panel-title">Ortam değişkenleri</h2>
+            <div class="flex flex-wrap gap-2">
+                @if (envModel.CanManage)
+                {
+                    <button type="button" class="btn-primary btn-sm" data-env-add title="Yeni ortam değişkeni ekle">@Icons.Render("plus", "h-4 w-4") Değişken ekle</button>
+                    <button type="button" class="btn-secondary btn-sm" data-env-import-open title=".env içeriği yapıştırın veya dosya yükleyin">@Icons.Render("upload", "h-4 w-4") İçe aktar</button>
+                }
+                @if (envModel.CanReveal)
+                {
+                    <a href="@Url.Action("Export", "ProjectEnvironment", new { id = project.Id })" class="btn-secondary btn-sm" data-env-export title="Tüm değişkenleri .env dosyası olarak indir (denetim kaydına yazılır)">@Icons.Render("download", "h-4 w-4") .env indir</a>
+                }
+                @if (envModel.CanApply && project.BuildType != DeploymentBuildType.Commands)
+                {
+                    <button type="button" class="btn-secondary btn-sm"
+                            data-ajax-action data-url="@Url.Action("Restart", "ProjectRuntime", new { id = project.Id })"
+                            data-confirm-title="Değişiklikler uygulansın mı?"
+                            data-confirm-message="Kaynak kod çekilmeden ve build yapılmadan .env yeniden yazılır ve container'lar mevcut imajla yeniden oluşturulur. Kısa bir kesinti olabilir."
+                            data-confirm-label="Uygula ve yeniden başlat"
+                            data-confirm-tone="neutral"
+                            data-redirect
+                            title="Ortam değişkenlerini sunucuya yaz ve container'ları build etmeden yeniden oluştur">
+                        @Icons.Render("refresh", "h-4 w-4") Uygula / Yeniden başlat
+                    </button>
+                }
+            </div>
+        </div>
+        <div class="panel-body space-y-4 border-b border-slate-200 dark:border-slate-800">
+            <p class="form-hint">
+                Değişiklikler kaydedilir ancak çalışan uygulamaya hemen yansımaz: bir sonraki deploy'da veya "Uygula / Yeniden başlat" ile proje klasörüne
+                <span class="font-mono">.env</span> olarak yazılır (yalnızca SSH kullanıcısı okuyabilir).
+                @if (project.BuildType == DeploymentBuildType.DockerCompose)
+                {
+                    <text>Compose projesinde <span class="font-mono">.env</span> tüm servislere <span class="font-mono">env_file</span> olarak aktarılır; servisin kendi <span class="font-mono">environment:</span> değerleri önceliklidir.</text>
+                }
+                else if (project.BuildType == DeploymentBuildType.Dockerfile)
+                {
+                    <text>Container <span class="font-mono">--env-file</span> ile başlatılır.</text>
+                }
+            </p>
+
+            @if (envModel.CanManage)
+            {
+                <form class="space-y-4" data-env-form hidden action="@Url.Action("Save", "ProjectEnvironment", new { id = project.Id })" novalidate autocomplete="off">
+                    <input type="hidden" name="IsNew" value="true" />
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div>
+                            <label class="form-label" for="env-key">Anahtar *</label>
+                            <input id="env-key" name="Key" class="form-control font-mono" placeholder="DATABASE_URL" maxlength="200" spellcheck="false" autocomplete="off" />
+                            <span class="field-validation-error" data-valmsg-for="Key"></span>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="form-label" for="env-value">Değer</label>
+                            <input id="env-value" name="Value" class="form-control font-mono" maxlength="32768" spellcheck="false" autocomplete="off" />
+                            <p class="form-hint" data-env-value-hint hidden>Kayıtlı değer gösterilmez; yeni değeri girin.</p>
+                            <span class="field-validation-error" data-valmsg-for="Value"></span>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="submit" class="btn-primary" title="Değişkeni kaydet"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+                        <button type="button" class="btn-secondary" data-env-cancel title="Formu kapat">Vazgeç</button>
+                    </div>
+                </form>
+
+                <form class="space-y-4" data-env-import hidden action="@Url.Action("Import", "ProjectEnvironment", new { id = project.Id })" novalidate autocomplete="off">
+                    <div>
+                        <label class="form-label" for="env-import-content">.env içeriği</label>
+                        <textarea id="env-import-content" name="Content" class="form-control env-import" rows="8" spellcheck="false" placeholder="DATABASE_URL=postgres://...&#10;API_KEY=..."></textarea>
+                        <span class="field-validation-error" data-valmsg-for="Content"></span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-4">
+                        <label class="check-inline"><input type="file" accept=".env,text/plain" data-env-import-file class="text-sm" /> </label>
+                        <label class="check-inline"><input type="radio" name="Mode" value="@((int)EnvironmentImportMode.AddMissing)" class="form-check" checked /> Yalnızca yenileri ekle</label>
+                        <label class="check-inline"><input type="radio" name="Mode" value="@((int)EnvironmentImportMode.Overwrite)" class="form-check" /> Var olanların değerini değiştir</label>
+                        <label class="check-inline"><input type="radio" name="Mode" value="@((int)EnvironmentImportMode.Replace)" class="form-check" /> Tümünü değiştir</label>
+                    </div>
+                    <p class="form-hint">Biçim: her satırda <span class="font-mono">ANAHTAR=değer</span>; boş satırlar ve <span class="font-mono">#</span> yorumları kabul edilir. "Tümünü değiştir" listede olmayan değişkenleri siler.</p>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="submit" class="btn-primary" title="İçe aktar"><span class="spinner" data-spinner hidden></span> İçe aktar</button>
+                        <button type="button" class="btn-secondary" data-env-import-cancel title="Formu kapat">Vazgeç</button>
+                    </div>
+                </form>
+            }
+        </div>
+        <div data-env-table>
+            <partial name="_EnvironmentTable" model="envModel" />
+        </div>
+    </section>
+</div>
+
+@if (canLogs)
+{
+    <div data-tab-panel="logs" hidden>
+        <section class="panel" data-project-logs
+                 data-containers-url="@Url.Action("Containers", "ProjectRuntime", new { id = project.Id })"
+                 data-logs-url="@Url.Action("Logs", "ProjectRuntime", new { id = project.Id })"
+                 data-url="" data-container="@project.Slug">
+            <div class="log-toolbar">
+                <label class="log-tail">
+                    <span class="text-slate-500">Container</span>
+                    <select class="form-control log-container-select" data-logs-container aria-label="Container"><option value="">Yükleniyor…</option></select>
+                </label>
+                <label class="log-tail">
+                    <span class="text-slate-500">Son</span>
+                    <select class="form-control log-tail-select" data-logs-tail aria-label="Satır sayısı">
+                        <option value="100">100</option>
+                        <option value="200" selected>200</option>
+                        <option value="500">500</option>
+                        <option value="1000">1000</option>
+                        <option value="5000">5000</option>
+                    </select>
+                    <span class="text-slate-500">satır</span>
+                </label>
+                <div class="search-field">
+                    <span class="search-field-icon">@Icons.Render("search", "h-4 w-4")</span>
+                    <input type="search" class="form-control log-search" placeholder="Loglarda ara…" data-logs-search aria-label="Loglarda ara" />
+                </div>
+                <label class="check-inline" title="error, fatal, panic, exception veya warn geçen satırlar"><input type="checkbox" class="form-check" data-logs-problems /> Yalnızca hata/uyarı</label>
+                <label class="check-inline"><input type="checkbox" class="form-check" data-logs-errors /> Yalnızca stderr</label>
+                <label class="check-inline"><input type="checkbox" class="form-check" data-logs-wrap checked /> Satır kaydır</label>
+                <label class="check-inline"><input type="checkbox" class="form-check" data-logs-follow /> Canlı takip</label>
+                <div class="log-toolbar-end">
+                    <span class="text-xs text-slate-400" data-logs-status></span>
+                    <button type="button" class="btn-secondary btn-sm" data-logs-reload title="Logları yeniden çek">@Icons.Render("refresh", "h-4 w-4") Yenile</button>
+                    <button type="button" class="btn-secondary btn-sm" data-logs-download title="Görüntülenen logları dosya olarak indir">@Icons.Render("download", "h-4 w-4") İndir</button>
+                </div>
+            </div>
+            <div class="log-output" data-logs-output>
+                <p class="log-empty">Container seçin.</p>
+            </div>
+        </section>
+    </div>
+}
+
+<div data-tab-panel="webhook" hidden>
+    <section class="panel" data-webhook
+             data-panel-url="@Url.Action("Panel", "ProjectWebhook", new { id = project.Id })"
+             data-toggle-url="@Url.Action("Toggle", "ProjectWebhook", new { id = project.Id })"
+             data-regenerate-url="@Url.Action("Regenerate", "ProjectWebhook", new { id = project.Id })">
+        <div class="panel-header"><h2 class="panel-title">Push ile otomatik deploy</h2></div>
+        <div data-webhook-body>
+            <partial name="_WebhookPanel" model="Model.Webhook" />
+        </div>
+    </section>
+</div>

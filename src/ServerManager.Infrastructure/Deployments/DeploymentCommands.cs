@@ -84,14 +84,38 @@ public static class DeploymentCommands
 
     public static string DockerRemoveContainer(string slug) => $"docker rm -f {DeploymentNames.ContainerName(slug)}";
 
+    /// <summary>
+    /// Container'ı çalıştırır. Rota varsa sm-proxy ağıyla başlar. Projeye bağlı servis varsa (<see cref="DeploymentPlan.JoinServicesNetwork"/>)
+    /// komut <c>sh -c</c> betiğine dönüşür: sm-services ağı yoksa oluşturulur, container bu ağla başlatılır veya (sm-proxy ile
+    /// başladıysa) <c>docker network connect</c> ile ağa eklenir.
+    /// </summary>
     public static string DockerRun(DeploymentPlan plan, string commitSha)
     {
         var ports = string.Concat(plan.PortMappings.Select(p => " -p " + ShellQuote.Quote(p)));
         var envFile = plan.Environment is null ? string.Empty : " --env-file " + ShellQuote.Quote(DeployPaths.Combine(plan.DeployPath, ".env"));
-        var network = plan.Routes.Count == 0 ? string.Empty : " --network " + DomainNames.ProxyNetwork;
+        var firstNetwork = plan.Routes.Count > 0 ? DomainNames.ProxyNetwork : plan.JoinServicesNetwork ? DomainNames.ServicesNetwork : null;
+        var network = firstNetwork is null ? string.Empty : " --network " + ShellQuote.Quote(firstNetwork);
         var labels = string.Concat(plan.Routes.SelectMany(TraefikRoutes.Labels).Distinct().Select(label => " --label " + ShellQuote.Quote(label)));
-        return $"docker run -d --name {DeploymentNames.ContainerName(plan.Slug)} --restart unless-stopped --label sm.project={plan.Slug}" +
-               $"{network}{labels}{ports}{envFile} {DeploymentNames.ImageName(plan.Slug)}:{GitRefs.ShortSha(commitSha)}";
+        var container = DeploymentNames.ContainerName(plan.Slug);
+        var run = $"docker run -d --name {container} --restart unless-stopped --label sm.project={plan.Slug}" +
+                  $"{network}{labels}{ports}{envFile} {DeploymentNames.ImageName(plan.Slug)}:{GitRefs.ShortSha(commitSha)}";
+        if (!plan.JoinServicesNetwork)
+            return run;
+
+        var script = "set -e\n" + EnsureNetworkLine(DomainNames.ServicesNetwork) + run + "\n";
+        if (firstNetwork != DomainNames.ServicesNetwork)
+            script += $"docker network connect {ShellQuote.Quote(DomainNames.ServicesNetwork)} {ShellQuote.Quote(container)}\n";
+
+        return Shell(script);
+    }
+
+    /// <summary>Servis ağı (sm-services) yoksa oluşturur; varsa dokunmaz (idempotent).</summary>
+    public static string EnsureServicesNetwork() => Shell("set -e\n" + EnsureNetworkLine(DomainNames.ServicesNetwork));
+
+    private static string EnsureNetworkLine(string network)
+    {
+        var quoted = ShellQuote.Quote(network);
+        return $"docker network inspect {quoted} >/dev/null 2>&1 || docker network create --label sm.managed=true {quoted} >/dev/null\n";
     }
 
     /// <summary>Kullanıcı komutu proje klasöründe <c>set -e</c> ile çalışır; satırlardan biri hata verirse adım başarısız olur.</summary>
@@ -100,6 +124,39 @@ public static class DeploymentCommands
 
     public static string ImageExists(string slug) =>
         "docker image inspect " + DeploymentNames.ImageName(slug) + ":latest";
+
+    /// <summary>Commit imajı (<c>sm-&lt;slug&gt;:&lt;kısa-sha&gt;</c>) sunucuda duruyor mu; yoksa sıfırdan farklı kodla çıkar.</summary>
+    public static string CommitImageExists(string slug, string commitSha) =>
+        "docker image inspect " + DeploymentNames.ImageName(slug) + ":" + GitRefs.ShortSha(commitSha) + " >/dev/null";
+
+    /// <summary>Geri dönülen commit imajını <c>latest</c> yapar; yönlendirme ve yeniden başlatma <c>latest</c>'i çalıştırır.</summary>
+    public static string TagCommitImageAsLatest(string slug, string commitSha)
+    {
+        var image = DeploymentNames.ImageName(slug);
+        return $"docker tag {image}:{GitRefs.ShortSha(commitSha)} {image}:latest";
+    }
+
+    /// <summary>
+    /// Projenin commit imajlarından en yeni <paramref name="keep"/> tanesini (çalışan <paramref name="currentSha"/> her zaman) bırakır,
+    /// eskileri siler. <c>latest</c> etiketine dokunulmaz; kullanımda olan imaj silinemezse atlanır. Silinen etiketler stdout'a yazılır.
+    /// </summary>
+    public static string PruneCommitImages(string slug, string currentSha, int keep) =>
+        Shell(
+            "set -u\n" +
+            $"image={ShellQuote.Quote(DeploymentNames.ImageName(slug))}\n" +
+            $"current={ShellQuote.Quote(GitRefs.ShortSha(currentSha))}\n" +
+            "n=0\n" +
+            "docker images --format '{{.Tag}}' \"$image\" | while read -r tag; do\n" +
+            "  case \"$tag\" in latest|'<none>'|'') continue ;; esac\n" +
+            "  n=$((n+1))\n" +
+            "  [ \"$tag\" = \"$current\" ] && continue\n" +
+            $"  [ \"$n\" -le {Math.Max(1, keep).ToString(System.Globalization.CultureInfo.InvariantCulture)} ] && continue\n" +
+            "  if docker rmi \"$image:$tag\" >/dev/null 2>&1; then echo \"$tag\"; fi\n" +
+            "done\n");
+
+    /// <summary>Compose dosyasındaki servis adları (override olmadan; override'da yalnızca panelin eklediği alanlar vardır).</summary>
+    public static string ComposeServices(DeploymentPlan plan) =>
+        ComposeBase(plan, includeOverride: false) + " config --services";
 
     public static string ComposeFileExists(DeploymentPlan plan) =>
         Shell("test -f " + ShellQuote.Quote(DeployPaths.Combine(plan.DeployPath, plan.ComposeFile)));
@@ -245,15 +302,25 @@ public static class DeploymentCommands
             "echo SM_PROXY=installed\n");
     }
 
-    private static string Compose(DeploymentPlan plan)
+    /// <summary>
+    /// Override dosyası ortam değişkeni kaydı (env_file), domain (Traefik) veya bağlı servis (sm-services ağı) varsa eklenir; deploy bu durumda dosyayı
+    /// build'den önce yazar (bkz. <see cref="ComposeOverride"/>).
+    /// </summary>
+    private static string Compose(DeploymentPlan plan) =>
+        ComposeBase(plan, ComposeOverride.IsNeeded(plan.Environment is not null, plan.Routes, plan.JoinServicesNetwork));
+
+    private static string ComposeBase(DeploymentPlan plan, bool includeOverride)
     {
         var files = "-f " + ShellQuote.Quote(DeployPaths.Combine(plan.DeployPath, plan.ComposeFile));
-        if (plan.Routes.Count > 0)
+        if (includeOverride)
             files += " -f " + ShellQuote.Quote(DeployPaths.Combine(plan.DeployPath, DomainNames.OverrideFileName));
 
         return $"docker compose --progress plain --project-name {DeploymentNames.ComposeProjectName(plan.Slug)} " +
                $"--project-directory {ShellQuote.Quote(plan.DeployPath)} {files}";
     }
+
+    /// <summary>Compose override'ındaki <c>env_file</c> için .env'nin mutlak yolu.</summary>
+    public static string EnvironmentFilePath(string deployPath) => DeployPaths.Combine(deployPath, ComposeOverride.EnvironmentFileName);
 
     private static string Credentials(GitSource source) =>
         string.IsNullOrEmpty(source.AccessToken) ? string.Empty : ReadToken;
