@@ -64,6 +64,25 @@ public class TraefikRoutesTests
     }
 
     [Fact]
+    public void Compose_override_keeps_the_service_on_the_default_network()
+    {
+        var yaml = TraefikRoutes.ComposeOverride([Route(DeploymentTlsMode.Cloudflare)]);
+
+        Assert.Contains("    networks:\n      - default\n      - " + DomainNames.ProxyNetwork + "\n", yaml, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void Compose_override_never_writes_an_empty_service_key(string? service)
+    {
+        var routes = new[] { Route(DeploymentTlsMode.Cloudflare, service: service) };
+
+        Assert.NotNull(TraefikRoutes.FindRouteWithoutService(routes));
+        Assert.Throws<InvalidOperationException>(() => TraefikRoutes.ComposeOverride(routes));
+    }
+
+    [Fact]
     public void Certificate_input_carries_the_key_and_the_shell_command_does_not()
     {
         var route = Route(DeploymentTlsMode.Custom);

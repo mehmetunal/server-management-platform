@@ -85,6 +85,24 @@ public class BackupJobFormDtoValidatorTests
         Assert.True(HasError(dto, nameof(BackupJobFormDto.VolumeName)));
     }
 
+    [Theory]
+    [InlineData("a\nb", true)]
+    [InlineData("a\rb", true)]
+    [InlineData("a\0b", true)]
+    [InlineData("p@ss w'rd\t$x", false)]
+    public void Database_password_rejects_line_breaks_and_nul(string password, bool expectedError)
+    {
+        var dto = Valid();
+        dto.SourceType = BackupSourceType.Database;
+        dto.DatabaseEngine = BackupDatabaseEngine.PostgreSql;
+        dto.DatabaseName = "shop";
+        dto.DatabaseUser = "shop_user";
+        dto.ContainerName = "app-db";
+        dto.DatabasePassword = password;
+
+        Assert.Equal(expectedError, HasError(dto, nameof(BackupJobFormDto.DatabasePassword)));
+    }
+
     [Fact]
     public void Database_job_validates_names_and_password()
     {
@@ -98,7 +116,7 @@ public class BackupJobFormDtoValidatorTests
 
         dto.DatabaseName = "--help";
         dto.DatabaseUser = "-u";
-        dto.DatabasePassword = "a\nb";
+        dto.DatabasePassword = "a\0b";
         dto.DatabasePort = 70000;
         Assert.True(HasError(dto, nameof(BackupJobFormDto.DatabaseName)));
         Assert.True(HasError(dto, nameof(BackupJobFormDto.DatabaseUser)));

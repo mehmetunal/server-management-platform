@@ -53,7 +53,11 @@ public interface IAlertRepository
 
     Task<IReadOnlyList<AlertServerSnapshot>> GetServerSnapshotsAsync(CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<MetricSample>> GetMetricSamplesAsync(DateTime since, CancellationToken cancellationToken = default);
+    /// <summary>Verilen andan bu yana ham örnekler; <paramref name="serverIds"/> null ise tüm sunucular.</summary>
+    Task<IReadOnlyList<MetricSample>> GetMetricSamplesAsync(DateTime since, IReadOnlyCollection<Guid>? serverIds, CancellationToken cancellationToken = default);
+
+    /// <summary>Verilen andan bu yana sunucu başına ham metrik özeti (en küçük, ortalama, ilk örnek zamanı); satırlar taşınmaz.</summary>
+    Task<IReadOnlyList<MetricWindowStats>> GetMetricWindowStatsAsync(DateTime since, IReadOnlyCollection<Guid>? serverIds, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<AlertUptimeSnapshot>> GetUptimeSnapshotsAsync(CancellationToken cancellationToken = default);
 

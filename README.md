@@ -370,11 +370,7 @@ Container dosya sistemi panel üzerinden yönetilebilmelidir.
 
 ### Editor
 
-Web tabanlı kod editörü kullanılabilir.
-
-Örneğin:
-
-- Monaco Editor
+Web tabanlı kod editörü olarak **CodeMirror 5** kullanılır (`wwwroot/lib/codemirror`, yerelden sunulur).
 
 Destek:
 
@@ -750,7 +746,9 @@ Merkezi log ekranı:
 
 ---
 
-# 27. Nginx Yönetimi
+# 27. Nginx Yönetimi (planlanan)
+
+> **Durum: planlanan.** Bu modül henüz uygulanmadı; aşağıdaki metin hedef tanımıdır.
 
 İleri seviye modül:
 
@@ -919,7 +917,9 @@ tutulabilir.
 
 ---
 
-# 34. Port Scanner / Port Management
+# 34. Port Scanner / Port Management (planlanan)
+
+> **Durum: planlanan.** Bu modül henüz uygulanmadı; aşağıdaki metin hedef tanımıdır.
 
 Sunucunun açık portları görüntülenebilir.
 
@@ -1327,11 +1327,12 @@ SSH / Docker / Linux / Database
 ### Frontend
 
 - ASP.NET Core MVC / Razor
-- TailwindCSS
-- Alpine.js veya minimal JavaScript
-- Monaco Editor
+- Tailwind CSS v4 + Sass
+- ES module JavaScript ve jQuery (framework yok)
+- CodeMirror 5 (dosya editörü)
 - xterm.js
-- Chart.js / ECharts
+- Chart.js
+- SweetAlert2, toastr
 
 ### Real-time
 
@@ -1392,12 +1393,16 @@ src/
 │
 └── Plugins/                          # nopCommerce tarzı eklentiler (Modül / Eklenti)
     ├── ServerManager.Plugin.DevOps.Dokploy/
-    └── ServerManager.Plugin.DevOps.Dokku/
+    ├── ServerManager.Plugin.DevOps.Dokku/
+    ├── ServerManager.Plugin.Git.GitHub/
+    ├── ServerManager.Plugin.Notifications.{Email,Telegram,Discord}/
+    ├── ServerManager.Plugin.Storage.{S3,AzureBlob}/
+    └── ServerManager.Plugin.Cloud.{Hetzner,DigitalOcean,Vultr,Linode,Scaleway}/
 ```
 
 Repository pattern kullanılmalı; database erişimi repository katmanında tutulmalıdır.
 
-Çekirdek (sunucu, izleme, Docker, terminal, dosya, kullanıcı, audit) host uygulamada kalır. Dokploy, Dokku, Coolify, CapRover, Portainer gibi üçüncü parti DevOps araçları ve isteğe bağlı entegrasyonlar **eklenti** olarak geliştirilir: her biri kendi projesinde, kendi entity, migration, servis, controller, view, JS/CSS, izin ve audit tanımlarıyla durur; host'a dokunmadan eklenir, kurulur, etkinleştirilir veya devre dışı bırakılır.
+Çekirdek (sunucu, izleme, Docker, terminal, dosya, kullanıcı, audit) host uygulamada kalır. Dokploy ve Dokku (hazır) ile Coolify, CapRover, Portainer (planlanan) gibi üçüncü parti DevOps araçları ve isteğe bağlı entegrasyonlar **eklenti** olarak geliştirilir: her biri kendi projesinde, kendi entity, migration, servis, controller, view, JS/CSS, izin ve audit tanımlarıyla durur; host'a dokunmadan eklenir, kurulur, etkinleştirilir veya devre dışı bırakılır.
 
 ---
 
@@ -1428,7 +1433,7 @@ DevOps araçlarının provider'ları kendi eklentisinin içinde tanımlanır ve 
 Plugins/
  ├── DevOps.Dokploy   → IDokployProvider (SshDokployProvider), IDokployApiClient
  ├── DevOps.Dokku     → IDokkuProvider (SSH üzerinden dokku CLI)
- └── DevOps.Coolify   → ICoolifyProvider
+ └── DevOps.Coolify   → ICoolifyProvider   (planlanan; henüz eklentisi yok)
 ```
 
 Bu yapı ileride yeni provider eklemeyi kolaylaştırır; yeni araç için host kodu değişmez (bkz. [Eklenti geliştirme](#eklenti-geliştirme)).
@@ -1787,7 +1792,9 @@ desteklenebilir.
 
 ---
 
-# 66. API Keys
+# 66. API Keys (planlanan)
+
+> **Durum: planlanan.** Bu modül henüz uygulanmadı; aşağıdaki metin hedef tanımıdır.
 
 External automation için API key sistemi:
 
@@ -1813,7 +1820,9 @@ gibi granular olmalıdır.
 
 ---
 
-# 67. Webhook
+# 67. Webhook (planlanan)
+
+> **Durum: planlanan.** Bu modül henüz uygulanmadı; aşağıdaki metin hedef tanımıdır.
 
 Dış sistemlerden event alınabilir:
 
@@ -1841,7 +1850,9 @@ Secret değerleri export edilmemelidir.
 
 ---
 
-# 69. Search
+# 69. Search (planlanan)
+
+> **Durum: planlanan.** Bu modül henüz uygulanmadı; aşağıdaki metin hedef tanımıdır.
 
 Global search:
 
@@ -2427,7 +2438,8 @@ dotnet user-secrets set "Seed:AdminFullName" "Sistem Yöneticisi"
 | `Security:KeyVersion` | Anahtar sürümü (varsayılan `1`); şifreli değerler `v{sürüm}:` önekiyle saklanır |
 | `Seed:AdminEmail` / `Seed:AdminPassword` / `Seed:AdminFullName` | İlk SuperAdmin hesabı (bu e-postayla kullanıcı yoksa oluşturulur; mevcut kullanıcının parolası/rolü değiştirilmez) |
 | `Database:AutoCreate` | `true` ise veritabanı yoksa oluşturulur (Development'ta açık) |
-| `Proxy:TrustForwardedHeaders` | Reverse proxy arkasında `X-Forwarded-*` başlıklarına güvenilsin mi |
+| `Proxy:TrustForwardedHeaders` | Reverse proxy arkasında `X-Forwarded-*` başlıklarına güvenilsin mi (bkz. [Reverse proxy](#reverse-proxy-ve-güvenilen-vekiller)) |
+| `Proxy:KnownProxies` / `Proxy:KnownNetworks` | `X-Forwarded-*` başlıklarına güvenilen vekil IP adresleri / CIDR ağları |
 
 > **Önemli:** `Security:MasterKey` kaybolur veya değişirse kayıtlı sunucu kimlik bilgileri çözülemez. Anahtarı güvenli bir yerde yedekleyin.
 
@@ -2439,7 +2451,7 @@ npm install
 npm run build                # vendor kopyalama + stil derleme
 npm run build:css            # yalnızca stiller (Sass → Tailwind → minify)
 npm run build:css:watch      # geliştirme sırasında izleme modu
-npm run build:vendor         # jQuery, toastr, SweetAlert2, Chart.js, SignalR, xterm.js → wwwroot/lib
+npm run build:vendor         # jQuery, toastr, SweetAlert2, Chart.js, SignalR, xterm.js, CodeMirror 5 → wwwroot/lib
 ```
 
 Derlenmiş `wwwroot/css` ve `wwwroot/lib` dosyaları repoya dahildir; SCSS, view veya JS'te sınıf değişikliği yapıldığında ya da paket sürümü güncellendiğinde yeniden derlenmelidir. Kütüphaneler CDN yerine yerelden sunulur (CSP `script-src 'self'`).
@@ -2450,8 +2462,8 @@ Frontend yapısı:
 | --- | --- |
 | `Styles/site.scss` | Ortak stiller: `base`, `layout`, `components`, `vendor` (SweetAlert2/toastr temaları) partial'ları ve Tailwind teması |
 | `Styles/pages/<sayfa>.scss` | Yalnızca o sayfaya ait stiller → `wwwroot/css/pages/<sayfa>.css` |
-| `wwwroot/js/core` | `http` (fetch + antiforgery), `dialog` (SweetAlert2), `notify` (toastr), `forms`, `dom`, `format`, `navigation`, `regions` |
-| `wwwroot/js/components` | `ajax-actions`, `ajax-list`, `modal`, `remote-panels`, `tabs` |
+| `wwwroot/js/core` | `http` (fetch + antiforgery), `dialog` (SweetAlert2), `notify` (toastr), `forms`, `dom`, `format`, `navigation`, `page-scope`, `regions` |
+| `wwwroot/js/components` | `ajax-actions`, `ajax-list`, `auto-refresh`, `log-console`, `modal`, `remote-panels`, `stepper`, `tabs`, `tooltip` |
 | `wwwroot/js/features` | Monitoring, sunucu ve Docker modülleri |
 | `wwwroot/js/pages/<sayfa>.js` | Sayfanın giriş modülü |
 | `src/Plugins/<eklenti>/Styles/pages/<sayfa>.scss` | Eklenti sayfası stili → eklentinin `Content/css/pages/<sayfa>.css` dosyası (aynı `npm run build:css` derler) |
@@ -2476,7 +2488,17 @@ dotnet run --project src/ServerManager.Web --launch-profile https
 dotnet test --solution ServerManager.slnx
 ```
 
-Testler veritabanına veya gerçek sunuculara bağlanmaz. `global.json` içinde Microsoft.Testing.Platform runner'ı seçilidir.
+Birim testleri veritabanına veya gerçek sunuculara bağlanmaz. `global.json` içinde Microsoft.Testing.Platform runner'ı seçilidir.
+
+`tests/ServerManager.Web.Tests` uygulamayı `WebApplicationFactory<Program>` ile bellek içinde, üretim ayarlarıyla (Development dışı ortam, HTTPS, Secure cookie) açar ve güvenlik davranışını uçtan uca dener: girişsiz isteğin giriş sayfasına yönlenmesi, antiforgery zorunluluğu, izin reddi (403 / AccessDenied), hesap kilidi ve giriş hız sınırı, zorunlu 2FA yönlendirmesi, agent raporunda Bearer token kontrolü, sağlık uçları ve tüm eklentilerin hatasız yüklenmesi. Uygulama açılışta migration çalıştırdığı için bu testler gerçek bir SQL Server ister; `SM_TEST_SQL` ortam değişkeni tanımlı değilse **atlanır** (başarısız sayılmaz). Her test sunucusu kendi geçici veritabanını (`SmWebTests_<guid>`) açar ve sonunda siler.
+
+```bash
+docker compose up -d db
+export SM_TEST_SQL="Server=127.0.0.1,14340;User Id=sa;Password=<MSSQL_SA_PASSWORD>;TrustServerCertificate=True"
+dotnet test --project tests/ServerManager.Web.Tests
+```
+
+Derleme uyarıları hata olarak ele alınır (`Directory.Build.props` → `TreatWarningsAsErrors`).
 
 ### Roller ve izinler
 
@@ -2653,6 +2675,7 @@ Durum ve ayarlar:
 | Anahtar (`Dokploy:`) | Varsayılan | Açıklama |
 | --- | --- | --- |
 | `InstallScriptUrl` | `https://dokploy.com/install.sh` | Kurulum betiği |
+| `ExpectedSha256` | boş | Kurulum betiğinin beklenen SHA-256 özeti (hex). Doluysa indirilen betik bu özetle eşleşmezse kurulum çalıştırılmaz; boşsa özet kontrolü yapılmaz |
 | `RegistryCheckUrl` | `https://registry-1.docker.io/v2/` | İnternet kontrolünde erişilmesi gereken registry |
 | `Port` | `3000` | Dokploy panel portu |
 | `RequiredPorts` | `[80, 443, 3000]` | Boş olması gereken portlar (`appsettings` içinde değiştirilecekse ortam değişkeniyle verin; liste varsayılana eklenir) |
@@ -2738,6 +2761,21 @@ Güvenlik notları:
 | `BuildTimeoutMinutes` | `30` | Build adımının zaman aşımı |
 | `DeployTimeoutMinutes` | `10` | Deploy adımının zaman aşımı |
 | `MaxStoredLogKilobytes` | `1024` | Deployment kaydında saklanan log (son kısım; çalışırken 10 saniyede bir kaydedilir) |
+| `AcmeEmail` | boş | Let's Encrypt (ACME) hesap e-postası. **Yapılandırılmalıdır:** boşsa vekil (Traefik) kurulumu "Let's Encrypt e-postası yapılandırılmamış (Deployment:AcmeEmail)" hatasıyla durur |
+
+#### Domain, Traefik ve Let's Encrypt
+
+Docker Compose ve Dockerfile projelerine proje detayındaki **Domain** kartından alan adı bağlanır (Komutlar türündeki projelere domain bağlanamaz). Görüntüleme `deployment.view`, ekleme/düzenleme/silme, vekil kurulumu ve yönlendirmeyi yeniden uygulama `deployment.manage` ister; değiştiren işlemler kullanıcı başına dakikada 20 istekle sınırlıdır.
+
+- **Vekil (reverse proxy):** projenin sunucusunda bir kez `sm-traefik` container'ı (`traefik:v3.5`, `--restart unless-stopped`, 80 ve 443 portları) ve `sm-proxy` Docker ağı kurulur. Kurulumdan önce 80/443 portlarını başka bir sürecin dinleyip dinlemediği kontrol edilir; doluysa kurulum durur. Container zaten varsa yeniden oluşturulmaz, durmuşsa başlatılır. Let's Encrypt kayıtları `/var/lib/sm-traefik/letsencrypt/acme.json` (izin `600`), dinamik yapılandırma `/var/lib/sm-traefik/dynamic` altında tutulur.
+- **Domain kaydı:** host (ör. `api.ornek.com`), isteğe bağlı yol öneki (`PathPrefix`), container portu, Compose projelerinde servis adı ve TLS modu. Aynı sunucuda aynı host + yol iki kez kullanılamaz; bir projeye en fazla 20 domain eklenir. Silme host adının birebir yazılmasıyla onaylanır.
+- **TLS modları:**
+  - *Let's Encrypt:* Traefik HTTP-01 doğrulamasıyla sertifika alır; DNS kaydı sunucuya işaret etmeli ve 80 portu dışarıdan erişilebilir olmalıdır. Hesap e-postası `Deployment:AcmeEmail`'dir.
+  - *Cloudflare:* TLS Cloudflare'de biter; sunucu yalnızca 80 portundan yanıt verir.
+  - *Özel sertifika:* yapıştırılan PEM sertifika ve özel anahtar `Security:MasterKey` ile şifrelenerek saklanır, komut satırına yazılmaz ve sunucudaki dinamik yapılandırma klasörüne stdin ile gönderilir.
+- **Uygulama:** Compose dosyası değiştirilmez; yanına `sm-proxy.override.yml` yazılır ve `docker compose -f <compose> -f sm-proxy.override.yml` ile kullanılır. Dockerfile projesinde container `--network sm-proxy` ve Traefik etiketleriyle başlatılır. Yönlendirme ilk başarılı deployment'tan sonra uygulanır; domain eklendiğinde veya değiştiğinde karttan yeniden uygulanabilir. Domain'i olmayan proje eskisi gibi yalnızca port eşlemesi veya compose ile çalışır.
+- **Proje silme:** domain kayıtları yumuşak silinir ve projenin yönlendirmesi kaldırılmaya çalışılır; `sm-traefik` durdurulmaz.
+- **Audit:** `deployment_proxy.install`, `deployment_domain.create`, `deployment_domain.update`, `deployment_domain.delete`.
 
 ### Alarmlar ve izleme
 
@@ -3102,7 +3140,13 @@ Tablo gerektirmeyen eklentilerde (bildirim kanalları gibi) migration adımı at
 | `Storage.S3` | Yedekleme | Hazır (bkz. [Yedekleme](#yedekleme)) |
 | `Storage.AzureBlob` | Yedekleme | Hazır (bkz. [Yedekleme](#yedekleme)) |
 | `DevOps.Dokku` | DevOps | Hazır (bkz. [Dokku](#dokku)) |
+| `Cloud.Hetzner` | Bulut | Hazır (bkz. [Bulut sağlayıcıları](#bulut-sağlayıcıları)) |
+| `Cloud.DigitalOcean` | Bulut | Hazır (bkz. [Bulut sağlayıcıları](#bulut-sağlayıcıları)) |
+| `Cloud.Vultr` | Bulut | Hazır (bkz. [Bulut sağlayıcıları](#bulut-sağlayıcıları)) |
+| `Cloud.Linode` | Bulut | Hazır (bkz. [Bulut sağlayıcıları](#bulut-sağlayıcıları)) |
+| `Cloud.Scaleway` | Bulut | Hazır (bkz. [Bulut sağlayıcıları](#bulut-sağlayıcıları)) |
 | `Git.GitLab` | Git | Planlandı |
+| `DevOps.Coolify` | DevOps | Planlandı |
 
 ### GitHub App
 
@@ -3282,6 +3326,71 @@ Frontend kuralları host ile aynıdır: yalnızca ES module, inline script/style
 **8. Test** — `tests/ServerManager.Plugin.DevOps.Dokku.Tests` projesi oluşturun (Dokploy test projesini örnek alın) ve `ServerManager.slnx`'e ekleyin. İzin/audit adlarının ve `plugin.json`'ın assembly ile eşleştiğini doğrulayan sözleşme testi önerilir (`DokployPluginContractTests`).
 
 **9. Derleme ve yayın** — `dotnet build` eklentiyi `src/ServerManager.Web/Plugins/DevOps.Dokku/` klasörüne yazar (git'e eklenmez). `dotnet publish src/ServerManager.Web` tüm eklenti klasörlerini yayın çıktısındaki `Plugins/` dizinine kopyalar. Hazır bir eklentiyi çalışan bir kuruluma eklemek için klasörünü `Plugins/` altına kopyalayıp uygulamayı yeniden başlatmak ve **Eklentiler** sayfasından kurmak yeterlidir.
+
+### Docker ile çalıştırma
+
+Depo kökündeki `Dockerfile` çok aşamalıdır: `mcr.microsoft.com/dotnet/sdk:10.0` ile `src/ServerManager.Web` yayınlanır (Web derlemesi tüm eklentileri de derler ve `PublishPlugins` hedefi onları yayın çıktısındaki `Plugins/` klasörüne kopyalar), çalışma imajı `mcr.microsoft.com/dotnet/aspnet:10.0`'dır. İmaj `tzdata` ve sağlık kontrolü için `curl` içerir, ayrıcalıksız `app` kullanıcısıyla (UID 1654) çalışır, `8080` portunu açar ve `HEALTHCHECK` ile `/health` adresini yoklar. Ön yüz varlıkları depoda derlenmiş olduğundan imaj derlemesi Node.js gerektirmez.
+
+| Yol | İçerik |
+| --- | --- |
+| `/app/App_Data` | Yerel yedekler (`Backup:LocalRootPath` = `App_Data/backups`) — volume |
+| `/app/logs` | Serilog dosya logları — volume |
+| `/app/Plugins` | Eklentiler (imajla gelir) |
+
+`docker-compose.yml` içindeki `app` servisi `app` profilindedir ve `db` sağlıklı olduktan sonra başlar:
+
+```bash
+cp .env.example .env     # MSSQL_SA_PASSWORD, SM_MASTER_KEY (openssl rand -base64 32), SM_ADMIN_EMAIL / SM_ADMIN_PASSWORD
+docker compose --profile app up -d --build
+docker compose logs -f app
+```
+
+| `.env` değişkeni | Uygulamadaki karşılığı |
+| --- | --- |
+| `MSSQL_SA_PASSWORD`, `SM_DB_NAME` | `ConnectionStrings__DefaultConnection` (`Server=db,1433;Database=<SM_DB_NAME>;User Id=sa;...`). Parola `;` içermemelidir |
+| `SM_MASTER_KEY` | `Security__MasterKey` (zorunlu; kaybolursa şifreli kayıtlar çözülemez) |
+| `SM_ADMIN_EMAIL`, `SM_ADMIN_PASSWORD` | `Seed__AdminEmail`, `Seed__AdminPassword` (ilk SuperAdmin) |
+| `SM_TRUST_FORWARDED_HEADERS` | `Proxy__TrustForwardedHeaders` |
+| `SM_ACME_EMAIL` | `Deployment__AcmeEmail` |
+| `APP_PORT` | Host'ta `127.0.0.1:<APP_PORT>` → container `8080` |
+
+Compose servisinde `Database__AutoCreate=true` olduğundan veritabanı ilk açılışta oluşturulur. Uygulama Production ortamında çalışır: oturum ve antiforgery çerezleri `Secure` olduğundan panel **yalnızca HTTPS üzerinden** kullanılabilir. Düz HTTP ile açılan giriş sayfası hata verir. Container'ın önüne TLS sonlandıran bir reverse proxy (Traefik, Nginx, Caddy) koyun, `SM_TRUST_FORWARDED_HEADERS=true` yapın ve vekilin adresini `Proxy:KnownProxies` / `Proxy:KnownNetworks` ile tanımlayın (bkz. [Reverse proxy](#reverse-proxy-ve-güvenilen-vekiller)).
+
+### Sağlık uçları
+
+| Uç | Amaç | Davranış |
+| --- | --- | --- |
+| `GET /health` | Canlılık (liveness) | Oturum gerektirmez; süreç ayaktaysa `200` döner. Docker `HEALTHCHECK` bu adresi kullanır |
+| `GET /health/ready` | Hazırlık (readiness) | Oturum gerektirmez; veritabanı erişilebilir değilse `503` döner. Yük dengeleyici ve orkestratör için |
+
+### Reverse proxy ve güvenilen vekiller
+
+`Proxy:TrustForwardedHeaders=true` olduğunda uygulama `X-Forwarded-For` ve `X-Forwarded-Proto` başlıklarını işler (istemci IP'si audit log ve hız sınırlarında, şema HTTPS yönlendirmesi ve `Secure` çerezlerde kullanılır). Başlıklar yalnızca güvenilen vekillerden gelirse dikkate alınır:
+
+| Anahtar | Açıklama |
+| --- | --- |
+| `Proxy:KnownProxies` | Güvenilen vekil IP adresleri listesi (ör. `["10.0.0.5"]`) |
+| `Proxy:KnownNetworks` | Güvenilen vekil ağları, CIDR biçiminde (ör. Docker ağı için `["172.18.0.0/16"]`) |
+
+Ortam değişkeniyle liste elemanları indeksle verilir: `Proxy__KnownProxies__0=10.0.0.5`, `Proxy__KnownNetworks__0=172.18.0.0/16`. Vekil listede yoksa başlıklar yok sayılır; istemci IP'si vekilin IP'si olarak görünür ve tüm kullanıcılar aynı hız sınırı bölümüne düşer.
+
+### Data Protection anahtarları
+
+Kimlik çerezini, antiforgery token'larını ve iki adımlı doğrulama ara adımını koruyan ASP.NET Core Data Protection anahtarları veritabanında saklanır. Böylece container yeniden oluşturulduğunda veya birden fazla örnek aynı veritabanını kullandığında oturumlar düşmez; ayrıca bir anahtar klasörü volume'ü gerekmez. Bu anahtarlar `Security:MasterKey`'den bağımsızdır.
+
+### Saklama süreleri (log retention)
+
+Geçmiş kayıtları `Retention:` anahtarlarıyla gün cinsinden sınırlanır; süresi dolan kayıtlar arka planda silinir. `0` "süresiz sakla" demektir. **Audit log kayıtları hiçbir ayarla silinmez** (HMAC zinciri bozulmasın diye).
+
+| Anahtar (`Retention:`) | Kapsam |
+| --- | --- |
+| `DeploymentLogDays` | Deployment kayıtları ve logları |
+| `BackupRunLogDays` | Yedek çalıştırma kayıtları ve logları |
+| `CommandRunDays` | Toplu komut çalıştırma geçmişi |
+| `TerminalSessionDays` | Terminal oturum ve komut geçmişi |
+| `AlertEventDays` | Alarm olayları |
+
+Varsayılan değerler `appsettings.json` dosyasındadır.
 
 ### Güvenlik notları
 

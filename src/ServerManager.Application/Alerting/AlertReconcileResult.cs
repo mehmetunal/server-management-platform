@@ -13,4 +13,7 @@ public sealed class AlertReconcileResult
     public List<AlertEvent> Closed { get; } = [];
 
     public List<AlertEvent> Reminders { get; } = [];
+
+    /// <summary>Daha önce açılmış ama açılış bildirimi başarıyla gönderilememiş (veya kaydedilememiş) alarmlar.</summary>
+    public List<AlertEvent> PendingNotifications { get; } = [];
 }

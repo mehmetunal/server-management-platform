@@ -7,6 +7,12 @@ public sealed class DokployOptions
     /// <summary>Resmi kurulum betiği. Sunucuya indirilir, SHA-256 özeti kurulum kaydına yazılır ve root olarak çalıştırılır.</summary>
     public string InstallScriptUrl { get; set; } = "https://dokploy.com/install.sh";
 
+    /// <summary>
+    /// Doluysa indirilen betiğin SHA-256 özeti bununla karşılaştırılır; uyuşmazsa (veya özet hesaplanamazsa) betik çalıştırılmaz.
+    /// Boşsa yalnızca özet kayda yazılır.
+    /// </summary>
+    public string? ExpectedSha256 { get; set; }
+
     /// <summary>İnternet kontrolünde betik adresine ek olarak erişilmesi gereken Docker registry.</summary>
     public string RegistryCheckUrl { get; set; } = "https://registry-1.docker.io/v2/";
 

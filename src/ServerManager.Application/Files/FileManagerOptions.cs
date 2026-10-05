@@ -20,5 +20,14 @@ public sealed class FileManagerOptions
         "/root", "/run", "/sbin", "/srv", "/sys", "/tmp", "/usr", "/var"
     ];
 
+    /// <summary>
+    /// İşletim sistemine ait klasörler. Alt öğeleri etkileyen işlemler (klasör silme, alt öğelerle izin değişikliği) bunların
+    /// kendisinde ve altındaki her yolda (ör. /usr/bin, /etc/ssh) yapılamaz.
+    /// </summary>
+    public static IReadOnlyList<string> SystemDirectories { get; } =
+    [
+        "/bin", "/boot", "/dev", "/etc", "/lib", "/lib32", "/lib64", "/proc", "/run", "/sbin", "/sys", "/usr"
+    ];
+
     public IReadOnlyList<string> EffectiveProtectedPaths => ProtectedPaths.Count > 0 ? ProtectedPaths : DefaultProtectedPaths;
 }

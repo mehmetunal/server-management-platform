@@ -29,7 +29,7 @@ public sealed class BackupLifecycleWorker : BackgroundService
             if (count > 0)
                 _logger.LogWarning("Önceki çalışmadan yarım kalan {Count} yedek işlemi kesildi olarak işaretlendi.", count);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
         {
             _logger.LogError(ex, "Yarım kalan yedek kayıtları işaretlenemedi.");
         }

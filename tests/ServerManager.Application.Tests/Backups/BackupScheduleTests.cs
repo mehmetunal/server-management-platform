@@ -1,4 +1,5 @@
 using ServerManager.Application.Backups;
+using ServerManager.Application.Common;
 using ServerManager.Domain.Enums;
 
 namespace ServerManager.Application.Tests.Backups;
@@ -81,7 +82,8 @@ public class BackupScheduleTests
     [Fact]
     public void Unknown_time_zone_falls_back_to_local()
     {
-        Assert.Equal(TimeZoneInfo.Local, BackupSchedule.ResolveTimeZone("Yok/Boyle-Bir-Yer"));
+        Assert.Equal(AppTimeZone.Default, BackupSchedule.ResolveTimeZone("Yok/Boyle-Bir-Yer"));
+        Assert.Equal(AppTimeZone.Default, BackupSchedule.ResolveTimeZone(null));
         Assert.Equal(Istanbul.Id, BackupSchedule.ResolveTimeZone("Europe/Istanbul").Id);
     }
 }

@@ -2,22 +2,29 @@ using System.Globalization;
 
 namespace ServerManager.Application.Agent;
 
-/// <summary>Sunucuya agent'ı kuran/kaldıran POSIX sh betiği. Token betiğe gömülmez; kurulum komutunda ortam değişkeniyle verilir.</summary>
+/// <summary>
+/// Sunucuya agent'ı kuran/kaldıran POSIX sh betiği. Token betiğe gömülmez; kurulum komutunda ortam değişkeniyle verilir ve
+/// yalnızca root'un okuyabildiği başlık dosyasına yazılır. Agent token'ı curl'e bu dosyadan verir (<c>-H @dosya</c>);
+/// böylece token her raporda süreç listesinde (argv) görünmez.
+/// </summary>
 public static class AgentInstallScript
 {
     public const string AgentPath = "/usr/local/bin/server-manager-agent";
     public const string EnvironmentFilePath = "/etc/server-manager-agent.env";
+    public const string HeaderFilePath = "/etc/server-manager-agent.header";
 
     private const string Template = """
         #!/bin/sh
         # Mag Server Manager agent kurulumu
         #   Kurulum: curl -fsSL <panel>/api/agent/install.sh | sudo SM_URL=<panel> SM_TOKEN=<token> sh
         #   Kaldırma: curl -fsSL <panel>/api/agent/install.sh | sudo sh -s uninstall
+        #   Panel adresi https:// olmalıdır; düz http yalnızca SM_ALLOW_HTTP=1 verilirse kabul edilir (token şifresiz gider).
         set -eu
 
         NAME=server-manager-agent
         BIN=__AGENT_PATH__
         ENV_FILE=__ENV_PATH__
+        HEADER_FILE=__HEADER_PATH__
         UNIT_DIR=/etc/systemd/system
 
         fail() { echo "Hata: $1" >&2; exit 1; }
@@ -37,7 +44,7 @@ public static class AgentInstallScript
             systemctl daemon-reload
           fi
           remove_cron
-          rm -f "$BIN" "$ENV_FILE"
+          rm -f "$BIN" "$ENV_FILE" "$HEADER_FILE"
           echo "Mag Server Manager agent kaldırıldı."
           exit 0
         fi
@@ -45,24 +52,29 @@ public static class AgentInstallScript
         SM_URL="${SM_URL:-}"
         SM_TOKEN="${SM_TOKEN:-}"
         SM_URL="${SM_URL%/}"
-        echo "$SM_URL" | grep -Eq '^https?://[A-Za-z0-9.:/_-]+$' || fail "SM_URL geçersiz (ör. https://panel.example.com)."
+        if [ "${SM_ALLOW_HTTP:-}" = "1" ]; then
+          echo "$SM_URL" | grep -Eq '^https?://[A-Za-z0-9.:/_-]+$' || fail "SM_URL geçersiz (ör. https://panel.example.com)."
+        else
+          echo "$SM_URL" | grep -Eq '^https://[A-Za-z0-9.:/_-]+$' || fail "SM_URL https:// ile başlamalı (ör. https://panel.example.com). Düz http için SM_ALLOW_HTTP=1 verin."
+        fi
         echo "$SM_TOKEN" | grep -Eq '^sma_[A-Za-z0-9_-]{43}$' || fail "SM_TOKEN geçersiz."
         command -v curl >/dev/null 2>&1 || fail "curl kurulu değil."
 
         umask 077
-        printf 'SM_URL=%s\nSM_TOKEN=%s\n' "$SM_URL" "$SM_TOKEN" > "$ENV_FILE"
-        chmod 600 "$ENV_FILE"
+        printf 'SM_URL=%s\n' "$SM_URL" > "$ENV_FILE"
+        printf 'Authorization: Bearer %s\n' "$SM_TOKEN" > "$HEADER_FILE"
+        chmod 600 "$ENV_FILE" "$HEADER_FILE"
 
         cat > "$BIN" <<'AGENT'
         #!/bin/sh
         # Mag Server Manager agent __VERSION__
-        [ -r __ENV_PATH__ ] || exit 1
+        [ -r __ENV_PATH__ ] && [ -r __HEADER_PATH__ ] || exit 1
         . __ENV_PATH__
         collect() {
         __COLLECT__
         }
         collect 2>/dev/null | curl -fsS --max-time 30 -X POST \
-          -H "Authorization: Bearer $SM_TOKEN" \
+          -H @__HEADER_PATH__ \
           -H "X-Agent-Version: __VERSION__" \
           -H "Content-Type: text/plain" \
           --data-binary @- -o /dev/null "$SM_URL/api/agent/report"
@@ -118,6 +130,7 @@ public static class AgentInstallScript
             .Replace("__COLLECT__", collectionScript.Replace("\r\n", "\n").TrimEnd())
             .Replace("__AGENT_PATH__", AgentPath)
             .Replace("__ENV_PATH__", EnvironmentFilePath)
+            .Replace("__HEADER_PATH__", HeaderFilePath)
             .Replace("__VERSION__", AgentRules.CurrentVersion)
             .Replace("__INTERVAL__", AgentRules.ReportIntervalSeconds.ToString(CultureInfo.InvariantCulture))
             .Replace("\r\n", "\n");

@@ -8,6 +8,7 @@ using ServerManager.Application.Common;
 using ServerManager.Application.DTOs.Account;
 using ServerManager.Application.DTOs.AuditLogs;
 using ServerManager.Application.Interfaces;
+using ServerManager.Application.Interfaces.Security;
 using ServerManager.Application.Interfaces.Services;
 using ServerManager.Application.Validators.Account;
 
@@ -19,7 +20,12 @@ public class AccountService : IAccountService
     private const string LockedOutMessage = "Çok fazla başarısız deneme yapıldı veya hesap kilitlendi. Daha sonra tekrar deneyin.";
     private const string SessionMissingMessage = "Oturum bulunamadı. Lütfen tekrar giriş yapın.";
     private const string WrongPasswordMessage = "Parola hatalı.";
+    private const string InactiveMessage = "Hesabınız pasif durumda. Yöneticinizle iletişime geçin.";
     private const string AuthenticatorIssuer = ProductInfo.Name;
+
+    /// <summary>Olmayan kullanıcıda da parola özeti hesaplanır; yanıt süresinden hesabın varlığı anlaşılmaz.</summary>
+    private static readonly Lazy<string> DummyPasswordHash = new(() =>
+        new PasswordHasher<ApplicationUser>().HashPassword(new ApplicationUser(), Guid.NewGuid().ToString("N")));
 
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
@@ -30,6 +36,8 @@ public class AccountService : IAccountService
     private readonly IValidator<ChangePasswordDto> _changePasswordValidator;
     private readonly IValidator<EnableAuthenticatorDto> _enableValidator;
     private readonly IValidator<PasswordConfirmationDto> _passwordValidator;
+    private readonly IUserSessionRevoker _sessionRevoker;
+    private readonly LoginAttemptThrottle _throttle;
     private readonly ILogger<AccountService> _logger;
 
     public AccountService(
@@ -42,6 +50,8 @@ public class AccountService : IAccountService
         IValidator<ChangePasswordDto> changePasswordValidator,
         IValidator<EnableAuthenticatorDto> enableValidator,
         IValidator<PasswordConfirmationDto> passwordValidator,
+        IUserSessionRevoker sessionRevoker,
+        LoginAttemptThrottle throttle,
         ILogger<AccountService> logger)
     {
         _signInManager = signInManager;
@@ -53,6 +63,8 @@ public class AccountService : IAccountService
         _changePasswordValidator = changePasswordValidator;
         _enableValidator = enableValidator;
         _passwordValidator = passwordValidator;
+        _sessionRevoker = sessionRevoker;
+        _throttle = throttle;
         _logger = logger;
     }
 
@@ -63,23 +75,53 @@ public class AccountService : IAccountService
             return ServiceResult<SignInStep>.ValidationFailure(validation);
 
         var email = dto.Email.Trim();
+        var ipAddress = _currentUser.IpAddress;
+
+        // Bekleme dolmadan gelen denemede parola kontrol edilmez; Identity kilit sayacı da artmaz.
+        if (_throttle.GetRetryAfter(email, ipAddress) is { } retryAfter)
+        {
+            await LogFailedAsync(email, "Deneme sınırı: bekleme süresi dolmadı.", cancellationToken);
+            return ServiceResult<SignInStep>.Failure(
+                $"Çok fazla başarısız deneme yapıldı. {Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds))} saniye sonra tekrar deneyin.");
+        }
+
         var user = await _userManager.FindByEmailAsync(email);
         if (user is null)
         {
+            // Zamanlama farkı olmasın diye gerçek kullanıcıdaki kadar maliyetli bir özet doğrulaması yapılır.
+            _userManager.PasswordHasher.VerifyHashedPassword(new ApplicationUser(), DummyPasswordHash.Value, dto.Password);
+            _throttle.RegisterFailure(email, ipAddress);
             await LogFailedAsync(email, "Kullanıcı bulunamadı.", cancellationToken);
-            return ServiceResult<SignInStep>.Failure(InvalidCredentialsMessage);
+            return ServiceResult<SignInStep>.Failure(
+                _throttle.GetAccountFailures(email) >= LoginAttemptThrottle.LockoutThreshold ? LockedOutMessage : InvalidCredentialsMessage);
         }
 
         if (!user.IsActive)
         {
+            // Pasif hesap mesajı yalnızca parolayı bilen kişiye gösterilir; aksi halde hesabın varlığı ortaya çıkar.
+            var check = await _signInManager.CheckPasswordSignInAsync(user, dto.Password, lockoutOnFailure: true);
+            if (check.IsLockedOut)
+            {
+                await LogFailedAsync(email, "Hesap kilitli (pasif kullanıcı).", cancellationToken);
+                return ServiceResult<SignInStep>.Failure(LockedOutMessage);
+            }
+
+            if (!check.Succeeded)
+            {
+                _throttle.RegisterFailure(email, ipAddress);
+                await LogFailedAsync(email, "Hatalı parola (pasif kullanıcı).", cancellationToken);
+                return ServiceResult<SignInStep>.Failure(InvalidCredentialsMessage);
+            }
+
             await LogFailedAsync(email, "Pasif kullanıcı.", cancellationToken);
-            return ServiceResult<SignInStep>.Failure("Hesabınız pasif durumda. Yöneticinizle iletişime geçin.");
+            return ServiceResult<SignInStep>.Failure(InactiveMessage);
         }
 
         var result = await _signInManager.PasswordSignInAsync(user, dto.Password, dto.RememberMe, lockoutOnFailure: true);
 
         if (result.Succeeded)
         {
+            _throttle.Reset(email, ipAddress);
             await CompleteSignInAsync(user, user.TwoFactorEnabled ? "Hatırlanan tarayıcı (iki adımlı doğrulama atlandı)" : null, cancellationToken);
             return ServiceResult<SignInStep>.Success(SignInStep.Completed);
         }
@@ -91,8 +133,12 @@ public class AccountService : IAccountService
         }
 
         if (result.RequiresTwoFactor)
+        {
+            _throttle.Reset(email, ipAddress);
             return ServiceResult<SignInStep>.Success(SignInStep.TwoFactorRequired, "Doğrulama uygulamanızdaki kodu girin.");
+        }
 
+        _throttle.RegisterFailure(email, ipAddress);
         await LogFailedAsync(email, "Hatalı parola.", cancellationToken);
         return ServiceResult<SignInStep>.Failure(InvalidCredentialsMessage);
     }
@@ -114,7 +160,7 @@ public class AccountService : IAccountService
         if (!user.IsActive)
         {
             await LogFailedAsync(email, "Pasif kullanıcı.", cancellationToken);
-            return ServiceResult.Failure("Hesabınız pasif durumda. Yöneticinizle iletişime geçin.", ServiceErrorType.Forbidden);
+            return ServiceResult.Failure(InactiveMessage, ServiceErrorType.Forbidden);
         }
 
         var result = dto.UseRecoveryCode
@@ -151,6 +197,7 @@ public class AccountService : IAccountService
 
     public async Task SignOutAsync(CancellationToken cancellationToken = default)
     {
+        var userId = _currentUser.IsAuthenticated ? _currentUser.UserId : null;
         if (_currentUser.IsAuthenticated)
         {
             await _auditLogService.LogAsync(new AuditEntry(
@@ -161,6 +208,10 @@ public class AccountService : IAccountService
         }
 
         await _signInManager.SignOutAsync();
+
+        // Çıkış sonrası tarayıcıdaki SignalR bağlantısı açık kalabilir; terminal oturumları burada kapatılır.
+        if (!string.IsNullOrEmpty(userId))
+            await _sessionRevoker.RevokeAsync(userId, "Oturum kapatıldı; terminal oturumu sonlandırıldı.", cancellationToken);
     }
 
     public async Task<ServiceResult<AccountSecurityDto>> GetSecurityAsync(CancellationToken cancellationToken = default)

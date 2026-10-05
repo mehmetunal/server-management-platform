@@ -35,6 +35,8 @@ public class FileServiceTests
             .Returns(ServiceResult<ServerConnection>.Success(new ServerConnection { ServerId = _serverId, ServerName = ServerName, Context = _context }));
 
         _session.HomeDirectory.Returns("/home/deploy");
+        _fileSystem.ResolveAsync(_context, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => ServiceResult<RemotePathResolution>.Success(new RemotePathResolution(false, call.ArgAt<string>(1), call.ArgAt<string>(1))));
         UseSession<bool>();
         UseSession<FileListingDto>();
         UseSession<FileContentDto>();
@@ -63,6 +65,10 @@ public class FileServiceTests
     private void GivenEntry(string path, RemoteFileKind kind, int mode = 0b110_100_100, int userId = 1000, int groupId = 100) =>
         _session.GetInfoAsync(path, Arg.Any<CancellationToken>())
             .Returns(new RemoteFileInfo(RemotePath.GetFileName(path), path, kind, 10, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), mode, userId, groupId));
+
+    private void GivenResolution(string path, bool isLink, string target, string? entry = null) =>
+        _fileSystem.ResolveAsync(_context, path, Arg.Any<CancellationToken>())
+            .Returns(ServiceResult<RemotePathResolution>.Success(new RemotePathResolution(isLink, target, entry ?? path)));
 
     private void GivenContent(string path, string content) =>
         _session.ReadAsync(path, Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(Encoding.UTF8.GetBytes(content));
@@ -275,6 +281,80 @@ public class FileServiceTests
 
         Assert.True(result.IsSuccess);
         await AssertAuditedAsync(AuditActions.FilePermissions, true, "mod: 0750, sahip: deploy:-, alt öğeler dahil");
+    }
+
+    [Fact]
+    public async Task Chmod_on_a_link_to_a_protected_path_is_refused()
+    {
+        GivenResolution("/home/deploy/root", isLink: true, target: "/etc");
+
+        var result = await _service.ChangePermissionsAsync(_serverId, new ChangePermissionsDto { Path = "/home/deploy/root", Mode = "0777" }, Ct);
+
+        Assert.Equal(ServiceErrorType.Forbidden, result.ErrorType);
+        await _fileSystem.DidNotReceiveWithAnyArgs().ChangeModeAsync(default!, default!, default!, default, Ct);
+    }
+
+    [Fact]
+    public async Task Chmod_runs_on_the_resolved_target()
+    {
+        GivenResolution("/srv/current", isLink: true, target: "/srv/releases/v2");
+        _fileSystem.ChangeModeAsync(_context, "/srv/releases/v2", "0750", false, Arg.Any<CancellationToken>()).Returns(ServiceResult.Success());
+
+        var result = await _service.ChangePermissionsAsync(_serverId, new ChangePermissionsDto { Path = "/srv/current", Mode = "0750" }, Ct);
+
+        Assert.True(result.IsSuccess);
+        await AssertAuditedAsync(AuditActions.FilePermissions, true, "/srv/current → /srv/releases/v2");
+    }
+
+    [Fact]
+    public async Task Recursive_chmod_on_a_symbolic_link_is_refused()
+    {
+        GivenResolution("/srv/current", isLink: true, target: "/srv/releases/v2");
+
+        var result = await _service.ChangePermissionsAsync(_serverId, new ChangePermissionsDto { Path = "/srv/current", Mode = "0750", Recursive = true }, Ct);
+
+        Assert.False(result.IsSuccess);
+        await _fileSystem.DidNotReceiveWithAnyArgs().ChangeModeAsync(default!, default!, default!, default, Ct);
+    }
+
+    [Theory]
+    [InlineData("/usr/bin")]
+    [InlineData("/etc/ssh")]
+    public async Task Recursive_operations_inside_system_directories_are_refused(string path)
+    {
+        GivenEntry(path, RemoteFileKind.Directory);
+
+        var chmod = await _service.ChangePermissionsAsync(_serverId, new ChangePermissionsDto { Path = path, Mode = "0777", Recursive = true }, Ct);
+        var delete = await _service.DeleteAsync(_serverId, new DeleteFileDto { Path = path, ConfirmationName = RemotePath.GetFileName(path) }, Ct);
+
+        Assert.Equal(ServiceErrorType.Forbidden, chmod.ErrorType);
+        Assert.Equal(ServiceErrorType.Forbidden, delete.ErrorType);
+        await _fileSystem.DidNotReceiveWithAnyArgs().ChangeModeAsync(default!, default!, default!, default, Ct);
+        await _fileSystem.DidNotReceiveWithAnyArgs().DeleteRecursiveAsync(default!, default!, Ct);
+    }
+
+    [Fact]
+    public async Task Delete_through_a_linked_parent_checks_and_uses_the_real_path()
+    {
+        GivenResolution("/home/deploy/sys/etc", isLink: false, target: "/etc", entry: "/etc");
+
+        var result = await _service.DeleteAsync(_serverId, new DeleteFileDto { Path = "/home/deploy/sys/etc", ConfirmationName = "etc" }, Ct);
+
+        Assert.Equal(ServiceErrorType.Forbidden, result.ErrorType);
+        await _fileSystem.DidNotReceiveWithAnyArgs().DeleteRecursiveAsync(default!, default!, Ct);
+    }
+
+    [Fact]
+    public async Task Deleting_a_link_to_a_directory_removes_only_the_link()
+    {
+        GivenResolution("/srv/current", isLink: true, target: "/srv/releases/v2");
+        GivenEntry("/srv/current", RemoteFileKind.Directory);
+
+        var result = await _service.DeleteAsync(_serverId, new DeleteFileDto { Path = "/srv/current" }, Ct);
+
+        Assert.True(result.IsSuccess);
+        await _session.Received(1).DeleteFileAsync("/srv/current", Arg.Any<CancellationToken>());
+        await _fileSystem.DidNotReceiveWithAnyArgs().DeleteRecursiveAsync(default!, default!, Ct);
     }
 
     [Fact]

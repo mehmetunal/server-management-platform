@@ -27,9 +27,9 @@ public sealed class UptimeCheckWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var maxConcurrency = Math.Clamp(_options.UptimeMaxConcurrency, 1, 64);
-        using var semaphore = new SemaphoreSlim(maxConcurrency);
-        _logger.LogInformation("Uptime kontrolcüsü başladı. MaxConcurrency: {MaxConcurrency}", maxConcurrency);
+        // Sınır her girişte yeniden okunur; ayar değişikliği yeniden başlatma gerektirmez.
+        var semaphore = new DynamicConcurrencyLimiter(() => Math.Clamp(_options.UptimeMaxConcurrency, 1, 64));
+        _logger.LogInformation("Uptime kontrolcüsü başladı. MaxConcurrency: {MaxConcurrency}", Math.Clamp(_options.UptimeMaxConcurrency, 1, 64));
 
         try
         {
@@ -52,7 +52,7 @@ public sealed class UptimeCheckWorker : BackgroundService
         }
     }
 
-    private async Task StartDueChecksAsync(SemaphoreSlim semaphore, CancellationToken stoppingToken)
+    private async Task StartDueChecksAsync(DynamicConcurrencyLimiter semaphore, CancellationToken stoppingToken)
     {
         IReadOnlyList<Guid> dueIds;
         try
@@ -60,7 +60,7 @@ public sealed class UptimeCheckWorker : BackgroundService
             using var scope = _scopeFactory.CreateScope();
             dueIds = await scope.ServiceProvider.GetRequiredService<IUptimeService>().GetDueCheckIdsAsync(stoppingToken);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
         {
             _logger.LogError(ex, "Zamanı gelen uptime kontrolleri alınamadı.");
             return;
@@ -75,7 +75,7 @@ public sealed class UptimeCheckWorker : BackgroundService
         }
     }
 
-    private async Task RunAsync(Guid id, Task start, SemaphoreSlim semaphore, CancellationToken stoppingToken)
+    private async Task RunAsync(Guid id, Task start, DynamicConcurrencyLimiter semaphore, CancellationToken stoppingToken)
     {
         await start;
         try

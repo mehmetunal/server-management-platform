@@ -103,8 +103,26 @@ internal static class ServerSystemCommands
         return command + " 2>&1";
     }
 
+    public const int LogOutsideRootExitCode = 3;
+
+    /// <summary>
+    /// Sembolik bağlantılar sunucuda çözülür (realpath); gerçek yol hâlâ /var/log altında ve normal bir dosyaysa okunur.
+    /// Böylece sudo ile çalışan tail, /var/log altındaki bir bağlantı üzerinden /etc/shadow gibi dosyaları okuyamaz.
+    /// </summary>
     public static string ReadFile(int lines, string path) =>
-        string.Create(CultureInfo.InvariantCulture, $"tail -n {lines} -- {ShellQuote.Quote(path)} 2>&1");
+        Wrap(string.Create(CultureInfo.InvariantCulture,
+            $"""
+            p={ShellQuote.Quote(path)}
+            root=$(readlink -f -- {ShellQuote.Quote(ServerSystemRules.LogRoot.TrimEnd('/'))} 2>/dev/null || realpath -- {ShellQuote.Quote(ServerSystemRules.LogRoot.TrimEnd('/'))} 2>/dev/null) || root=
+            r=$(readlink -f -- "$p" 2>/dev/null || realpath -- "$p" 2>/dev/null) || r=
+            if [ -z "$root" ] || [ -z "$r" ]; then echo 'Log dosyası bulunamadı.'; exit {LogOutsideRootExitCode}; fi
+            case "$r" in
+              "$root"/*) ;;
+              *) echo 'Log dosyası /var/log dışını gösteriyor; okunmadı.'; exit {LogOutsideRootExitCode} ;;
+            esac
+            if [ ! -f "$r" ]; then echo 'Yalnızca normal log dosyaları okunabilir.'; exit {LogOutsideRootExitCode}; fi
+            tail -n {lines} -- "$r" 2>&1
+            """));
 
     private static string Wrap(string script) => "sh -c " + ShellQuote.Quote(script.Replace("\r\n", "\n"));
 }

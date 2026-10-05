@@ -13,7 +13,7 @@
     <div>
         <h1 class="page-title">Ayarlar</h1>
         <p class="page-lead">@(canManage
-            ? "İzleme, alarm, yedek, tarama ve bulut aralıklarını buradan değiştirirsiniz. Bağlantı ve anahtarlar burada yoktur."
+            ? "İzleme, alarm, yedek, tarama ve bulut aralıklarını, kayıt saklama sürelerini buradan değiştirirsiniz. Bağlantı ve anahtarlar burada yoktur."
             : "Çalışan yapılandırma. Aralıkları değiştirmek için ayar yönetimi yetkisi gerekir.")</p>
     </div>
 </div>
@@ -152,6 +152,7 @@ else
         "Yedekleme" => "Zamanlayıcı, saat dilimi ve zaman aşımı.",
         "Güvenlik taraması" => "Otomatik tarama ve eski kayıtların tutulması.",
         "Bulut" => "Sağlayıcı hesaplarının eşitlenme sıklığı.",
+        "Kayıt saklama" => "Eski log ve geçmiş kayıtlarının tutulma süresi. 0 süresiz saklar; denetim kayıtları hiç silinmez.",
         _ => string.Empty
     };
 

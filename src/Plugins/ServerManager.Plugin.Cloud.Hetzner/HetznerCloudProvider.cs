@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using ServerManager.Application.Cloud;
 using ServerManager.Application.Common;
 using ServerManager.Application.DTOs.Cloud;
 using ServerManager.Application.Interfaces.Cloud;
@@ -253,25 +254,8 @@ public sealed class HetznerCloudProvider : ICloudProvider
         }
     }
 
-    internal static string ErrorMessage(HttpStatusCode status, string body)
-    {
-        string? detail = null;
-        try
-        {
-            using var document = JsonDocument.Parse(body);
-            if (document.RootElement.TryGetProperty("error", out var error))
-                detail = Text(error, "message");
-        }
-        catch (JsonException)
-        {
-        }
-
-        return status switch
-        {
-            HttpStatusCode.Unauthorized => "API anahtarı geçersiz veya iptal edilmiş.",
-            HttpStatusCode.Forbidden => "API anahtarının bu işlem için yetkisi yok (sunucu oluşturmak için 'Read & Write' gerekir).",
-            HttpStatusCode.TooManyRequests => "Hetzner istek sınırına ulaşıldı; biraz sonra tekrar deneyin.",
-            _ => detail is null ? $"Hetzner isteği başarısız oldu (HTTP {(int)status})." : $"Hetzner: {detail}"
-        };
-    }
+    internal static string ErrorMessage(HttpStatusCode status, string body) =>
+        CloudApiErrorMessage.Create(status, body, "Hetzner",
+            "API anahtarının bu işlem için yetkisi yok (sunucu oluşturmak için 'Read & Write' gerekir).",
+            root => root.TryGetProperty("error", out var error) ? Text(error, "message") : null);
 }

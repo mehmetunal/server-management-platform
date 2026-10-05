@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using ServerManager.Application.Cloud;
 using ServerManager.Application.Common;
 using ServerManager.Application.DTOs.Cloud;
 using ServerManager.Application.Interfaces.Cloud;
@@ -217,27 +218,14 @@ public sealed class VultrCloudProvider : ICloudProvider
         }
     }
 
-    internal static string ErrorMessage(HttpStatusCode status, string body)
-    {
-        string? detail = null;
-        try
-        {
-            using var document = JsonDocument.Parse(body);
-            var error = document.RootElement.TryGetProperty("error", out var value) ? value : default;
-            detail = error.ValueKind == JsonValueKind.String ? error.GetString() : Text(error, "message");
-        }
-        catch (JsonException)
-        {
-        }
-
-        return status switch
-        {
-            HttpStatusCode.Unauthorized => "API anahtarı geçersiz veya iptal edilmiş.",
-            HttpStatusCode.Forbidden => "API anahtarının bu işlem için yetkisi yok.",
-            HttpStatusCode.TooManyRequests => "Vultr istek sınırına ulaşıldı; biraz sonra tekrar deneyin.",
-            _ => detail is null ? $"Vultr isteği başarısız oldu (HTTP {(int)status})." : $"Vultr: {detail}"
-        };
-    }
+    internal static string ErrorMessage(HttpStatusCode status, string body) =>
+        CloudApiErrorMessage.Create(status, body, "Vultr",
+            "API anahtarının bu işlem için yetkisi yok.",
+            root =>
+            {
+                var error = root.TryGetProperty("error", out var value) ? value : default;
+                return error.ValueKind == JsonValueKind.String ? error.GetString() : Text(error, "message");
+            });
 
     private static string? Text(JsonElement element, string name) =>
         element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String

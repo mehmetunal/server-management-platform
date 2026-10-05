@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ServerManager.Application.Plugins;
@@ -6,7 +7,7 @@ using ServerManager.Infrastructure.Identity;
 
 namespace ServerManager.Infrastructure.Persistence;
 
-public class ApplicationDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>
+public class ApplicationDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>, IDataProtectionKeyContext
 {
     private readonly IPluginCatalog? _pluginCatalog;
 
@@ -32,6 +33,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<CloudAccount> CloudAccounts => Set<CloudAccount>();
 
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
+    public DbSet<AuditChainAnchor> AuditChainAnchors => Set<AuditChainAnchor>();
+
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     public DbSet<ServerMetric> ServerMetrics => Set<ServerMetric>();
 

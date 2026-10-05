@@ -6,11 +6,15 @@ namespace ServerManager.Application.Alerting;
 /// <summary>Bir değerlendirme turunda yalnızca etkin kuralların ihtiyaç duyduğu veriler ve her biri bir kez okunur.</summary>
 public sealed class AlertEvaluationData
 {
+    /// <summary>Bu süreden uzun metrik kurallarında ham satırlar yüklenmez; pencere özeti veritabanında hesaplanır.</summary>
+    public const int RawWindowMaxMinutes = 60;
+
     private readonly IAlertRepository _repository;
     private readonly IReadOnlyList<AlertRule> _rules;
     private readonly DateTime _now;
     private readonly TimeSpan _freshness;
     private readonly CancellationToken _cancellationToken;
+    private readonly Dictionary<int, IReadOnlyDictionary<Guid, MetricWindowStats>> _windows = [];
 
     private IReadOnlyList<AlertServerSnapshot>? _servers;
     private IReadOnlyDictionary<Guid, IReadOnlyList<MetricSample>>? _samples;
@@ -29,19 +33,42 @@ public sealed class AlertEvaluationData
         _cancellationToken = cancellationToken;
     }
 
+    public static bool UsesWindowStats(AlertRule rule) => AlertRuleKinds.IsMetric(rule.Kind) && rule.DurationMinutes > RawWindowMaxMinutes;
+
     public async Task<IReadOnlyList<AlertServerSnapshot>> ServersAsync() =>
         _servers ??= await _repository.GetServerSnapshotsAsync(_cancellationToken);
 
+    /// <summary>
+    /// Kısa süreli kuralların penceresi kadar ham örnek; uzun kurallar için yalnızca son örnek gereklidir (tazelik süresi).
+    /// Tüm metrik kuralları belirli sunuculara bağlıysa yalnızca o sunucular okunur.
+    /// </summary>
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<MetricSample>>> SamplesAsync()
     {
         if (_samples is not null)
             return _samples;
 
-        var maxDuration = _rules.Where(r => AlertRuleKinds.IsMetric(r.Kind)).Select(r => r.DurationMinutes).DefaultIfEmpty(0).Max();
-        var since = _now - TimeSpan.FromMinutes(maxDuration) - _freshness;
-        var samples = await _repository.GetMetricSamplesAsync(since, _cancellationToken);
+        var maxRawDuration = MetricRules()
+            .Where(r => !UsesWindowStats(r))
+            .Select(r => r.DurationMinutes)
+            .DefaultIfEmpty(0)
+            .Max();
+        var since = _now - TimeSpan.FromMinutes(maxRawDuration) - _freshness;
+        var samples = await _repository.GetMetricSamplesAsync(since, ServerFilter(), _cancellationToken);
         _samples = samples.GroupBy(s => s.ServerId).ToDictionary(g => g.Key, g => (IReadOnlyList<MetricSample>)g.ToList());
         return _samples;
+    }
+
+    /// <summary>Verilen süredeki sunucu bazlı metrik özeti; aynı süreli kurallar tek sorguyu paylaşır.</summary>
+    public async Task<IReadOnlyDictionary<Guid, MetricWindowStats>> WindowStatsAsync(int durationMinutes)
+    {
+        if (_windows.TryGetValue(durationMinutes, out var cached))
+            return cached;
+
+        var since = _now - TimeSpan.FromMinutes(durationMinutes);
+        var stats = await _repository.GetMetricWindowStatsAsync(since, ServerFilter(), _cancellationToken);
+        var result = stats.ToDictionary(s => s.ServerId);
+        _windows[durationMinutes] = result;
+        return result;
     }
 
     public async Task<IReadOnlyList<AlertUptimeSnapshot>> UptimeAsync() =>
@@ -58,4 +85,16 @@ public sealed class AlertEvaluationData
 
     public async Task<IReadOnlyList<AlertSecuritySnapshot>> SecurityAsync() =>
         _security ??= await _repository.GetLatestSecurityScansAsync(_cancellationToken);
+
+    private IEnumerable<AlertRule> MetricRules() => _rules.Where(r => AlertRuleKinds.IsMetric(r.Kind));
+
+    /// <summary>Tüm sunucuları kapsayan bir metrik kuralı varsa filtre yoktur (null).</summary>
+    private IReadOnlyCollection<Guid>? ServerFilter()
+    {
+        var rules = MetricRules().ToList();
+        if (rules.Count == 0 || rules.Any(r => r.ServerId is null))
+            return null;
+
+        return rules.Select(r => r.ServerId!.Value).Distinct().ToList();
+    }
 }

@@ -35,6 +35,7 @@ public class AlertEvent
 
     public string? ResolvedMessage { get; set; }
 
+    /// <summary>Boşsa açılış bildirimi henüz başarıyla gönderilmemiştir; sonraki değerlendirmede yeniden denenir.</summary>
     public DateTime? LastNotifiedAt { get; set; }
 
     /// <summary>Son bildirimdeki değer; SSL'de kalan gün eşiklerinin bir kez bildirilmesi için tutulur.</summary>
@@ -43,4 +44,7 @@ public class AlertEvent
     public DateTime? AcknowledgedAt { get; set; }
 
     public string? AcknowledgedBy { get; set; }
+
+    /// <summary>Art arda "düzeldi" sonuç sayısı; alarm, dalgalanmayı önlemek için birden fazla düzelme görünce kapanır.</summary>
+    public int ConsecutiveOkCount { get; set; }
 }

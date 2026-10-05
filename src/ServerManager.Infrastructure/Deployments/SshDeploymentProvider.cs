@@ -92,6 +92,13 @@ public sealed class SshDeploymentProvider : IDeploymentProvider
         var result = await _runner.RunAsync(context, async (executor, ct) =>
         {
             var output = await executor.ExecuteAsync(new RemoteCommand(DeploymentCommands.RemoveProject(plan), timeout, Elevate: true), ct);
+            if (output.ExitCode == DeploymentCommands.NotManagedExitCode)
+            {
+                return ServiceResult<string>.Failure(
+                    $"{plan.DeployPath} klasörü panel tarafından oluşturulmamış ({DeploymentCommands.ManagedMarkerFile} işareti yok); sunucuda hiçbir şey silinmedi. " +
+                    "Klasörü elle temizleyin veya projeyi sunucudaki dosyaları silmeden kaldırın.");
+            }
+
             return output.IsSuccess
                 ? ServiceResult<string>.Success("Sunucudaki uygulama silindi.")
                 : ServiceResult<string>.Failure(DeploymentErrorTranslator.TranslateDocker(output, "Uygulamanın silinmesi", timeout));
@@ -277,6 +284,10 @@ public sealed class SshDeploymentProvider : IDeploymentProvider
         IDeploymentObserver observer,
         CancellationToken cancellationToken)
     {
+        var missing = plan.BuildType == DeploymentBuildType.DockerCompose ? TraefikRoutes.FindRouteWithoutService(plan.Routes) : null;
+        if (missing is not null)
+            return ($"{missing.Host} domaininde Compose servis adı yok; domaini düzenleyip servis adını girin (ör. web).", null);
+
         await observer.OnOutputAsync(DeploymentConsole.Info("Vekil dosyaları güncelleniyor."), cancellationToken);
         var files = await executor.ExecuteAsync(
             new RemoteCommand(DeploymentCommands.SyncProxyFiles(plan.Slug), ShortTimeout, Elevate: true, StandardInput: TraefikRoutes.CertificateInput(plan.Slug, plan.Routes)),

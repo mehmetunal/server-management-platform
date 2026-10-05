@@ -26,6 +26,11 @@ public sealed class MonitoringOptions
 
     public int RawRetentionHours { get; set; } = 48;
 
+    /// <summary>Bakımın uyguladığı ham metrik saklama süresi (en az 2 saat).</summary>
+    public int EffectiveRawRetentionHours => Math.Max(MinimumRawRetentionHours, RawRetentionHours);
+
+    public const int MinimumRawRetentionHours = 2;
+
     public int HourlyRetentionDays { get; set; } = 90;
 
     public int HealthCheckRetentionDays { get; set; } = 30;

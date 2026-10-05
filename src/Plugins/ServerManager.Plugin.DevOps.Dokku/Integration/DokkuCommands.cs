@@ -35,17 +35,23 @@ internal static partial class DokkuCommands
 
     public static string Restart(string app) => "dokku ps:restart " + ShellQuote.Quote(app);
 
+    /// <summary>
+    /// Kurulum betiği mktemp ile oluşturulan, yalnızca root'un yazabildiği benzersiz bir dosyaya indirilir; sabit /tmp yolu
+    /// kullanılmaz (başka bir kullanıcı önceden dosya veya sembolik bağlantı koyup root'a kendi betiğini çalıştıramasın).
+    /// </summary>
     public static string Install(string version)
     {
         var url = "https://dokku.com/install/" + version + "/bootstrap.sh";
-        const string path = "/tmp/sm-dokku-bootstrap.sh";
         var script = string.Join('\n',
         [
             "set -eu",
-            "trap 'rm -f " + path + "' EXIT",
-            "curl -fsSL --max-time 120 -o " + ShellQuote.Quote(path) + " " + ShellQuote.Quote(url),
-            "chmod 600 " + ShellQuote.Quote(path),
-            "env DOKKU_TAG=" + ShellQuote.Quote(version) + " bash " + ShellQuote.Quote(path)
+            "dir=$(mktemp -d \"${TMPDIR:-/tmp}/sm-dokku.XXXXXXXXXX\")",
+            "trap 'rm -rf -- \"$dir\"' EXIT",
+            "chmod 700 \"$dir\"",
+            "path=\"$dir/bootstrap.sh\"",
+            "curl -fsSL --max-time 120 -o \"$path\" " + ShellQuote.Quote(url),
+            "chmod 600 \"$path\"",
+            "env DOKKU_TAG=" + ShellQuote.Quote(version) + " bash \"$path\""
         ]);
         return "bash -c " + ShellQuote.Quote(script);
     }

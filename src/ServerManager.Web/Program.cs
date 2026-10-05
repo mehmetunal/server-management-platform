@@ -1,6 +1,8 @@
+using System.Net;
 using System.Text.Encodings.Web;
 using System.Text.Unicode;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +12,9 @@ using ServerManager.Application;
 using ServerManager.Application.Backups;
 using ServerManager.Application.Interfaces;
 using ServerManager.Application.Interfaces.Monitoring;
+using ServerManager.Application.Interfaces.Security;
 using ServerManager.Infrastructure;
+using ServerManager.Infrastructure.Persistence;
 using ServerManager.Web.BackgroundJobs;
 using ServerManager.Web.Backups;
 using ServerManager.Web.Commands;
@@ -50,7 +54,9 @@ try
 
     builder.Services.AddSignalR();
     builder.Services.AddSingleton<IMonitoringNotifier, SignalRMonitoringNotifier>();
+    builder.Services.AddSingleton<TerminalAccessValidator>();
     builder.Services.AddSingleton<TerminalManager>();
+    builder.Services.AddSingleton<IUserSessionRevoker, TerminalSessionRevoker>();
     builder.Services.AddHostedService<TerminalCommandWriter>();
     builder.Services.AddHostedService<TerminalIdleSweeper>();
     builder.Services.AddSingleton<DeploymentManager>();
@@ -148,19 +154,37 @@ try
     builder.Services.AddAppRateLimiting();
     builder.AddPlugins(mvcBuilder);
 
+    // Yalnızca listelenen proxy'lerden gelen X-Forwarded-* başlıklarına güvenilir. Liste boşsa varsayılan (loopback) kalır;
+    // aksi halde istemci başlığı kendisi yazarak IP'sini (rate limit, audit) ve şemayı taklit edebilir.
+    var knownProxies = ParseKnownProxies(builder.Configuration.GetSection("Proxy:KnownProxies").Get<string[]>());
+    var knownNetworks = ParseKnownNetworks(builder.Configuration.GetSection("Proxy:KnownNetworks").Get<string[]>());
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
     {
         options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-        options.KnownIPNetworks.Clear();
-        options.KnownProxies.Clear();
+        foreach (var proxy in knownProxies)
+            options.KnownProxies.Add(proxy);
+        foreach (var network in knownNetworks)
+            options.KnownIPNetworks.Add(network);
     });
+
+    // /health: süreç ayakta mı (veritabanına gitmez). /health/ready: veritabanına bağlanılabiliyor mu.
+    builder.Services.AddHealthChecks()
+        .AddDbContextCheck<ApplicationDbContext>("database", tags: ["ready"]);
 
     var app = builder.Build();
 
     await app.Services.InitializeDatabaseAsync(app.Configuration);
 
     if (app.Configuration.GetValue("Proxy:TrustForwardedHeaders", false))
+    {
+        if (knownProxies.Count == 0 && knownNetworks.Count == 0)
+        {
+            app.Logger.LogWarning(
+                "Proxy:TrustForwardedHeaders açık fakat Proxy:KnownProxies / Proxy:KnownNetworks boş. Yalnızca loopback (127.0.0.1, ::1) üzerinden gelen başlıklara güvenilecek; ters proxy başka bir adresteyse ekleyin.");
+        }
+
         app.UseForwardedHeaders();
+    }
 
     if (!app.Environment.IsDevelopment())
     {
@@ -180,10 +204,19 @@ try
     app.UseAuthorization();
     app.UseMiddleware<TwoFactorEnforcementMiddleware>();
 
+    app.MapHealthChecks(HealthEndpoints.LivenessPath, new HealthCheckOptions { Predicate = _ => false })
+        .AllowAnonymous()
+        .DisableRateLimiting();
+    app.MapHealthChecks(HealthEndpoints.ReadinessPath, new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") })
+        .AllowAnonymous()
+        .DisableRateLimiting();
+
     app.MapControllerRoute(name: "default", pattern: "{controller=Dashboard}/{action=Index}/{id?}");
-    app.MapHub<MonitoringHub>(MonitoringHub.Path);
-    app.MapHub<TerminalHub>(TerminalHub.Path);
-    app.MapHub<DeploymentHub>(DeploymentHub.Path);
+
+    // Cookie süresi dolunca (veya oturum kapanınca) açık SignalR bağlantıları da kapanır; aksi halde bağlantı süresiz yaşar.
+    app.MapHub<MonitoringHub>(MonitoringHub.Path, options => options.CloseOnAuthenticationExpiration = true);
+    app.MapHub<TerminalHub>(TerminalHub.Path, options => options.CloseOnAuthenticationExpiration = true);
+    app.MapHub<DeploymentHub>(DeploymentHub.Path, options => options.CloseOnAuthenticationExpiration = true);
     app.MapPluginEndpoints();
 
     await app.RunAsync();
@@ -197,3 +230,19 @@ finally
 {
     await Log.CloseAndFlushAsync();
 }
+
+static List<IPAddress> ParseKnownProxies(string[]? values) =>
+    (values ?? [])
+        .Where(v => !string.IsNullOrWhiteSpace(v))
+        .Select(v => IPAddress.TryParse(v.Trim(), out var address)
+            ? address
+            : throw new InvalidOperationException($"Proxy:KnownProxies içinde geçersiz IP adresi: {v}"))
+        .ToList();
+
+static List<System.Net.IPNetwork> ParseKnownNetworks(string[]? values) =>
+    (values ?? [])
+        .Where(v => !string.IsNullOrWhiteSpace(v))
+        .Select(v => System.Net.IPNetwork.TryParse(v.Trim(), out var network)
+            ? network
+            : throw new InvalidOperationException($"Proxy:KnownNetworks içinde geçersiz CIDR: {v}"))
+        .ToList();

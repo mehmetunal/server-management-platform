@@ -16,6 +16,9 @@ public interface IRemoteFileSystem
 
     Task<ServiceResult> CopyAsync(RemoteExecutionContext context, string source, string destination, CancellationToken cancellationToken = default);
 
+    /// <summary>Yoldaki sembolik bağlantıları sunucuda çözer (readlink -f). Sunucuda sudo açıksa sudo ile çalışır.</summary>
+    Task<ServiceResult<RemotePathResolution>> ResolveAsync(RemoteExecutionContext context, string path, CancellationToken cancellationToken = default);
+
     Task<ServiceResult> DeleteRecursiveAsync(RemoteExecutionContext context, string path, CancellationToken cancellationToken = default);
 
     /// <summary>Sunucuda sudo açıksa sudo ile çalışır.</summary>

@@ -84,9 +84,22 @@ public class IdentitySeeder : IPermissionSeeder
             return;
         }
 
-        var existing = await _userManager.FindByEmailAsync(_seedOptions.AdminEmail);
-        if (existing is not null)
+        // Seed yalnızca ilk kurulum içindir. Bir SuperAdmin zaten varsa (e-postası değiştirilmiş olsa bile) yeni hesap açılmaz;
+        // aksi halde yapılandırmada kalan parola ile her açılışta yeni bir SuperAdmin oluşurdu.
+        var superAdmins = await _userManager.GetUsersInRoleAsync(Roles.SuperAdmin);
+        if (superAdmins.Count > 0)
+        {
+            _logger.LogWarning(
+                "Seed:AdminEmail / Seed:AdminPassword hâlâ tanımlı ancak sistemde SuperAdmin var; seed atlandı. Bu değerleri yapılandırmadan kaldırın.");
             return;
+        }
+
+        if (await _userManager.FindByEmailAsync(_seedOptions.AdminEmail) is not null)
+        {
+            _logger.LogWarning(
+                "Seed:AdminEmail ile kayıtlı bir kullanıcı var fakat SuperAdmin değil; yetkisi otomatik yükseltilmedi. Seed atlandı.");
+            return;
+        }
 
         var admin = new ApplicationUser
         {

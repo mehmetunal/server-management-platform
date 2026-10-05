@@ -11,7 +11,7 @@ public sealed class TwoFactorEnforcementMiddleware
 {
     private const string SetupPath = "/Account/Security";
 
-    private static readonly string[] AllowedPrefixes = ["/Account", "/Error"];
+    private static readonly string[] AllowedPrefixes = ["/Account", "/Error", HealthEndpoints.LivenessPath];
 
     private readonly RequestDelegate _next;
     private readonly IOptionsMonitor<TwoFactorOptions> _options;

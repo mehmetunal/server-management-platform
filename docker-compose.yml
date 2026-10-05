@@ -18,6 +18,35 @@ services:
       retries: 10
       start_period: 30s
 
+  # Uygulama: docker compose --profile app up -d --build
+  # Gerekli .env değişkenleri: MSSQL_SA_PASSWORD, SM_MASTER_KEY (openssl rand -base64 32), ilk kurulum için SM_ADMIN_EMAIL / SM_ADMIN_PASSWORD.
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mag-server-manager:local
+    container_name: server-manager-app
+    profiles: ["app"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      ConnectionStrings__DefaultConnection: "Server=db,1433;Database=${SM_DB_NAME:-ServerManager};User Id=sa;Password=${MSSQL_SA_PASSWORD:?MSSQL_SA_PASSWORD .env dosyasinda tanimlanmali};TrustServerCertificate=True;Encrypt=True"
+      Database__AutoCreate: "true"
+      Security__MasterKey: "${SM_MASTER_KEY:?SM_MASTER_KEY .env dosyasinda tanimlanmali (openssl rand -base64 32)}"
+      Seed__AdminEmail: "${SM_ADMIN_EMAIL:-}"
+      Seed__AdminPassword: "${SM_ADMIN_PASSWORD:-}"
+      Proxy__TrustForwardedHeaders: "${SM_TRUST_FORWARDED_HEADERS:-false}"
+      Deployment__AcmeEmail: "${SM_ACME_EMAIL:-}"
+      TZ: "${TZ:-Europe/Istanbul}"
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
+    volumes:
+      - server-manager-app-data:/app/App_Data
+      - server-manager-app-logs:/app/logs
+    restart: unless-stopped
+
   # Yalnızca yerel test: docker compose --profile test up -d ssh-docker-test
   ssh-docker-test:
     build: ./docker/ssh-docker-test
@@ -34,4 +63,6 @@ services:
 
 volumes:
   server-manager-db-data:
+  server-manager-app-data:
+  server-manager-app-logs:
   sm-dind-data:

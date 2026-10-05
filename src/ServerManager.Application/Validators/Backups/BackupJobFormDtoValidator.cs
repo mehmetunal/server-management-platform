@@ -65,7 +65,7 @@ public sealed class BackupJobFormDtoValidator : AbstractValidator<BackupJobFormD
 
             RuleFor(x => x.DatabasePassword)
                 .MaximumLength(MaxDatabasePasswordLength).WithMessage($"Parola en fazla {MaxDatabasePasswordLength} karakter olabilir.")
-                .Must(p => p is null || !p.Contains('\n') && !p.Contains('\r')).WithMessage("Parola satır sonu içeremez.");
+                .Must(BackupInputPatterns.IsValidDatabasePassword).WithMessage("Parola satır sonu veya NUL karakteri içeremez.");
 
             RuleFor(x => x.ContainerName)
                 .Matches(BackupInputPatterns.DockerName).When(x => !string.IsNullOrWhiteSpace(x.ContainerName))

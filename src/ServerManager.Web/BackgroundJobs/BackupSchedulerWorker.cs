@@ -52,7 +52,7 @@ public sealed class BackupSchedulerWorker : BackgroundService
             await using var scope = _scopeFactory.CreateAsyncScope();
             dueIds = await scope.ServiceProvider.GetRequiredService<IBackupJobService>().ClaimDueJobsAsync(MaxJobsPerTick, stoppingToken);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
         {
             _logger.LogError(ex, "Zamanı gelen yedekleme işleri alınamadı.");
             return;
@@ -66,7 +66,7 @@ public sealed class BackupSchedulerWorker : BackgroundService
                 if (!result.IsSuccess)
                     _logger.LogWarning("Zamanlanmış yedekleme başlatılamadı. JobId: {JobId}, Reason: {Reason}", jobId, result.Message);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
             {
                 _logger.LogError(ex, "Zamanlanmış yedekleme başlatılamadı. JobId: {JobId}", jobId);
             }

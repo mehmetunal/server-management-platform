@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using ServerManager.Application.Cloud;
 using ServerManager.Application.Common;
 using ServerManager.Application.DTOs.Cloud;
 using ServerManager.Application.Interfaces.Cloud;
@@ -380,26 +381,10 @@ public sealed class ScalewayCloudProvider : ICloudProvider
         }
     }
 
-    internal static string ErrorMessage(HttpStatusCode status, string body)
-    {
-        string? detail = null;
-        try
-        {
-            using var document = JsonDocument.Parse(body);
-            detail = Text(document.RootElement, "message");
-        }
-        catch (JsonException)
-        {
-        }
-
-        return status switch
-        {
-            HttpStatusCode.Unauthorized => "API anahtarı geçersiz veya iptal edilmiş.",
-            HttpStatusCode.Forbidden => "API anahtarının bu işlem için yetkisi yok.",
-            HttpStatusCode.TooManyRequests => "Scaleway istek sınırına ulaşıldı; biraz sonra tekrar deneyin.",
-            _ => detail is null ? $"Scaleway isteği başarısız oldu (HTTP {(int)status})." : $"Scaleway: {detail}"
-        };
-    }
+    internal static string ErrorMessage(HttpStatusCode status, string body) =>
+        CloudApiErrorMessage.Create(status, body, "Scaleway",
+            "API anahtarının bu işlem için yetkisi yok.",
+            root => Text(root, "message"));
 
     private static bool IsTrue(JsonElement element, string name) =>
         element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.True;

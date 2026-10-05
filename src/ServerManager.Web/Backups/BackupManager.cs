@@ -5,12 +5,14 @@ using ServerManager.Application.Common;
 using ServerManager.Application.DTOs.Backups;
 using ServerManager.Application.Interfaces.Services;
 using ServerManager.Domain.Enums;
+using ServerManager.Web.BackgroundJobs;
 
 namespace ServerManager.Web.Backups;
 
 /// <summary>
 /// Yedekleme ve geri yüklemeleri HTTP isteğinden bağımsız arka planda çalıştırır. Aynı anda en fazla
-/// <see cref="BackupOptions.MaxConcurrency"/> işlem aktarım yapar, diğerleri sırada bekler. Aynı iş için tek yedekleme çalışır.
+/// <see cref="BackupOptions.MaxConcurrency"/> işlem aktarım yapar, diğerleri sırada bekler (sınır panelden değişince yeniden
+/// başlatma gerekmez). Aynı iş için tek yedekleme çalışır.
 /// </summary>
 public sealed class BackupManager : IDisposable
 {
@@ -18,7 +20,7 @@ public sealed class BackupManager : IDisposable
 
     private readonly ConcurrentDictionary<Guid, BackupActiveRun> _runs = new();
     private readonly SemaphoreSlim _startGate = new(1, 1);
-    private readonly SemaphoreSlim _concurrency;
+    private readonly DynamicConcurrencyLimiter _concurrency;
     private readonly CancellationTokenSource _stopping = new();
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<BackupManager> _logger;
@@ -27,8 +29,8 @@ public sealed class BackupManager : IDisposable
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
-        var limit = Math.Clamp(options.Value.MaxConcurrency, 1, 16);
-        _concurrency = new SemaphoreSlim(limit, limit);
+        var backupOptions = options.Value;
+        _concurrency = new DynamicConcurrencyLimiter(() => Math.Clamp(backupOptions.MaxConcurrency, 1, 16));
     }
 
     public async Task<ServiceResult<Guid>> StartBackupAsync(Guid jobId, BackupTrigger trigger, BackupActor actor, CancellationToken cancellationToken)
@@ -97,7 +99,6 @@ public sealed class BackupManager : IDisposable
     {
         _stopping.Dispose();
         _startGate.Dispose();
-        _concurrency.Dispose();
     }
 
     private void Launch(BackupActiveRun run, Func<IBackupRunService, BackupActiveRun, Task<ServiceResult>> execute)

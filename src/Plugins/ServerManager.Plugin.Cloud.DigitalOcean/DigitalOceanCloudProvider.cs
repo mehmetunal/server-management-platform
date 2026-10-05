@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using ServerManager.Application.Cloud;
 using ServerManager.Application.Common;
 using ServerManager.Application.DTOs.Cloud;
 using ServerManager.Application.Interfaces.Cloud;
@@ -223,24 +224,8 @@ public sealed class DigitalOceanCloudProvider : ICloudProvider
         }
     }
 
-    internal static string ErrorMessage(HttpStatusCode status, string body)
-    {
-        string? detail = null;
-        try
-        {
-            using var document = JsonDocument.Parse(body);
-            detail = Text(document.RootElement, "message");
-        }
-        catch (JsonException)
-        {
-        }
-
-        return status switch
-        {
-            HttpStatusCode.Unauthorized => "API anahtarı geçersiz veya iptal edilmiş.",
-            HttpStatusCode.Forbidden => "API anahtarının bu işlem için yetkisi yok (droplet oluşturmak için 'Write' kapsamı gerekir).",
-            HttpStatusCode.TooManyRequests => "DigitalOcean istek sınırına ulaşıldı; biraz sonra tekrar deneyin.",
-            _ => detail is null ? $"DigitalOcean isteği başarısız oldu (HTTP {(int)status})." : $"DigitalOcean: {detail}"
-        };
-    }
+    internal static string ErrorMessage(HttpStatusCode status, string body) =>
+        CloudApiErrorMessage.Create(status, body, "DigitalOcean",
+            "API anahtarının bu işlem için yetkisi yok (droplet oluşturmak için 'Write' kapsamı gerekir).",
+            root => Text(root, "message"));
 }

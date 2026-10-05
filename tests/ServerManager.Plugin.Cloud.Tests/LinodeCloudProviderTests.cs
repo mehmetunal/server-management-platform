@@ -26,7 +26,7 @@ public class LinodeCloudProviderTests
             .Add("/v4/linode/instances?page=1", """{"data":[{"id":7,"label":"app-1","status":"running","type":"g6-nanode-1","region":"eu-central","ipv4":["192.168.1.4","203.0.113.9"],"created":"2026-09-01T10:00:00"}],"page":1,"pages":1,"results":1}""")
             .Add("/v4/linode/types?page=1", """{"data":[{"id":"g6-nanode-1","price":{"monthly":5}}],"page":1,"pages":1}""");
 
-        var result = await _provider.ListServersAsync(Token);
+        var result = await _provider.ListServersAsync(Token, TestContext.Current.CancellationToken);
 
         Assert.True(result.IsSuccess);
         var server = Assert.Single(result.Data!);
@@ -41,7 +41,7 @@ public class LinodeCloudProviderTests
     {
         _handler.Add("/v4/linode/instances?page=1&page_size=1", """{"data":[],"page":1,"pages":1,"results":3}""");
 
-        var result = await _provider.ValidateTokenAsync(Token);
+        var result = await _provider.ValidateTokenAsync(Token, TestContext.Current.CancellationToken);
 
         Assert.Equal("Linode hesabı · 3 sunucu", result.Data);
         Assert.Equal($"Bearer {Token}", _handler.Requests.Single().Authorization);
@@ -55,7 +55,7 @@ public class LinodeCloudProviderTests
             .Add("/v4/linode/types?page=1", """{"data":[{"id":"g6-nanode-1","label":"Nanode 1GB","vcpus":1,"memory":1024,"disk":25600,"price":{"monthly":5}}],"page":1,"pages":1}""")
             .Add("/v4/images?page=1", """{"data":[{"id":"linode/ubuntu24.04","label":"Ubuntu 24.04 LTS","status":"available"},{"id":"private/mine","label":"Mine","status":"available"}],"page":1,"pages":1}""");
 
-        var result = await _provider.GetCatalogAsync(Token);
+        var result = await _provider.GetCatalogAsync(Token, TestContext.Current.CancellationToken);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(["eu-central"], result.Data!.Regions.Select(r => r.Id));
@@ -70,7 +70,7 @@ public class LinodeCloudProviderTests
     {
         _handler.Add("/v4/linode/instances", """{"id":9,"label":"web-1","status":"provisioning","region":"eu-central","type":"g6-nanode-1","ipv4":[]}""");
 
-        var result = await _provider.CreateServerAsync(Token, new CloudCreateServerRequest("web-1", "eu-central", "g6-nanode-1", "linode/ubuntu24.04", "#cloud-config\n"));
+        var result = await _provider.CreateServerAsync(Token, new CloudCreateServerRequest("web-1", "eu-central", "g6-nanode-1", "linode/ubuntu24.04", "#cloud-config\n"), TestContext.Current.CancellationToken);
 
         Assert.True(result.IsSuccess);
         Assert.False(string.IsNullOrWhiteSpace(result.Data!.RootPassword));
@@ -83,7 +83,7 @@ public class LinodeCloudProviderTests
     [Fact]
     public async Task CreateServerAsync_RejectsLabelBeforeCallingApi()
     {
-        var result = await _provider.CreateServerAsync(Token, new CloudCreateServerRequest("1bad", "eu-central", "g6-nanode-1", "linode/ubuntu24.04", null));
+        var result = await _provider.CreateServerAsync(Token, new CloudCreateServerRequest("1bad", "eu-central", "g6-nanode-1", "linode/ubuntu24.04", null), TestContext.Current.CancellationToken);
 
         Assert.False(result.IsSuccess);
         Assert.Contains("harfle", result.Message);

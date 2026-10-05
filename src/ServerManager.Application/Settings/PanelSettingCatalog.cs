@@ -14,7 +14,7 @@ public static class PanelSettingCatalog
         Def("Monitoring:MemoryCriticalPercent", "İzleme", "RAM kritik (%)", PanelSettingKind.Number, "Uyarı eşiğinden büyük olmalı.", 2, 100, "Eşikler"),
         Def("Monitoring:DiskWarningPercent", "İzleme", "Disk uyarı (%)", PanelSettingKind.Number, "Kritik eşikten küçük olmalı.", 1, 99, "Eşikler"),
         Def("Monitoring:DiskCriticalPercent", "İzleme", "Disk kritik (%)", PanelSettingKind.Number, "Uyarı eşiğinden büyük olmalı.", 2, 100, "Eşikler"),
-        Def("Monitoring:RawRetentionHours", "İzleme", "Ham metrik saklama (saat)", PanelSettingKind.Integer, "Ham ölçümlerin tutulduğu süre.", 1, 8760, "Saklama"),
+        Def("Monitoring:RawRetentionHours", "İzleme", "Ham metrik saklama (saat)", PanelSettingKind.Integer, "Ham ölçümlerin tutulduğu süre; en az 2 saat uygulanır. Süreli metrik kurallarından kısa olamaz.", 1, 8760, "Saklama"),
         Def("Monitoring:HourlyRetentionDays", "İzleme", "Saatlik özet saklama (gün)", PanelSettingKind.Integer, "Saatlik özetlerin tutulduğu süre.", 1, 3650, "Saklama"),
 
         Def("Alerting:Enabled", "Alarmlar", "Değerlendirme", PanelSettingKind.Boolean, "Kapalıyken kural, uptime ve SSL taraması durur.", cluster: "Değerlendirme"),
@@ -35,7 +35,13 @@ public static class PanelSettingCatalog
         Def("SecurityScan:RetentionDays", "Güvenlik taraması", "Saklama (gün)", PanelSettingKind.Integer, "Süre dolunca eski taramalar silinir.", 1, 3650, "Tarama"),
         Def("SecurityScan:KeepLatestPerServer", "Güvenlik taraması", "Sunucu başına korunan", PanelSettingKind.Integer, "Süre dolsa da bırakılan son kayıt.", 1, 200, "Tarama"),
 
-        Def("Cloud:SyncIntervalHours", "Bulut", "Otomatik eşitleme (saat)", PanelSettingKind.Integer, "0 otomatik eşitlemeyi kapatır. Elle eşitleme durmaz.", 0, 168, "Eşitleme")
+        Def("Cloud:SyncIntervalHours", "Bulut", "Otomatik eşitleme (saat)", PanelSettingKind.Integer, "0 otomatik eşitlemeyi kapatır. Elle eşitleme durmaz.", 0, 168, "Eşitleme"),
+
+        Def("Retention:DeploymentLogDays", "Kayıt saklama", "Deployment logları (gün)", PanelSettingKind.Integer, "Kayıt kalır, yalnızca log metni temizlenir. Proje başına son 10 korunur. 0 silmez.", 0, 3650, "Loglar"),
+        Def("Retention:BackupRunLogDays", "Kayıt saklama", "Yedek logları (gün)", PanelSettingKind.Integer, "Kayıt kalır, yalnızca log metni temizlenir. İş başına son 10 korunur. 0 silmez.", 0, 3650, "Loglar"),
+        Def("Retention:CommandRunDays", "Kayıt saklama", "Toplu komut geçmişi (gün)", PanelSettingKind.Integer, "Biten çalıştırmalar çıktılarıyla silinir. 0 silmez.", 0, 3650, "Geçmiş"),
+        Def("Retention:TerminalSessionDays", "Kayıt saklama", "Terminal oturumları (gün)", PanelSettingKind.Integer, "Kapanmış oturumlar komut geçmişiyle silinir. 0 silmez.", 0, 3650, "Geçmiş"),
+        Def("Retention:AlertEventDays", "Kayıt saklama", "Kapanmış alarmlar (gün)", PanelSettingKind.Integer, "Açık alarmlar silinmez. 0 silmez.", 0, 3650, "Geçmiş")
     ];
 
     public static readonly IReadOnlyList<(string Warning, string Critical)> ThresholdPairs =

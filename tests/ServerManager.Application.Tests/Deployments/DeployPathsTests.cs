@@ -8,6 +8,9 @@ public class DeployPathsTests
     [InlineData("/srv/apps/api")]
     [InlineData("/home/deploy/app")]
     [InlineData("/opt/acme_api-v2")]
+    [InlineData("/root/apps")]
+    [InlineData("/var/lib/apps/api")]
+    [InlineData("/var/www/api")]
     public void Accepts_project_directories(string path) => Assert.True(DeployPaths.TryValidate(path, out _));
 
     [Theory]
@@ -22,6 +25,13 @@ public class DeployPathsTests
     [InlineData("/etc/myapp")]
     [InlineData("/usr/local/app")]
     [InlineData("/proc/1")]
+    [InlineData("/home/ubuntu")]
+    [InlineData("/home/ubuntu/.ssh")]
+    [InlineData("/home/ubuntu/.config/app")]
+    [InlineData("/root/.ssh")]
+    [InlineData("/root/.cache/app")]
+    [InlineData("/var/lib/docker")]
+    [InlineData("/var/lib/mysql")]
     public void Rejects_system_or_malformed_paths(string path)
     {
         Assert.False(DeployPaths.TryValidate(path, out var error));

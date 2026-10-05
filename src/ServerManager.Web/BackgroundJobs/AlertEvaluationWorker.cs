@@ -48,7 +48,7 @@ public sealed class AlertEvaluationWorker : BackgroundService
             using var scope = _scopeFactory.CreateScope();
             await scope.ServiceProvider.GetRequiredService<IAlertService>().EvaluateAsync(stoppingToken);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
         {
             _logger.LogError(ex, "Alarm değerlendirmesi başarısız.");
         }

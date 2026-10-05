@@ -19,6 +19,12 @@ public class DeploymentDomainConfiguration : IEntityTypeConfiguration<Deployment
         builder.Property(d => d.CreatedBy).HasMaxLength(256);
         builder.Property(d => d.UpdatedBy).HasMaxLength(256);
 
+        // M019'daki filtreli benzersiz indeksin karşılığı: bir sunucuda aynı host ve yol yalnızca bir domainde olabilir.
+        builder.HasIndex(d => new { d.ServerId, d.Host, d.Path })
+            .IsUnique()
+            .HasFilter("[IsDeleted] = 0")
+            .HasDatabaseName("UX_DeploymentDomains_Server_Host_Path");
+
         builder.HasOne(d => d.Project)
             .WithMany()
             .HasForeignKey(d => d.ProjectId)

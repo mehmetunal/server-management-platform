@@ -20,6 +20,7 @@ public class FileService : IFileService
     private const int AccountFileMaxBytes = 2 * 1024 * 1024;
     private const string InvalidPathMessage = "Geçerli bir mutlak yol girin (ör. /var/www).";
     private const string ProtectedPathMessage = "Bu yol korumalı; panelden silinemez, taşınamaz ve izinleri değiştirilemez.";
+    private const string ProtectedTreeMessage = "Bu klasör sistem klasörü veya korumalı bir klasörü içeriyor; alt öğeleriyle birlikte silinemez ve izinleri değiştirilemez.";
     private const string ExistsMessage = "Hedefte aynı adla bir dosya veya klasör zaten var.";
 
     private readonly IServerConnectionProvider _connectionProvider;
@@ -254,6 +255,12 @@ public class FileService : IFileService
         if (!connection.IsSuccess)
             return connection;
 
+        var resolved = await _fileSystem.ResolveAsync(connection.Data!.Context, source, cancellationToken);
+        if (!resolved.IsSuccess)
+            return resolved;
+        if (IsProtected(resolved.Data!.Entry))
+            return ServiceResult.Failure(ProtectedPathMessage, ServiceErrorType.Forbidden);
+
         var result = await _fileSystem.RunAsync(connection.Data!.Context, (session, ct) => GuardAsync(async () =>
         {
             if (await session.GetInfoAsync(source, ct) is null)
@@ -316,33 +323,47 @@ public class FileService : IFileService
             return connection;
 
         var context = connection.Data!.Context;
+        var resolved = await _fileSystem.ResolveAsync(context, target, cancellationToken);
+        if (!resolved.IsSuccess)
+            return resolved;
+
+        // Silme son bileşeni izlemez (bağlantı silinirse yalnızca bağlantı gider); üst klasörlerdeki bağlantılar ise çözülür.
+        var entry = resolved.Data!.Entry;
+        var isLink = resolved.Data.IsSymbolicLink;
+        if (IsProtected(entry))
+            return ServiceResult.Failure(ProtectedPathMessage, ServiceErrorType.Forbidden);
+
         var name = RemotePath.GetFileName(target);
         var isDirectory = false;
         var result = await _fileSystem.RunAsync(context, (session, ct) => GuardAsync(async () =>
         {
-            var info = await session.GetInfoAsync(target, ct);
+            var info = await session.GetInfoAsync(entry, ct);
             if (info is null)
                 return ServiceResult<bool>.NotFound("Dosya veya klasör bulunamadı.");
 
-            isDirectory = info.Kind == RemoteFileKind.Directory;
+            isDirectory = info.Kind == RemoteFileKind.Directory && !isLink;
             if (isDirectory)
             {
+                if (IsProtectedTree(entry))
+                    return ServiceResult<bool>.Failure(ProtectedTreeMessage, ServiceErrorType.Forbidden);
+
                 return string.Equals(dto.ConfirmationName?.Trim(), name, StringComparison.Ordinal)
                     ? ServiceResult<bool>.Success(true)
                     : ServiceResult<bool>.ValidationFailure(nameof(DeleteFileDto.ConfirmationName), "Klasörü silmek için adını birebir yazın.");
             }
 
-            await session.DeleteFileAsync(target, ct);
+            await session.DeleteFileAsync(entry, ct);
             return ServiceResult<bool>.Success(true);
         }), cancellationToken);
 
         ServiceResult outcome = result;
         if (result.IsSuccess && isDirectory)
-            outcome = await _fileSystem.DeleteRecursiveAsync(context, target, cancellationToken);
+            outcome = await _fileSystem.DeleteRecursiveAsync(context, entry, cancellationToken);
         if (outcome.IsSuccess)
             outcome = ServiceResult.Success(isDirectory ? "Klasör içeriğiyle birlikte silindi." : "Dosya silindi.");
 
-        await AuditAsync(AuditActions.FileDelete, connection.Data, isDirectory ? $"Yol: {target} (klasör, içeriğiyle)" : $"Yol: {target}", outcome, cancellationToken);
+        var path = DescribeResolved(target, entry);
+        await AuditAsync(AuditActions.FileDelete, connection.Data, isDirectory ? $"Yol: {path} (klasör, içeriğiyle)" : $"Yol: {path}", outcome, cancellationToken);
         return outcome;
     }
 
@@ -365,15 +386,28 @@ public class FileService : IFileService
             return connection;
 
         var context = connection.Data!.Context;
+        var resolved = await _fileSystem.ResolveAsync(context, target, cancellationToken);
+        if (!resolved.IsSuccess)
+            return resolved;
+
+        // chmod/chown bağlantıyı izler; koruma kontrolü ve komut, bağlantının gösterdiği gerçek yolla yapılır.
+        var resolvedTarget = resolved.Data!.Target;
+        if (IsProtected(resolvedTarget))
+            return ServiceResult.Failure(ProtectedPathMessage, ServiceErrorType.Forbidden);
+        if (dto.Recursive && resolved.Data.IsSymbolicLink)
+            return ServiceResult.Failure("Sembolik bağlantıda alt öğelerle birlikte izin değiştirilemez; bağlantının gösterdiği klasörü seçin.", ServiceErrorType.Validation);
+        if (dto.Recursive && IsProtectedTree(resolvedTarget))
+            return ServiceResult.Failure(ProtectedTreeMessage, ServiceErrorType.Forbidden);
+
         ServiceResult result = ServiceResult.Success();
         if (mode is not null)
-            result = await _fileSystem.ChangeModeAsync(context, target, mode, dto.Recursive, cancellationToken);
+            result = await _fileSystem.ChangeModeAsync(context, resolvedTarget, mode, dto.Recursive, cancellationToken);
         if (result.IsSuccess && (owner is not null || group is not null))
-            result = await _fileSystem.ChangeOwnerAsync(context, target, owner, group, dto.Recursive, cancellationToken);
+            result = await _fileSystem.ChangeOwnerAsync(context, resolvedTarget, owner, group, dto.Recursive, cancellationToken);
         if (result.IsSuccess)
             result = ServiceResult.Success("İzinler güncellendi.");
 
-        var details = new StringBuilder($"Yol: {target}");
+        var details = new StringBuilder($"Yol: {DescribeResolved(target, resolvedTarget)}");
         if (mode is not null)
             details.Append($", mod: {mode}");
         if (owner is not null || group is not null)
@@ -443,6 +477,18 @@ public class FileService : IFileService
 
     private bool IsProtected(string path) =>
         _options.EffectiveProtectedPaths.Any(p => RemotePath.Normalize(p) == path);
+
+    /// <summary>
+    /// Alt öğeleri etkileyen işlemler için: korumalı yolun kendisi, sistem klasörlerinin altındaki her yol ve korumalı
+    /// bir yolu içeren her üst klasör (ör. /) reddedilir.
+    /// </summary>
+    private bool IsProtectedTree(string path) =>
+        IsProtected(path)
+        || FileManagerOptions.SystemDirectories.Any(root => RemotePath.IsSameOrDescendant(path, root))
+        || _options.EffectiveProtectedPaths.Select(RemotePath.Normalize).Any(p => p is not null && RemotePath.IsSameOrDescendant(p, path));
+
+    private static string DescribeResolved(string path, string resolved) =>
+        path == resolved ? path : $"{path} → {resolved}";
 
     private string TooLargeMessage() =>
         $"Dosya editörde açmak için çok büyük (en fazla {_options.MaxEditKilobytes} KB). İndirerek düzenleyebilirsiniz.";

@@ -33,7 +33,7 @@ public class ServerTemplateServiceTests
         ServerTemplate? saved = null;
         await _repository.AddAsync(Arg.Do<ServerTemplate>(t => saved = t), Arg.Any<CancellationToken>());
 
-        var result = await _service.CreateAsync(new ServerTemplateFormDto { Name = "  Güncelle ", Content = "apt-get update\r\napt-get -y upgrade", RequiresSudo = true });
+        var result = await _service.CreateAsync(new ServerTemplateFormDto { Name = "  Güncelle ", Content = "apt-get update\r\napt-get -y upgrade", RequiresSudo = true }, TestContext.Current.CancellationToken);
 
         Assert.True(result.IsSuccess);
         Assert.Equal("Güncelle", saved!.Name);
@@ -47,7 +47,7 @@ public class ServerTemplateServiceTests
     {
         _repository.NameExistsAsync("Güncelle", null, Arg.Any<CancellationToken>()).Returns(true);
 
-        var result = await _service.CreateAsync(new ServerTemplateFormDto { Name = "Güncelle", Content = "uptime" });
+        var result = await _service.CreateAsync(new ServerTemplateFormDto { Name = "Güncelle", Content = "uptime" }, TestContext.Current.CancellationToken);
 
         Assert.Contains(result.Errors, e => e.PropertyName == nameof(ServerTemplateFormDto.Name));
     }
@@ -58,7 +58,7 @@ public class ServerTemplateServiceTests
     [InlineData("packages: [nginx]", false)]
     public async Task CreateAsync_ValidatesCloudInitHeader(string content, bool valid)
     {
-        var result = await _service.CreateAsync(new ServerTemplateFormDto { Name = "init", Kind = ServerTemplateKind.CloudInit, Content = content });
+        var result = await _service.CreateAsync(new ServerTemplateFormDto { Name = "init", Kind = ServerTemplateKind.CloudInit, Content = content }, TestContext.Current.CancellationToken);
 
         Assert.Equal(valid, result.IsSuccess);
     }
@@ -69,7 +69,7 @@ public class ServerTemplateServiceTests
         var template = new ServerTemplate { Name = "eski", Content = "uptime" };
         _repository.GetAsync(template.Id, Arg.Any<CancellationToken>()).Returns(template);
 
-        var result = await _service.DeleteAsync(template.Id);
+        var result = await _service.DeleteAsync(template.Id, TestContext.Current.CancellationToken);
 
         Assert.True(result.IsSuccess);
         Assert.True(template.IsDeleted);
@@ -84,7 +84,7 @@ public class ServerTemplateServiceTests
             new ServerTemplate { Name = "b", Kind = ServerTemplateKind.CloudInit, Content = "#cloud-config" }
         ]);
 
-        var options = await _service.GetOptionsAsync(ServerTemplateKind.Script);
+        var options = await _service.GetOptionsAsync(ServerTemplateKind.Script, TestContext.Current.CancellationToken);
 
         Assert.Equal(["a"], options.Select(o => o.Name));
     }

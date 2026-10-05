@@ -104,6 +104,7 @@ public static class AuditActions
     public const string SecurityScan = "security.scan";
     public const string AuditExport = "audit.export";
     public const string AuditVerify = "audit.verify";
+    public const string AuditChainAnchorCreate = "audit.chain_anchor_create";
 
     public const string SystemServiceControl = "system.service_control";
     public const string SystemProcessSignal = "system.process_signal";
@@ -223,6 +224,7 @@ public static class AuditActions
         [SecurityScan] = "Güvenlik taraması",
         [AuditExport] = "Audit log dışa aktarma",
         [AuditVerify] = "Audit log bütünlük doğrulaması",
+        [AuditChainAnchorCreate] = "Audit zincir çapası oluşturuldu",
         [SystemServiceControl] = "Sunucu servisi başlatma / durdurma / yeniden başlatma",
         [SystemProcessSignal] = "Process sonlandırma",
         [ServerGroupCreate] = "Sunucu grubu ekleme",

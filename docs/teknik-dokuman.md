@@ -44,7 +44,11 @@ dotnet run --project src/ServerManager.Web --launch-profile https
 dotnet test --solution ServerManager.slnx
 ```
 
-HTTP profili `http://localhost:5180`, HTTPS profili `https://localhost:7180`. Testler canlı veritabanına ve gerçek sunucuya bağlanmaz.
+HTTP profili `http://localhost:5180`, HTTPS profili `https://localhost:7180`. Birim testleri canlı veritabanına ve gerçek sunucuya bağlanmaz. `tests/ServerManager.Web.Tests` uygulamayı `WebApplicationFactory<Program>` ile açıp kimlik, antiforgery, izin, kilit, hız sınırı, 2FA, agent token'ı ve sağlık uçlarını dener; açılış migration gerektirdiği için `SM_TEST_SQL` (veritabanı adı içermeyen SQL Server bağlantı dizesi) ister, yoksa atlanır. Her çalıştırma geçici bir veritabanı açıp siler.
+
+**Docker:** kökteki `Dockerfile` SDK 10 ile yayınlar, `aspnet:10.0` üzerinde ayrıcalıksız `app` kullanıcısıyla `8080` portunda çalışır. Eklentiler yayın çıktısındaki `Plugins/` klasörüyle imaja girer. `tzdata` kuruludur. Volume'ler `/app/App_Data` (yerel yedekler) ve `/app/logs`. `HEALTHCHECK` `/health` adresini yoklar. `docker compose --profile app up -d --build` uygulamayı `db` sağlıklı olunca başlatır. Bağlantı dizesi, `Security__MasterKey` ve seed değerleri `.env` dosyasından gelir (`.env.example`). Production'da çerezler `Secure` olduğundan panel TLS sonlandıran bir vekil arkasında kullanılır.
+
+**Sağlık uçları:** `GET /health` canlılıktır, oturumsuz `200` döner. `GET /health/ready` hazırlıktır, oturumsuzdur ve veritabanına erişilemezse `503` döner.
 
 ## 3. İstek ve yanıt
 
@@ -57,6 +61,8 @@ JSON gövdesi:
 ```
 
 Başarısızlıkta HTTP kodu sonuca göredir (400, 401, 403, 404, 409, 429, 500). İş kuralı controller’da durmaz.
+
+`Proxy:TrustForwardedHeaders` açıkken `X-Forwarded-For` / `X-Forwarded-Proto` yalnızca `Proxy:KnownProxies` (IP listesi) veya `Proxy:KnownNetworks` (CIDR listesi) içindeki vekilden gelirse işlenir. Listede olmayan vekilin başlıkları yok sayılır; bu durumda IP bazlı hız sınırları ve audit IP'si vekilin adresini görür.
 
 Hassas uçlar hız sınırına tabidir. Örnekler: giriş ve bağlantı testi, Docker aksiyonu dakika başına 30, Dokploy ve Dokku dakika başına 20, agent raporu IP başına 120. Pencere kullanıcıya, oturum yoksa IP’ye göredir.
 
@@ -81,6 +87,8 @@ Oturum çerezi `SameSite=Strict` olduğu için dış siteden dönüşte (GitHub 
 `Security:MasterKey` 32 bayt base64’tür. SSH parolası, private key, passphrase, sudo parolası, yedek parolası, bulut API anahtarı, bildirim sırrı ve Dokploy API anahtarı AES-256-GCM ile şifrelenir. Şifreli değer `v{KeyVersion}:` öneki taşır. Anahtar değişirse eski kayıtlar çözülemez.
 
 Anahtar loga, audit metnine ve HTML’e yazılmaz. Formda secret alan kayıttan sonra boş gelir. Boş gönderilirse eski değer kalır.
+
+Data Protection anahtarları (kimlik çerezi, antiforgery, 2FA ara adımı) veritabanında saklanır; container yeniden oluşturulunca veya birden fazla örnek çalışınca oturumlar düşmez. Bu anahtarlar `Security:MasterKey`'den bağımsızdır.
 
 Agent token’ı `sma_` artı 43 URL-güvenli karakterdir. Yalnızca oluşturulduğu anda, kurulum komutunun içinde bir kez gösterilir. Veritabanında SHA-256 özeti durur.
 
@@ -141,7 +149,7 @@ Sağlayıcılar `IBackupStorageProvider` uygular. Çekirdek yerel diski, `Storag
 
 Proje çekirdektedir. Dokploy veya Dokku dağıtımının yerine geçmez. Git, hedef sunucuda SSH ile çalışır. Erişim anahtarı `x-access-token` olarak stdin’den gider, diske ve loga yazılmaz.
 
-Domain kaydı `DeploymentDomains` tablosundadır. Aynı sunucuda aynı host ve yol iki kez kullanılamaz. Sunucuda bir kez `sm-traefik` ve `sm-proxy` ağı kurulur. Compose dosyası değiştirilmez; yanına `sm-proxy.override.yml` yazılır. Dockerfile container'ına etiket `docker run` ile eklenir. Özel sertifika ve anahtar şifreli saklanır, komut satırına yazılmaz, `/var/lib/sm-traefik/dynamic` altına stdin ile gider. Domain'i olmayan proje eskisi gibi yalnızca port veya compose ile ayağa kalkar. Proje silinince kayıt panelden kalkar; onay kutusundaki kalıcı silme sunucudaki klasörü, container'ı, imajı, volume'ları ve bu projenin vekil dosyalarını da kaldırır. `sm-traefik` durmaz. Deployment geçmişi silinmez. `Deployment:AcmeEmail` Let's Encrypt hesabıdır.
+Domain kaydı `DeploymentDomains` tablosundadır. Aynı sunucuda aynı host ve yol iki kez kullanılamaz. Sunucuda bir kez `sm-traefik` ve `sm-proxy` ağı kurulur. Compose dosyası değiştirilmez; yanına `sm-proxy.override.yml` yazılır. Dockerfile container'ına etiket `docker run` ile eklenir. Özel sertifika ve anahtar şifreli saklanır, komut satırına yazılmaz, `/var/lib/sm-traefik/dynamic` altına stdin ile gider. Domain'i olmayan proje eskisi gibi yalnızca port veya compose ile ayağa kalkar. Proje silinince kayıt panelden kalkar; onay kutusundaki kalıcı silme sunucudaki klasörü, container'ı, imajı, volume'ları ve bu projenin vekil dosyalarını da kaldırır. `sm-traefik` durmaz. Deployment geçmişi silinmez. `Deployment:AcmeEmail` Let's Encrypt hesabıdır; varsayılanı boştur ve yapılandırılmadan vekil kurulmaz.
 
 GitHub App eklentisi `contents: read` ve `metadata: read` ister. Private key ile kısa ömürlü JWT, oradan kurulum anahtarı üretilir. Anahtar önbelleğe alınmaz ve tek depoya daraltılır. Private key, client secret ve webhook secret şifrelidir. Uygulamayı kullanan proje varken kayıt kaldırılamaz. Kaldırma yumuşak siler, GitHub’daki uygulamayı silmez.
 
@@ -193,6 +201,8 @@ Kurulum migration, izin ve `InstalledPlugins` satırı yazar. Devre dışı bır
 
 Dokku kurulum betiği `https://dokku.com/install/{Dokku:Version}/bootstrap.sh` adresindendir. Sürüm `v0.38.31` biçiminde doğrulanır, kabuğa kaçışlanarak yazılır. Çıktı süreç belleğindedir, veritabanına yazılmaz. Süreç ölürse sunucudaki betik sürebilir. Sonuç `dokku.install_complete` audit kaydıdır.
 
+Dokploy kurulum betiği `Dokploy:InstallScriptUrl` adresinden indirilir. `Dokploy:ExpectedSha256` doluysa betiğin SHA-256 özeti bu değerle eşleşmeden kurulum çalıştırılmaz.
+
 Dokploy kurulum kaydı ve çıktısı eklenti tablosundadır. Sayfa kapansa da iş sürer, dönünce çıktı yeniden basılır. API anahtarı başka hosta yönlendirilmesin diye HTTP istemcisi yönlendirme izlemez.
 
 Eklenti şeması yalnızca kendi migration’ındadır. Sürüm numarası tüm uygulamada benzersiz bir zaman damgasıdır. Host tablosuna yalnızca foreign key bağlanır. Host tablosunun kolonu eklentiyle değişmez. Şema değişikliği eklemedir: kolon silinmez, yeniden adlandırılmaz, tipi değişmez.
@@ -201,7 +211,9 @@ Eklenti şeması yalnızca kendi migration’ındadır. Sürüm numarası tüm u
 
 Silme yumuşaktır. Profil, maliyet, istatistik, satın alma ve audit otomatik işlerle silinmez. Okunamayan satır (sahibi veya tarihi yok) silinmez.
 
-Silinebilen geçici veri ölçümü oluşturulma zamanına değil son harekete bakar ve pay bırakır. Geçmiş listeleri yaşa göre boşaltılmaz. Uygulamanın gösterdiği son N kayıt kalır.
+Silinebilen geçici veri ölçümü oluşturulma zamanına değil son harekete bakar ve pay bırakır. Uygulamanın gösterdiği son N kayıt kalır.
+
+Geçmiş kayıtların saklama süresi `Retention:` anahtarlarıyla gün cinsinden verilir: `DeploymentLogDays`, `BackupRunLogDays`, `CommandRunDays`, `TerminalSessionDays`, `AlertEventDays`. `0` süresiz saklar. Audit log hiçbir ayarla silinmez.
 
 Eski istemciyle uyum: alan eklenir, silinmez. Yeni alan opsiyoneldir ve varsayılanla okunur. Sıkılaştırılmış kural, mağazadaki eski sürüm çoğunlukla güncellenmeden yüklenmez. Bu depoda mağaza istemcisi yoktur. Kural yine de API ve şema içindir.
 

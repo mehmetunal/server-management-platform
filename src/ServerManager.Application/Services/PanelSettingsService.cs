@@ -20,6 +20,7 @@ namespace ServerManager.Application.Services;
 public class PanelSettingsService : IPanelSettingsService
 {
     private readonly IPanelSettingRepository _repository;
+    private readonly IAlertRepository _alertRepository;
     private readonly IAuditLogService _auditLogService;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<PanelSettingsService> _logger;
@@ -27,6 +28,7 @@ public class PanelSettingsService : IPanelSettingsService
 
     public PanelSettingsService(
         IPanelSettingRepository repository,
+        IAlertRepository alertRepository,
         IAuditLogService auditLogService,
         TimeProvider timeProvider,
         ILogger<PanelSettingsService> logger,
@@ -34,9 +36,13 @@ public class PanelSettingsService : IPanelSettingsService
         IOptions<AlertingOptions> alerting,
         IOptions<BackupOptions> backup,
         IOptions<SecurityScanOptions> securityScan,
-        IOptions<CloudOptions> cloud)
+        IOptions<CloudOptions> cloud,
+        IOptions<RetentionOptions> retention)
     {
+        // Çalışan işler ve servisler bu ayarları IOptions<T> üzerinden okur; burada değiştirilen nesne aynı tekil örnektir.
+        // IOptionsMonitor/IOptionsSnapshot ayrı örnek tuttuğu için panelden gelen değişikliği görmez; kullanılmamalıdır.
         _repository = repository;
+        _alertRepository = alertRepository;
         _auditLogService = auditLogService;
         _timeProvider = timeProvider;
         _logger = logger;
@@ -46,7 +52,8 @@ public class PanelSettingsService : IPanelSettingsService
             [AlertingOptions.SectionName] = alerting.Value,
             [BackupOptions.SectionName] = backup.Value,
             [SecurityScanOptions.SectionName] = securityScan.Value,
-            [CloudOptions.SectionName] = cloud.Value
+            [CloudOptions.SectionName] = cloud.Value,
+            [RetentionOptions.SectionName] = retention.Value
         };
     }
 
@@ -103,6 +110,13 @@ public class PanelSettingsService : IPanelSettingsService
             }
         }
 
+        if (errors.Count == 0 && parsed.TryGetValue(RawRetentionKey, out var rawHours))
+        {
+            var error = await ValidateRawRetentionAsync(Convert.ToInt32(rawHours, CultureInfo.InvariantCulture), cancellationToken);
+            if (error is not null)
+                errors.Add(error);
+        }
+
         if (errors.Count > 0)
             return ServiceResult.ValidationFailure(errors);
 
@@ -139,6 +153,24 @@ public class PanelSettingsService : IPanelSettingsService
         return ServiceResult.Success("Ayarlar kaydedildi. Çalışan işler yeni değeri bir sonraki turda kullanır.");
     }
 
+    /// <summary>Ham metrik saklama süresi, süreli metrik kurallarının penceresinden kısa olursa bu kurallar hiç tetiklenmez.</summary>
+    private async Task<ServiceError?> ValidateRawRetentionAsync(int rawRetentionHours, CancellationToken cancellationToken)
+    {
+        var rules = await _alertRepository.GetRulesAsync(cancellationToken);
+        var effectiveHours = Math.Max(MonitoringOptions.MinimumRawRetentionHours, rawRetentionHours);
+        var longest = rules
+            .Where(r => AlertRuleKinds.IsMetric(r.Kind) && r.DurationMinutes > effectiveHours * 60)
+            .MaxBy(r => r.DurationMinutes);
+        if (longest is null)
+            return null;
+
+        var requiredHours = (int)Math.Ceiling(longest.DurationMinutes / 60d);
+        return new ServiceError(RawRetentionKey,
+            $"\"{longest.Name}\" alarm kuralı {longest.DurationMinutes} dakikalık pencere kullanıyor; ham metrik saklama en az {requiredHours} saat olmalı.");
+    }
+
+    private const string RawRetentionKey = $"{MonitoringOptions.SectionName}:{nameof(MonitoringOptions.RawRetentionHours)}";
+
     private PanelSettingFieldDto ToField(PanelSettingDefinition definition) =>
         new(definition.Key, definition.Label, definition.Kind.ToString(), Read(definition), definition.Hint,
             definition.Kind is PanelSettingKind.Integer or PanelSettingKind.Number ? definition.Minimum : null,
@@ -169,6 +201,7 @@ public class PanelSettingsService : IPanelSettingsService
         BackupOptions.SectionName => typeof(BackupOptions),
         SecurityScanOptions.SectionName => typeof(SecurityScanOptions),
         CloudOptions.SectionName => typeof(CloudOptions),
+        RetentionOptions.SectionName => typeof(RetentionOptions),
         _ => throw new InvalidOperationException($"Ayar bölümü yok: {definition.Key}")
     };
 

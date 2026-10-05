@@ -15,5 +15,5 @@ public sealed class DeploymentOptions
     public int MaxStoredLogKilobytes { get; set; } = 1024;
 
     /// <summary>Let's Encrypt hesap e-postası. Panel bu adresle sertifika ister.</summary>
-    public string AcmeEmail { get; set; } = "unal.m1991@gmail.com";
+    public string AcmeEmail { get; set; } = string.Empty;
 }

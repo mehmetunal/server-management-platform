@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
@@ -54,6 +55,18 @@ public sealed class AesGcmSecretProtector : ISecretProtector
         if (separatorIndex <= VersionPrefix.Length || !protectedValue.StartsWith(VersionPrefix, StringComparison.Ordinal))
             throw new CryptographicException("Şifreli değer formatı geçersiz.");
 
+        var versionText = protectedValue.AsSpan(VersionPrefix.Length, separatorIndex - VersionPrefix.Length);
+        if (!int.TryParse(versionText, NumberStyles.None, CultureInfo.InvariantCulture, out var version) || version < 1)
+            throw new CryptographicException("Şifreli değer formatı geçersiz (anahtar sürümü okunamadı).");
+
+        // Tek anahtar tutulur: daha yeni sürümle yazılmış değer bu anahtarla çözülemez. Eski sürümler, KeyVersion anahtar
+        // değiştirilmeden artırılmış olabileceği için mevcut anahtarla denenir (geriye dönük uyumluluk).
+        if (version > KeyVersion)
+        {
+            throw new CryptographicException(
+                $"Şifreli değer v{version} anahtar sürümüyle oluşturulmuş; yapılandırılan sürüm v{KeyVersion}. Security:KeyVersion ve Security:MasterKey değerlerini kontrol edin.");
+        }
+
         byte[] payload;
         try
         {
@@ -73,7 +86,18 @@ public sealed class AesGcmSecretProtector : ISecretProtector
         var plainBytes = new byte[cipher.Length];
 
         using var aes = new AesGcm(_key, TagSize);
-        aes.Decrypt(nonce, cipher, tag, plainBytes, AssociatedData);
+        try
+        {
+            aes.Decrypt(nonce, cipher, tag, plainBytes, AssociatedData);
+        }
+        catch (AuthenticationTagMismatchException ex)
+        {
+            throw new CryptographicException(
+                version == KeyVersion
+                    ? "Şifreli değer çözülemedi: değer bozulmuş ya da Security:MasterKey değiştirilmiş."
+                    : $"Şifreli değer v{version} anahtar sürümüyle oluşturulmuş ve mevcut anahtarla (v{KeyVersion}) çözülemedi. Eski anahtar yapılandırılmamış olabilir.",
+                ex);
+        }
 
         var plaintext = Encoding.UTF8.GetString(plainBytes);
         CryptographicOperations.ZeroMemory(plainBytes);

@@ -4,12 +4,14 @@ using ServerManager.Application.DTOs.Backups;
 using ServerManager.Application.DTOs.Ssh;
 using ServerManager.Application.Interfaces.Backups;
 using ServerManager.Application.Interfaces.Ssh;
+using ServerManager.Application.Validators.Backups;
 
 namespace ServerManager.Infrastructure.Backups;
 
 public sealed class SshBackupSourceRunner : IBackupSourceRunner
 {
     private static readonly TimeSpan PrecheckTimeout = TimeSpan.FromMinutes(1);
+    private const string InvalidPasswordMessage = "Veritabanı parolası satır sonu veya NUL karakteri içeriyor; işi düzenleyip parolayı yeniden girin.";
 
     private readonly IRemoteCommandRunner _runner;
 
@@ -26,6 +28,9 @@ public sealed class SshBackupSourceRunner : IBackupSourceRunner
         CancellationToken cancellationToken = default) =>
         RunAsync(connection, async (executor, ct) =>
         {
+            if (!BackupInputPatterns.IsValidDatabasePassword(source.DatabasePassword))
+                return ServiceResult.Failure(InvalidPasswordMessage);
+
             if (BackupCommands.Precheck(source) is { } precheck)
             {
                 var checkOutput = await executor.ExecuteAsync(new RemoteCommand(precheck, PrecheckTimeout, Elevate: true), ct);
@@ -57,6 +62,9 @@ public sealed class SshBackupSourceRunner : IBackupSourceRunner
         CancellationToken cancellationToken = default) =>
         RunAsync(connection, async (executor, ct) =>
         {
+            if (!BackupInputPatterns.IsValidDatabasePassword(target.DatabasePassword))
+                return ServiceResult.Failure(InvalidPasswordMessage);
+
             var command = new RemoteCommand(BackupCommands.Import(target), timeout, Elevate: true);
             var needsPassword = BackupCommands.NeedsPasswordInput(target);
 

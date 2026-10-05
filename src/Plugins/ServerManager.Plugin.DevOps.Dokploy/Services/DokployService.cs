@@ -348,7 +348,8 @@ public class DokployService : IDokployService
             installation.RequestedVersion,
             Elevate: !report.Data.IsRoot,
             UseBash: report.Data.BashAvailable,
-            TimeSpan.FromMinutes(Math.Max(5, _options.InstallTimeoutMinutes)));
+            TimeSpan.FromMinutes(Math.Max(5, _options.InstallTimeoutMinutes)),
+            string.IsNullOrWhiteSpace(_options.ExpectedSha256) ? null : _options.ExpectedSha256.Trim());
 
         var script = await _provider.RunInstallScriptAsync(context, plan, recorder, cancellationToken);
         if (!script.IsSuccess)

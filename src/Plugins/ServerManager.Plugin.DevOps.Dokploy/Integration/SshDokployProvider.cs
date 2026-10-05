@@ -175,6 +175,13 @@ public sealed class SshDokployProvider : IDokployProvider
                 var sha256 = hash.IsSuccess ? DokployOutputParser.ParseSha256(hash.Stdout) : null;
                 await observer.OnOutputAsync(DokployConsole.Info($"Betik SHA-256: {sha256 ?? "hesaplanamadı"}"), ct);
 
+                var checksumError = DokployOutputParser.VerifySha256(plan.ExpectedSha256, sha256);
+                if (checksumError is not null)
+                {
+                    _logger.LogWarning("Dokploy kurulum betiğinin özeti doğrulanamadı. Target: {Target}, Sha256: {Sha256}", context, sha256);
+                    return ServiceResult<DokployScriptResult>.Success(new DokployScriptResult { Sha256 = sha256, ErrorMessage = checksumError });
+                }
+
                 var target = plan.Version is null ? "son kararlı sürüm" : plan.Version;
                 await observer.OnStageAsync(DokployInstallStage.Installing, "Dokploy kuruluyor", ct);
                 await observer.OnOutputAsync(DokployConsole.Info($"Kurulum başlatılıyor ({target}, {(plan.Elevate ? "sudo ile root" : "root")}). Bu işlem birkaç dakika sürebilir."), ct);

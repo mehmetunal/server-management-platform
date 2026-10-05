@@ -42,6 +42,15 @@ public class SecurityHeadersMiddleware
                 (sameOriginFraming ? "frame-ancestors 'self'; " : "frame-ancestors 'none'; ") +
                 $"form-action 'self'{formActionOrigins}; " +
                 "base-uri 'self'";
+
+            // Oturum açmış kullanıcıya özel sayfalar tarayıcı/proxy önbelleğine yazılmaz (paylaşılan bilgisayarda geri tuşu,
+            // ara önbellekler). Statik dosyalar kimlik doğrulamadan önce sunulduğu için burada kimliksiz görünür ve etkilenmez.
+            if (context.User.Identity?.IsAuthenticated == true && !headers.ContainsKey("Cache-Control"))
+            {
+                headers.CacheControl = "no-store";
+                headers.Pragma = "no-cache";
+            }
+
             return Task.CompletedTask;
         });
 

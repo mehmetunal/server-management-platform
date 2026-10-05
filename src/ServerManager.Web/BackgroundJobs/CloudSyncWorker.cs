@@ -12,14 +12,15 @@ public sealed class CloudSyncWorker : BackgroundService
     private static readonly TimeSpan TickInterval = TimeSpan.FromMinutes(15);
 
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IOptionsMonitor<CloudOptions> _options;
+    private readonly CloudOptions _options;
     private readonly ILogger<CloudSyncWorker> _logger;
     private DateTime _lastSync = DateTime.MinValue;
 
-    public CloudSyncWorker(IServiceScopeFactory scopeFactory, IOptionsMonitor<CloudOptions> options, ILogger<CloudSyncWorker> logger)
+    public CloudSyncWorker(IServiceScopeFactory scopeFactory, IOptions<CloudOptions> options, ILogger<CloudSyncWorker> logger)
     {
         _scopeFactory = scopeFactory;
-        _options = options;
+        // Panel ayarları IOptions<T> örneğini değiştirir; IOptionsMonitor ayrı örnek tuttuğu için değişikliği görmez.
+        _options = options.Value;
         _logger = logger;
     }
 
@@ -43,7 +44,7 @@ public sealed class CloudSyncWorker : BackgroundService
 
     private async Task SyncIfDueAsync(CancellationToken stoppingToken)
     {
-        var intervalHours = _options.CurrentValue.SyncIntervalHours;
+        var intervalHours = _options.SyncIntervalHours;
         if (intervalHours <= 0 || DateTime.UtcNow - _lastSync < TimeSpan.FromHours(intervalHours))
             return;
 
@@ -54,7 +55,7 @@ public sealed class CloudSyncWorker : BackgroundService
             if (synced > 0)
                 _logger.LogInformation("Bulut hesapları eşitlendi. Accounts: {Count}", synced);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
         {
             _logger.LogError(ex, "Bulut hesapları eşitlenemedi.");
         }

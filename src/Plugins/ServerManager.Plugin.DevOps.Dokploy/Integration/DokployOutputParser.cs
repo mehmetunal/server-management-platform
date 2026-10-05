@@ -132,6 +132,20 @@ internal static class DokployOutputParser
         return hash is { Length: 64 } && hash.All(Uri.IsHexDigit) ? hash.ToLowerInvariant() : null;
     }
 
+    /// <summary>Beklenen özet verilmişse indirilen betiğin özetiyle karşılaştırır; uyuşmazlıkta hata mesajı, aksi halde null döner.</summary>
+    public static string? VerifySha256(string? expected, string? actual)
+    {
+        if (string.IsNullOrWhiteSpace(expected))
+            return null;
+
+        if (actual is null)
+            return "Kurulum betiğinin SHA-256 özeti hesaplanamadı; beklenen özet tanımlı olduğu için betik çalıştırılmadı.";
+
+        return string.Equals(expected.Trim(), actual, StringComparison.OrdinalIgnoreCase)
+            ? null
+            : $"Kurulum betiğinin SHA-256 özeti beklenenle uyuşmuyor (beklenen {expected.Trim().ToLowerInvariant()}, indirilen {actual}); betik çalıştırılmadı.";
+    }
+
     public static bool IsSwarmInactive(string stderr) =>
         stderr.Contains("not a swarm manager", StringComparison.OrdinalIgnoreCase);
 

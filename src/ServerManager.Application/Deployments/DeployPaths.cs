@@ -38,7 +38,29 @@ public static partial class DeployPaths
             return false;
         }
 
+        if (!IsProjectDepth(path))
+        {
+            error = "Kullanıcı ve servis klasörlerinin kendisi seçilemez (ör. /home/ubuntu, /root/.ssh, /var/lib/docker); altında projeye özel bir klasör belirtin (ör. /home/ubuntu/apps/api).";
+            return false;
+        }
+
         return true;
+    }
+
+    /// <summary>
+    /// Ev ve servis klasörlerinde proje klasörü bir kat daha derinde olmalıdır: /home/&lt;kullanıcı&gt;/&lt;proje&gt;, /root/&lt;proje&gt;,
+    /// /var/lib/&lt;servis&gt;/&lt;proje&gt;. Ev klasörünün hemen altındaki gizli klasörler (.ssh, .config …) seçilemez.
+    /// </summary>
+    private static bool IsProjectDepth(string path)
+    {
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return segments[0] switch
+        {
+            "home" => segments.Length >= 3 && !segments[2].StartsWith('.'),
+            "root" => !segments[1].StartsWith('.'),
+            "var" when segments[1] == "lib" => segments.Length >= 4,
+            _ => true
+        };
     }
 
     /// <summary>Proje içindeki göreli dosya yolu (compose dosyası, Dockerfile); proje klasörünün dışına çıkamaz.</summary>

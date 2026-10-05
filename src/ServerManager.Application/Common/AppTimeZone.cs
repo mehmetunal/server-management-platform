@@ -6,6 +6,9 @@ public static class AppTimeZone
 
     private static readonly TimeZoneInfo Zone = ResolveZone();
 
+    /// <summary>Panelin saat dilimi; sistemde bulunamazsa sabit +03:00 kullanılır.</summary>
+    public static TimeZoneInfo Default => Zone;
+
     public static DateTime ToLocal(DateTime utc) =>
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), Zone);
 

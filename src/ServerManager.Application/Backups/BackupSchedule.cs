@@ -1,3 +1,4 @@
+using ServerManager.Application.Common;
 using ServerManager.Domain.Enums;
 
 namespace ServerManager.Application.Backups;
@@ -55,7 +56,8 @@ public static class BackupSchedule
         if (!string.IsNullOrWhiteSpace(id) && TimeZoneInfo.TryFindSystemTimeZoneById(id, out var zone))
             return zone;
 
-        return TimeZoneInfo.Local;
+        // Sunucunun yerel saat dilimine değil, panelin geri kalanıyla aynı (Europe/Istanbul veya sabit +03:00) dilime düşer.
+        return AppTimeZone.Default;
     }
 
     private static DateTime ToUtc(DateTime local, TimeZoneInfo timeZone)

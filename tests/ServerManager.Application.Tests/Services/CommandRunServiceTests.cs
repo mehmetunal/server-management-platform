@@ -49,12 +49,12 @@ public class CommandRunServiceTests
     [Fact]
     public async Task BeginAsync_RejectsEmptyCommandAndNoServers()
     {
-        var result = await _service.BeginAsync(new CommandRunRequestDto { Command = "  " });
+        var result = await _service.BeginAsync(new CommandRunRequestDto { Command = "  " }, TestContext.Current.CancellationToken);
 
         Assert.False(result.IsSuccess);
         Assert.Contains(result.Errors, e => e.PropertyName == nameof(CommandRunRequestDto.Command));
         Assert.Contains(result.Errors, e => e.PropertyName == nameof(CommandRunRequestDto.ServerIds));
-        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!);
+        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!, TestContext.Current.CancellationToken);
     }
 
     [Theory]
@@ -62,7 +62,7 @@ public class CommandRunServiceTests
     [InlineData(901)]
     public async Task BeginAsync_RejectsTimeoutOutOfRange(int timeout)
     {
-        var result = await _service.BeginAsync(new CommandRunRequestDto { Command = "uptime", ServerIds = [_web.Id], TimeoutSeconds = timeout });
+        var result = await _service.BeginAsync(new CommandRunRequestDto { Command = "uptime", ServerIds = [_web.Id], TimeoutSeconds = timeout }, TestContext.Current.CancellationToken);
 
         Assert.Contains(result.Errors, e => e.PropertyName == nameof(CommandRunRequestDto.TimeoutSeconds));
     }
@@ -72,7 +72,7 @@ public class CommandRunServiceTests
     {
         _servers.GetServersAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([_web]);
 
-        var result = await _service.BeginAsync(new CommandRunRequestDto { Command = "uptime", ServerIds = [_web.Id, Guid.NewGuid()] });
+        var result = await _service.BeginAsync(new CommandRunRequestDto { Command = "uptime", ServerIds = [_web.Id, Guid.NewGuid()] }, TestContext.Current.CancellationToken);
 
         Assert.Contains(result.Errors, e => e.PropertyName == nameof(CommandRunRequestDto.ServerIds));
     }
@@ -84,7 +84,7 @@ public class CommandRunServiceTests
         _servers.GetServersAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([_web]);
         _templates.GetAsync(template.Id, Arg.Any<CancellationToken>()).Returns(template);
 
-        var result = await _service.BeginAsync(new CommandRunRequestDto { Command = "uptime", ServerIds = [_web.Id], TemplateId = template.Id });
+        var result = await _service.BeginAsync(new CommandRunRequestDto { Command = "uptime", ServerIds = [_web.Id], TemplateId = template.Id }, TestContext.Current.CancellationToken);
 
         Assert.Contains(result.Errors, e => e.PropertyName == nameof(CommandRunRequestDto.TemplateId));
     }
@@ -102,7 +102,7 @@ public class CommandRunServiceTests
             ServerIds = [_web.Id, _db.Id, _web.Id],
             UseSudo = true,
             TimeoutSeconds = 30
-        });
+        }, TestContext.Current.CancellationToken);
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(saved);
@@ -127,7 +127,7 @@ public class CommandRunServiceTests
         _executor.ExecuteAsync(_db.Id, run.Command, false, TimeSpan.FromSeconds(30), Arg.Any<CancellationToken>())
             .Returns(new ScriptExecutionResult(false, null, false, string.Empty, "Bağlanılamadı."));
 
-        await _service.ExecuteAsync(run.Id);
+        await _service.ExecuteAsync(run.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal(CommandRunStatus.Completed, run.Status);
         Assert.NotNull(run.CompletedAt);
@@ -151,7 +151,7 @@ public class CommandRunServiceTests
         _executor.ExecuteAsync(_web.Id, Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
             .Returns(new ScriptExecutionResult(true, null, true, longOutput, null));
 
-        await _service.ExecuteAsync(run.Id);
+        await _service.ExecuteAsync(run.Id, TestContext.Current.CancellationToken);
 
         var target = run.Targets.Single();
         Assert.Equal(CommandTargetStatus.TimedOut, target.Status);
@@ -167,9 +167,9 @@ public class CommandRunServiceTests
         run.Status = CommandRunStatus.Interrupted;
         _repository.GetWithTargetsAsync(run.Id, Arg.Any<CancellationToken>()).Returns(run);
 
-        await _service.ExecuteAsync(run.Id);
+        await _service.ExecuteAsync(run.Id, TestContext.Current.CancellationToken);
 
-        await _executor.DidNotReceiveWithAnyArgs().ExecuteAsync(default, default!, default, default, default);
+        await _executor.DidNotReceiveWithAnyArgs().ExecuteAsync(default, default!, default, default, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -199,7 +199,7 @@ public class CommandRunServiceTests
         run.Targets.First().Status = CommandTargetStatus.Succeeded;
         _repository.GetRunningAsync(Arg.Any<CancellationToken>()).Returns([run]);
 
-        var count = await _service.InterruptRunningAsync();
+        var count = await _service.InterruptRunningAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(1, count);
         Assert.Equal(CommandRunStatus.Interrupted, run.Status);

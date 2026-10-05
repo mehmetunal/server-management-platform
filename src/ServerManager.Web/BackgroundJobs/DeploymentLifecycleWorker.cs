@@ -29,7 +29,7 @@ public sealed class DeploymentLifecycleWorker : BackgroundService
             if (count > 0)
                 _logger.LogWarning("Önceki çalışmadan yarım kalan {Count} deployment kesildi olarak işaretlendi.", count);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
         {
             _logger.LogError(ex, "Yarım kalan deployment kayıtları işaretlenemedi.");
         }

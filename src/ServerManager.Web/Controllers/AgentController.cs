@@ -45,7 +45,9 @@ public class AgentController : Controller
         if (!result.IsSuccess)
             return this.ApiFailure(result, "Token oluşturulamadı.");
 
-        var command = $"curl -fsSL {InstallScriptUrl} | sudo SM_URL={PanelBaseUrl} SM_TOKEN={result.Data!.Token} sh";
+        // Betik düz http adresi yalnızca açık onayla kabul eder; panel https değilse onay komuta eklenir (panel uyarıyı ayrıca gösterir).
+        var allowHttp = Request.IsHttps ? string.Empty : "SM_ALLOW_HTTP=1 ";
+        var command = $"curl -fsSL {InstallScriptUrl} | sudo {allowHttp}SM_URL={PanelBaseUrl} SM_TOKEN={result.Data!.Token} sh";
         return Ok(ApiResponse<AgentTokenResponse>.Success(new AgentTokenResponse(command), result.Message ?? "Token oluşturuldu."));
     }
 

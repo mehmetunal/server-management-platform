@@ -12,6 +12,11 @@ public static class DeploymentCommands
 {
     public const int WorkspaceNotEmptyExitCode = 3;
     public const string WorkspaceInitializedMarker = "sm:initialized";
+
+    /// <summary>Panelin oluşturduğu proje klasörlerine yazılan işaret dosyası. Kalıcı silme yalnızca bu dosya varsa klasörü siler.</summary>
+    public const string ManagedMarkerFile = ".sm-managed";
+
+    public const int NotManagedExitCode = 5;
     public const char CommitFieldSeparator = '\u001f';
 
     private const string GitExports =
@@ -27,8 +32,8 @@ public static class DeploymentCommands
         Shell("set -e\n" + Credentials(source) + GitExports + $"{Git(source)} ls-remote --heads {ShellQuote.Quote(source.RepositoryUrl)}\n");
 
     /// <summary>
-    /// Klasör yoksa oluşturulur; boşsa git deposu başlatılır. Boş olmayan ve git deposu olmayan klasöre dokunulmaz
-    /// (<see cref="WorkspaceNotEmptyExitCode"/> ile çıkar); mevcut dosyalar hiçbir durumda silinmez.
+    /// Klasör yoksa oluşturulur; boşsa git deposu başlatılır ve <see cref="ManagedMarkerFile"/> yazılır. Boş olmayan ve git deposu
+    /// olmayan klasöre dokunulmaz (<see cref="WorkspaceNotEmptyExitCode"/> ile çıkar); mevcut dosyalar hiçbir durumda silinmez.
     /// </summary>
     public static string PrepareWorkspace(string deployPath) =>
         Shell(
@@ -38,6 +43,9 @@ public static class DeploymentCommands
             "if [ -e \"$P/.git\" ]; then exit 0; fi\n" +
             $"if [ -n \"$(ls -A -- \"$P\")\" ]; then echo 'not empty' >&2; exit {WorkspaceNotEmptyExitCode}; fi\n" +
             "git -C \"$P\" init -q\n" +
+            $": > \"$P/{ManagedMarkerFile}\"\n" +
+            "mkdir -p -- \"$P/.git/info\"\n" +
+            $"echo {ManagedMarkerFile} >> \"$P/.git/info/exclude\"\n" +
             $"echo {WorkspaceInitializedMarker}\n");
 
     /// <summary>Kaynağı sığ (depth 1) çeker ve çalışma ağacını o commit'e alır.</summary>
@@ -104,7 +112,8 @@ public static class DeploymentCommands
 
     /// <summary>
     /// Proje klasörünü, compose projesini, panelin adlandırdığı container ve imajı ve vekil dosyalarını siler.
-    /// sm-traefik ve sm-proxy ağına dokunulmaz. Klasör yolu en az iki parçalı mutlak yol olmalıdır.
+    /// sm-traefik ve sm-proxy ağına dokunulmaz. Klasör yolu en az iki parçalı mutlak yol olmalıdır. Klasör varsa içinde
+    /// <see cref="ManagedMarkerFile"/> bulunmalıdır; yoksa (klasörü panel oluşturmadıysa) hiçbir şey silinmez ve <see cref="NotManagedExitCode"/> ile çıkılır.
     /// </summary>
     public static string RemoveProject(DeploymentPlan plan)
     {
@@ -126,6 +135,10 @@ public static class DeploymentCommands
             "  /*/*) ;;\n" +
             "  *) echo 'klasör silinemez' >&2; exit 2 ;;\n" +
             "esac\n" +
+            $"if [ -L \"$P\" ]; then echo 'klasör sembolik bağlantı' >&2; exit {NotManagedExitCode}; fi\n" +
+            "if [ -e \"$P\" ]; then\n" +
+            $"  if [ ! -f \"$P/{ManagedMarkerFile}\" ] || [ -L \"$P/{ManagedMarkerFile}\" ]; then echo 'klasör panel tarafından oluşturulmamış' >&2; exit {NotManagedExitCode}; fi\n" +
+            "fi\n" +
             "if command -v docker >/dev/null 2>&1; then\n" +
             $"  compose={compose}\n" +
             $"  override={overrideFile}\n" +

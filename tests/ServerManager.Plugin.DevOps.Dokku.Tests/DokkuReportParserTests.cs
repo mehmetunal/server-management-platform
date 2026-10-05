@@ -66,4 +66,16 @@ public class DokkuReportParserTests
         Assert.Contains("DOKKU_TAG=", command, StringComparison.Ordinal);
         Assert.DoesNotContain(";", command.Split("bash -c ", 2)[0], StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Install_downloads_into_a_private_temporary_directory_and_cleans_up()
+    {
+        var command = DokkuCommands.Install("v0.38.31");
+
+        Assert.DoesNotContain("/tmp/sm-dokku-bootstrap.sh", command, StringComparison.Ordinal);
+        Assert.Contains("mktemp -d", command, StringComparison.Ordinal);
+        Assert.Contains("rm -rf --", command, StringComparison.Ordinal);
+        Assert.Contains("trap", command, StringComparison.Ordinal);
+        Assert.True(command.IndexOf("trap", StringComparison.Ordinal) < command.IndexOf("curl", StringComparison.Ordinal));
+    }
 }

@@ -27,11 +27,11 @@ public class VultrCloudProviderTests
             .Add("/v2/instances?per_page=100&cursor=page-2", """{"instances":[{"id":"i-2","label":"app-2","status":"pending","main_ip":"0.0.0.0","region":"ewr","plan":"vc2-1c-2gb"}],"meta":{"links":{"next":""}}}""")
             .Add("/v2/plans?per_page=100", """{"plans":[{"id":"vc2-1c-1gb","monthly_cost":5},{"id":"vc2-1c-2gb","monthly_cost":10}],"meta":{"links":{"next":""}}}""");
 
-        var result = await _provider.ListServersAsync(Token);
+        var result = await _provider.ListServersAsync(Token, TestContext.Current.CancellationToken);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(["app-1", "app-2"], result.Data!.Select(s => s.Name));
-        Assert.Equal("203.0.113.1", result.Data[0].PublicIpv4);
+        Assert.Equal("203.0.113.1", result.Data![0].PublicIpv4);
         Assert.Equal(5.00m, result.Data[0].MonthlyPrice);
         Assert.Equal("USD", result.Data[0].Currency);
         Assert.Null(result.Data[1].PublicIpv4);
@@ -43,7 +43,7 @@ public class VultrCloudProviderTests
     {
         _handler.Add("/v2/account", """{"account":{"name":"Ops","balance":12.5}}""");
 
-        var result = await _provider.ValidateTokenAsync(Token);
+        var result = await _provider.ValidateTokenAsync(Token, TestContext.Current.CancellationToken);
 
         Assert.Equal("Vultr · Ops", result.Data);
     }
@@ -56,7 +56,7 @@ public class VultrCloudProviderTests
             .Add("/v2/plans?per_page=100", """{"plans":[{"id":"vc2-1c-2gb","vcpu_count":1,"ram":2048,"disk":55,"monthly_cost":10,"type":"vc2","locations":["ams"]},{"id":"bare","locations":[]}],"meta":{"links":{}}}""")
             .Add("/v2/os?per_page=100", """{"os":[{"id":2284,"name":"Ubuntu 24.04 LTS x64","arch":"x64"}],"meta":{"links":{}}}""");
 
-        var result = await _provider.GetCatalogAsync(Token);
+        var result = await _provider.GetCatalogAsync(Token, TestContext.Current.CancellationToken);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(["ams"], result.Data!.Regions.Select(r => r.Id));
@@ -70,7 +70,7 @@ public class VultrCloudProviderTests
     {
         _handler.Add("/v2/instances", """{"instance":{"id":"i-9","label":"new-1","status":"pending","main_ip":"0.0.0.0","region":"ams","plan":"vc2-1c-1gb","default_password":"Once-1"}}""", HttpStatusCode.Accepted);
 
-        var result = await _provider.CreateServerAsync(Token, new CloudCreateServerRequest("new-1", "ams", "vc2-1c-1gb", "2284", "#cloud-config\n"));
+        var result = await _provider.CreateServerAsync(Token, new CloudCreateServerRequest("new-1", "ams", "vc2-1c-1gb", "2284", "#cloud-config\n"), TestContext.Current.CancellationToken);
 
         Assert.True(result.IsSuccess);
         Assert.Equal("Once-1", result.Data!.RootPassword);
@@ -85,7 +85,7 @@ public class VultrCloudProviderTests
     {
         _handler.Add("/v2/instances", """{"instance":{"id":"i-8","label":"n","status":"pending"}}""", HttpStatusCode.Accepted);
 
-        await _provider.CreateServerAsync(Token, new CloudCreateServerRequest("n", "ams", "vc2-1c-1gb", "2284", null));
+        await _provider.CreateServerAsync(Token, new CloudCreateServerRequest("n", "ams", "vc2-1c-1gb", "2284", null), TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain("user_data", _handler.Requests.Single().Body);
     }

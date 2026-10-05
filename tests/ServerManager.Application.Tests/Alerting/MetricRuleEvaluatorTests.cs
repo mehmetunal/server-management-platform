@@ -79,6 +79,62 @@ public class MetricRuleEvaluatorTests
         Assert.Equal(AlertConditionState.Unknown, state);
     }
 
+    [Fact]
+    public void Fresh_latest_sample_older_than_duration_is_unknown_instead_of_throwing()
+    {
+        // Tazelik 2 dk, kural süresi 1 dk: son örnek 90 sn önce; pencere boş kalır.
+        var (state, value) = MetricRuleEvaluator.Evaluate([Cpu(90, 95), Cpu(120, 95)], AlertRuleKind.CpuUsage, 80, 1, Now, Freshness, Interval);
+
+        Assert.Equal(AlertConditionState.Unknown, state);
+        Assert.Equal(95, value);
+    }
+
+    private static MetricWindowStats Window(double minCpu, double avgCpu, double firstMinutesAgo, int count = 100) =>
+        new(ServerId, count, Now.AddMinutes(-firstMinutesAgo), minCpu, 10, 20, avgCpu, 10, 20);
+
+    [Fact]
+    public void Window_stats_fire_when_minimum_exceeds_threshold_and_window_is_covered()
+    {
+        var (state, value) = MetricRuleEvaluator.EvaluateWindow([Cpu(10, 95)], Window(85, 91, 120), AlertRuleKind.CpuUsage, 80, 120, Now, Freshness, Interval);
+
+        Assert.Equal(AlertConditionState.Firing, state);
+        Assert.Equal(91, value);
+    }
+
+    [Fact]
+    public void Window_stats_with_a_dip_is_ok()
+    {
+        var (state, _) = MetricRuleEvaluator.EvaluateWindow([Cpu(10, 95)], Window(40, 90, 120), AlertRuleKind.CpuUsage, 80, 120, Now, Freshness, Interval);
+
+        Assert.Equal(AlertConditionState.Ok, state);
+    }
+
+    [Fact]
+    public void Window_stats_not_covered_or_missing_is_unknown()
+    {
+        var (partial, _) = MetricRuleEvaluator.EvaluateWindow([Cpu(10, 95)], Window(85, 90, 30), AlertRuleKind.CpuUsage, 80, 120, Now, Freshness, Interval);
+        var (missing, _) = MetricRuleEvaluator.EvaluateWindow([Cpu(10, 95)], null, AlertRuleKind.CpuUsage, 80, 120, Now, Freshness, Interval);
+        var (noRecent, value) = MetricRuleEvaluator.EvaluateWindow([], Window(85, 90, 120), AlertRuleKind.CpuUsage, 80, 120, Now, Freshness, Interval);
+
+        Assert.Equal(AlertConditionState.Unknown, partial);
+        Assert.Equal(AlertConditionState.Unknown, missing);
+        Assert.Equal(AlertConditionState.Unknown, noRecent);
+        Assert.Null(value);
+    }
+
+    [Fact]
+    public void Window_stats_match_raw_evaluation()
+    {
+        var samples = Series(90, 92);
+        var stats = new MetricWindowStats(ServerId, samples.Count, samples.Min(s => s.CollectedAt), samples.Min(s => s.CpuPercent), 10, 20,
+            samples.Average(s => s.CpuPercent), 10, 20);
+
+        var raw = MetricRuleEvaluator.Evaluate(samples, AlertRuleKind.CpuUsage, 80, 90, Now, Freshness, Interval);
+        var aggregated = MetricRuleEvaluator.EvaluateWindow(samples, stats, AlertRuleKind.CpuUsage, 80, 90, Now, Freshness, Interval);
+
+        Assert.Equal(raw, aggregated);
+    }
+
     [Theory]
     [InlineData(AlertRuleKind.CpuUsage, 1)]
     [InlineData(AlertRuleKind.MemoryUsage, 2)]

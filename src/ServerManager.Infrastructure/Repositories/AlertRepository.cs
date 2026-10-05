@@ -178,13 +178,34 @@ public class AlertRepository : IAlertRepository
             .Select(s => new AlertServerSnapshot(s.Id, s.Name, s.Status, s.LastSeenAt, s.CreatedAt))
             .ToListAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<MetricSample>> GetMetricSamplesAsync(DateTime since, CancellationToken cancellationToken = default) =>
-        await _context.ServerMetrics
-            .AsNoTracking()
-            .Where(m => m.CollectedAt >= since)
+    public async Task<IReadOnlyList<MetricSample>> GetMetricSamplesAsync(DateTime since, IReadOnlyCollection<Guid>? serverIds, CancellationToken cancellationToken = default) =>
+        await MetricsSince(since, serverIds)
             .OrderBy(m => m.CollectedAt)
             .Select(m => new MetricSample(m.ServerId, m.CollectedAt, m.CpuUsagePercent, m.MemoryUsagePercent, m.DiskUsagePercent))
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<MetricWindowStats>> GetMetricWindowStatsAsync(DateTime since, IReadOnlyCollection<Guid>? serverIds, CancellationToken cancellationToken = default) =>
+        await MetricsSince(since, serverIds)
+            .GroupBy(m => m.ServerId)
+            .Select(g => new MetricWindowStats(
+                g.Key,
+                g.Count(),
+                g.Min(m => m.CollectedAt),
+                g.Min(m => m.CpuUsagePercent),
+                g.Min(m => m.MemoryUsagePercent),
+                g.Min(m => m.DiskUsagePercent),
+                g.Average(m => m.CpuUsagePercent),
+                g.Average(m => m.MemoryUsagePercent),
+                g.Average(m => m.DiskUsagePercent)))
+            .ToListAsync(cancellationToken);
+
+    private IQueryable<ServerMetric> MetricsSince(DateTime since, IReadOnlyCollection<Guid>? serverIds)
+    {
+        var query = _context.ServerMetrics.AsNoTracking().Where(m => m.CollectedAt >= since);
+        if (serverIds is not null)
+            query = query.Where(m => serverIds.Contains(m.ServerId));
+        return query;
+    }
 
     public async Task<IReadOnlyList<AlertUptimeSnapshot>> GetUptimeSnapshotsAsync(CancellationToken cancellationToken = default) =>
         await _context.UptimeChecks

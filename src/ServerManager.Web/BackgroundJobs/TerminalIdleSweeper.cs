@@ -62,7 +62,7 @@ public sealed class TerminalIdleSweeper : BackgroundService
             if (count > 0)
                 _logger.LogInformation("Önceki çalışmadan açık kalan {Count} terminal oturum kaydı kapatıldı.", count);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             _logger.LogError(ex, "Açık kalan terminal oturum kayıtları kapatılamadı.");
         }

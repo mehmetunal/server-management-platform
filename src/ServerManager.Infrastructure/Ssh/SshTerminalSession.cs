@@ -8,18 +8,15 @@ namespace ServerManager.Infrastructure.Ssh;
 internal sealed class SshTerminalSession : ITerminalSession
 {
     private const string WrongSudoPasswordMessage = "\r\n\x1b[31mSudo parolası hatalı. Sunucu ayarlarını kontrol edin.\x1b[0m\r\n";
-    private static readonly TimeSpan SudoPromptWindow = TimeSpan.FromSeconds(15);
 
     private readonly SshClientLease _lease;
     private readonly ShellStream _stream;
     private readonly ITerminalOutputSink _sink;
-    private readonly string? _sudoPassword;
+    private readonly SudoPromptResponder _sudoPrompt;
     private readonly ILogger _logger;
     private readonly Decoder _decoder = new UTF8Encoding(false).GetDecoder();
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private readonly CancellationTokenSource _cts = new();
-    private int _sudoPromptCount;
-    private string _pendingOutput = string.Empty;
     private int _closed;
     private long _lastActivityTicks;
 
@@ -28,7 +25,7 @@ internal sealed class SshTerminalSession : ITerminalSession
         _lease = lease;
         _stream = stream;
         _sink = sink;
-        _sudoPassword = sudoPassword;
+        _sudoPrompt = new SudoPromptResponder(sudoPassword, TimeProvider.System);
         _logger = logger;
         StartedAt = DateTime.UtcNow;
         _lastActivityTicks = StartedAt.Ticks;
@@ -136,43 +133,11 @@ internal sealed class SshTerminalSession : ITerminalSession
     /// <returns>İletilecek metin; sudo parolası ikinci kez sorulduysa null.</returns>
     private string? HandleSudoPrompt(string text)
     {
-        if (_sudoPassword is null)
-            return text;
+        var forward = _sudoPrompt.Process(text, out var reply);
+        if (reply is not null)
+            WriteRaw(reply);
 
-        const string marker = SudoCommandBuilder.TerminalPromptMarker;
-        var buffer = _pendingOutput + text;
-        _pendingOutput = string.Empty;
-
-        var index = buffer.IndexOf(marker, StringComparison.Ordinal);
-        if (index < 0)
-        {
-            // İşaret iki okuma arasında bölünebilir; parola gönderilene kadar olası ön eki bir sonraki parçaya bekletir.
-            if (Volatile.Read(ref _sudoPromptCount) == 0 && DateTime.UtcNow - StartedAt < SudoPromptWindow)
-            {
-                var keep = PartialMarkerSuffixLength(buffer, marker);
-                _pendingOutput = buffer[^keep..];
-                return buffer[..^keep];
-            }
-
-            return buffer;
-        }
-
-        if (Interlocked.Increment(ref _sudoPromptCount) > 1)
-            return null;
-
-        WriteRaw(_sudoPassword + "\n");
-        return buffer.Remove(index, marker.Length);
-    }
-
-    private static int PartialMarkerSuffixLength(string buffer, string marker)
-    {
-        for (var length = Math.Min(marker.Length - 1, buffer.Length); length > 0; length--)
-        {
-            if (marker.AsSpan().StartsWith(buffer.AsSpan(buffer.Length - length), StringComparison.Ordinal))
-                return length;
-        }
-
-        return 0;
+        return forward;
     }
 
     private void Touch() => Interlocked.Exchange(ref _lastActivityTicks, DateTime.UtcNow.Ticks);

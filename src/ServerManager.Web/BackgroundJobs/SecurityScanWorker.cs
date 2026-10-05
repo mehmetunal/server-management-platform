@@ -15,14 +15,15 @@ public sealed class SecurityScanWorker : BackgroundService
     private static readonly TimeSpan MaintenanceInterval = TimeSpan.FromHours(12);
 
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IOptionsMonitor<SecurityScanOptions> _options;
+    private readonly SecurityScanOptions _options;
     private readonly ILogger<SecurityScanWorker> _logger;
     private DateTime _lastMaintenance = DateTime.MinValue;
 
-    public SecurityScanWorker(IServiceScopeFactory scopeFactory, IOptionsMonitor<SecurityScanOptions> options, ILogger<SecurityScanWorker> logger)
+    public SecurityScanWorker(IServiceScopeFactory scopeFactory, IOptions<SecurityScanOptions> options, ILogger<SecurityScanWorker> logger)
     {
         _scopeFactory = scopeFactory;
-        _options = options;
+        // Panel ayarları IOptions<T> örneğini değiştirir; IOptionsMonitor ayrı örnek tuttuğu için değişikliği görmez.
+        _options = options.Value;
         _logger = logger;
     }
 
@@ -55,7 +56,7 @@ public sealed class SecurityScanWorker : BackgroundService
             if (count > 0)
                 _logger.LogWarning("Önceki çalışmadan yarım kalan {Count} güvenlik taraması başarısız olarak işaretlendi.", count);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
         {
             _logger.LogError(ex, "Yarım kalan güvenlik taramaları işaretlenemedi.");
         }
@@ -68,7 +69,7 @@ public sealed class SecurityScanWorker : BackgroundService
 
         try
         {
-            var options = _options.CurrentValue;
+            var options = _options;
             await using var scope = _scopeFactory.CreateAsyncScope();
             var deleted = await scope.ServiceProvider.GetRequiredService<ISecurityService>()
                 .DeleteExpiredAsync(options.RetentionDays, options.KeepLatestPerServer, stoppingToken);
@@ -76,7 +77,7 @@ public sealed class SecurityScanWorker : BackgroundService
                 _logger.LogInformation("Eski güvenlik taraması kayıtları temizlendi. Deleted: {Deleted}", deleted);
             _lastMaintenance = DateTime.UtcNow;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
         {
             _logger.LogError(ex, "Güvenlik taraması kayıtları temizlenemedi.");
         }
@@ -84,7 +85,7 @@ public sealed class SecurityScanWorker : BackgroundService
 
     private async Task RunDueScansAsync(CancellationToken stoppingToken)
     {
-        var intervalHours = _options.CurrentValue.ScanIntervalHours;
+        var intervalHours = _options.ScanIntervalHours;
         if (intervalHours <= 0)
             return;
 
@@ -95,7 +96,7 @@ public sealed class SecurityScanWorker : BackgroundService
             dueIds = await scope.ServiceProvider.GetRequiredService<ISecurityService>()
                 .GetDueServerIdsAsync(TimeSpan.FromHours(intervalHours), stoppingToken);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
         {
             _logger.LogError(ex, "Taranacak sunucular alınamadı.");
             return;
@@ -111,7 +112,7 @@ public sealed class SecurityScanWorker : BackgroundService
                 if (!result.IsSuccess)
                     _logger.LogWarning("Zamanlanmış güvenlik taraması başarısız. ServerId: {ServerId}, Reason: {Reason}", serverId, result.Message);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
             {
                 _logger.LogError(ex, "Zamanlanmış güvenlik taraması çalıştırılamadı. ServerId: {ServerId}", serverId);
             }

@@ -34,6 +34,7 @@ public class MonitoringService : IMonitoringService
     private readonly IAuditLogService _auditLogService;
     private readonly TimeProvider _timeProvider;
     private readonly MonitoringOptions _options;
+    private readonly RetentionOptions _retention;
     private readonly ILogger<MonitoringService> _logger;
 
     public MonitoringService(
@@ -45,6 +46,7 @@ public class MonitoringService : IMonitoringService
         IAuditLogService auditLogService,
         TimeProvider timeProvider,
         IOptions<MonitoringOptions> options,
+        IOptions<RetentionOptions> retention,
         ILogger<MonitoringService> logger)
     {
         _serverRepository = serverRepository;
@@ -55,6 +57,7 @@ public class MonitoringService : IMonitoringService
         _auditLogService = auditLogService;
         _timeProvider = timeProvider;
         _options = options.Value;
+        _retention = retention.Value;
         _logger = logger;
     }
 
@@ -260,17 +263,50 @@ public class MonitoringService : IMonitoringService
 
         var aggregated = await _metricRepository.AggregateHourlyAsync(currentHourStart, cancellationToken);
         var deletedRaw = await _metricRepository.DeleteExpiredAsync(
-            RetentionTarget.RawMetrics, now.AddHours(-Math.Max(2, _options.RawRetentionHours)), 1, cancellationToken);
+            RetentionTarget.RawMetrics, now.AddHours(-_options.EffectiveRawRetentionHours), 1, cancellationToken);
         var deletedHourly = await _metricRepository.DeleteExpiredAsync(
             RetentionTarget.HourlyMetrics, now.AddDays(-Math.Max(1, _options.HourlyRetentionDays)), 1, cancellationToken);
         var deletedHealthChecks = await _metricRepository.DeleteExpiredAsync(
             RetentionTarget.HealthChecks, now.AddDays(-Math.Max(1, _options.HealthCheckRetentionDays)), ProtectedHealthChecksPerServer, cancellationToken);
 
-        var result = new MaintenanceResult(aggregated, deletedRaw, deletedHourly, deletedHealthChecks);
+        var history = new Dictionary<RetentionTarget, int>();
+        foreach (var (target, days, keep) in HistoryTargets())
+        {
+            if (RetentionOptions.Cutoff(days, now) is not { } cutoff)
+                continue;
+
+            // Bir geçmiş tablosunun temizliği başarısız olsa da diğerleri ve metrik bakımı etkilenmez.
+            try
+            {
+                history[target] = await _metricRepository.DeleteExpiredAsync(target, cutoff, keep, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogError(ex, "Geçmiş kayıt temizliği başarısız. Target: {Target}", target);
+            }
+        }
+
+        var result = new MaintenanceResult(aggregated, deletedRaw, deletedHourly, deletedHealthChecks, history);
         _logger.LogInformation(
             "Metrik bakımı tamamlandı. Aggregated: {Aggregated}, DeletedRaw: {DeletedRaw}, DeletedHourly: {DeletedHourly}, DeletedHealthChecks: {DeletedHealthChecks}",
             result.AggregatedHours, result.DeletedRawMetrics, result.DeletedHourlyMetrics, result.DeletedHealthChecks);
+        if (history.Values.Any(count => count > 0))
+        {
+            _logger.LogInformation("Geçmiş kayıtlar temizlendi. {Counts}",
+                string.Join(", ", history.Where(pair => pair.Value > 0).Select(pair => $"{pair.Key}: {pair.Value}")));
+        }
+
         return result;
+    }
+
+    /// <summary>Panelden saklama süresi verilen geçmiş/log hedefleri ve bölüm başına korunan en yeni kayıt sayısı.</summary>
+    private IEnumerable<(RetentionTarget Target, int Days, int KeepLatest)> HistoryTargets()
+    {
+        yield return (RetentionTarget.DeploymentLogs, _retention.DeploymentLogDays, RetentionOptions.ProtectedDeploymentLogsPerProject);
+        yield return (RetentionTarget.BackupRunLogs, _retention.BackupRunLogDays, RetentionOptions.ProtectedBackupRunLogsPerJob);
+        yield return (RetentionTarget.CommandRuns, _retention.CommandRunDays, 1);
+        yield return (RetentionTarget.TerminalSessions, _retention.TerminalSessionDays, 1);
+        yield return (RetentionTarget.AlertEvents, _retention.AlertEventDays, 1);
     }
 
     private TimeSpan FreshnessWindow => TimeSpan.FromSeconds(Math.Max(120, _options.IntervalSeconds * 4));

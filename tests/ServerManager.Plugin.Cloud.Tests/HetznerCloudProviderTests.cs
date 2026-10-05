@@ -34,7 +34,7 @@ public class HetznerCloudProviderTests
             .Add("/v1/servers?page=1", """{"servers":[""" + Server(1, "web-1", "198.51.100.1", "fsn1") + """],"meta":{"pagination":{"next_page":2}}}""")
             .Add("/v1/servers?page=2", """{"servers":[""" + Server(2, "web-2", "198.51.100.2", "hel1") + """],"meta":{"pagination":{"next_page":null}}}""");
 
-        var result = await _provider.ListServersAsync(Token);
+        var result = await _provider.ListServersAsync(Token, TestContext.Current.CancellationToken);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(2, result.Data!.Count);
@@ -54,7 +54,7 @@ public class HetznerCloudProviderTests
     {
         _handler.Add("/v1/servers", """{"error":{"code":"unauthorized","message":"unable to authenticate"}}""", HttpStatusCode.Unauthorized);
 
-        var result = await _provider.ValidateTokenAsync(Token);
+        var result = await _provider.ValidateTokenAsync(Token, TestContext.Current.CancellationToken);
 
         Assert.False(result.IsSuccess);
         Assert.Equal("API anahtarı geçersiz veya iptal edilmiş.", result.Message);
@@ -66,7 +66,7 @@ public class HetznerCloudProviderTests
     {
         _handler.Add("/v1/servers", """{"servers":[],"meta":{"pagination":{"total_entries":4,"next_page":null}}}""");
 
-        var result = await _provider.ValidateTokenAsync(Token);
+        var result = await _provider.ValidateTokenAsync(Token, TestContext.Current.CancellationToken);
 
         Assert.Equal("Proje API anahtarı · 4 sunucu", result.Data);
     }
@@ -89,7 +89,7 @@ public class HetznerCloudProviderTests
                   {"name":"centos-7","description":"CentOS 7","architecture":"x86","deprecated":"2024-06-30T00:00:00+00:00"}]}
                 """);
 
-        var result = await _provider.GetCatalogAsync(Token);
+        var result = await _provider.GetCatalogAsync(Token, TestContext.Current.CancellationToken);
 
         Assert.True(result.IsSuccess);
         var catalog = result.Data!;
@@ -106,7 +106,7 @@ public class HetznerCloudProviderTests
     {
         _handler.Add("/v1/servers", """{"server":""" + Server(9, "new-1", "198.51.100.9", "fsn1") + ""","root_password":"Gecici-Parola-1"}""", HttpStatusCode.Created);
 
-        var result = await _provider.CreateServerAsync(Token, new CloudCreateServerRequest("new-1", "fsn1", "cx22", "ubuntu-24.04", "#cloud-config\n"));
+        var result = await _provider.CreateServerAsync(Token, new CloudCreateServerRequest("new-1", "fsn1", "cx22", "ubuntu-24.04", "#cloud-config\n"), TestContext.Current.CancellationToken);
 
         Assert.True(result.IsSuccess);
         Assert.Equal("9", result.Data!.Server.ExternalId);
@@ -123,7 +123,7 @@ public class HetznerCloudProviderTests
     {
         _handler.Add("/v1/servers", """{"error":{"code":"forbidden","message":"insufficient permissions"}}""", HttpStatusCode.Forbidden);
 
-        var result = await _provider.CreateServerAsync(Token, new CloudCreateServerRequest("n", "fsn1", "cx22", "ubuntu-24.04", null));
+        var result = await _provider.CreateServerAsync(Token, new CloudCreateServerRequest("n", "fsn1", "cx22", "ubuntu-24.04", null), TestContext.Current.CancellationToken);
 
         Assert.False(result.IsSuccess);
         Assert.Contains("Read & Write", result.Message);
@@ -134,7 +134,7 @@ public class HetznerCloudProviderTests
     {
         _handler.Throw = new HttpRequestException("boom");
 
-        var result = await _provider.ListServersAsync(Token);
+        var result = await _provider.ListServersAsync(Token, TestContext.Current.CancellationToken);
 
         Assert.Equal("Hetzner API'ye bağlanılamadı.", result.Message);
     }

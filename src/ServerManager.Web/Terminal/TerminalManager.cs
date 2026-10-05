@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.SignalR;
@@ -19,6 +20,7 @@ namespace ServerManager.Web.Terminal;
 public sealed class TerminalManager
 {
     private const string Cancel = "\u0003";
+    private const string AccessRevokedMessage = "Oturum yetkiniz değişti veya sona erdi; terminal kapatıldı. Lütfen tekrar giriş yapın.";
 
     private readonly ConcurrentDictionary<Guid, TerminalRegistration> _sessions = new();
     private readonly Dictionary<string, int> _pendingByUser = new();
@@ -28,6 +30,7 @@ public sealed class TerminalManager
     private readonly DangerousCommandDetector _detector;
     private readonly TerminalCommandQueue _commandQueue;
     private readonly TerminalOptions _options;
+    private readonly TerminalAccessValidator _access;
     private readonly ILogger<TerminalManager> _logger;
 
     public TerminalManager(
@@ -36,6 +39,7 @@ public sealed class TerminalManager
         DangerousCommandDetector detector,
         TerminalCommandQueue commandQueue,
         IOptions<TerminalOptions> options,
+        TerminalAccessValidator access,
         ILogger<TerminalManager> logger)
     {
         _hubContext = hubContext;
@@ -43,6 +47,7 @@ public sealed class TerminalManager
         _detector = detector;
         _commandQueue = commandQueue;
         _options = options.Value;
+        _access = access;
         _logger = logger;
     }
 
@@ -58,6 +63,13 @@ public sealed class TerminalManager
     {
         if (!_sessions.TryGetValue(sessionId, out var registration) || registration.Actor.UserId != user.UserId || registration.Handle is null)
             return new TerminalAttachResponse(false, "Oturum bulunamadı veya sona erdi.");
+
+        if (!TerminalAccessValidator.HasPermission(user.Principal, registration.Handle.Kind)
+            || await _access.IsUserStillValidAsync(user.Principal) != true)
+        {
+            await CloseAsync(registration, AccessRevokedMessage);
+            return new TerminalAttachResponse(false, AccessRevokedMessage);
+        }
 
         var (previous, output) = registration.Attach(user.ConnectionId);
         if (previous is not null && previous != user.ConnectionId)
@@ -81,9 +93,9 @@ public sealed class TerminalManager
             registration.Detach(connectionId, now);
     }
 
-    public async Task WriteAsync(string connectionId, Guid sessionId, string data)
+    public async Task WriteAsync(string connectionId, Guid sessionId, string data, ClaimsPrincipal? principal)
     {
-        if (!TryGetAttached(connectionId, sessionId, out var registration))
+        if (!TryGetAttached(connectionId, sessionId, out var registration) || !await EnsureAccessAsync(registration, principal))
             return;
 
         registration.TouchInput();
@@ -98,10 +110,12 @@ public sealed class TerminalManager
         }
     }
 
-    public void Resize(string connectionId, Guid sessionId, int columns, int rows)
+    public void Resize(string connectionId, Guid sessionId, int columns, int rows, ClaimsPrincipal? principal)
     {
-        if (TryGetAttached(connectionId, sessionId, out var registration))
-            registration.Handle?.Session.Resize(columns, rows);
+        if (TryGetAttached(connectionId, sessionId, out var registration)
+            && registration.Handle is { } handle
+            && TerminalAccessValidator.HasPermission(principal, handle.Kind))
+            handle.Session.Resize(columns, rows);
     }
 
     public async Task StopAsync(string connectionId, Guid sessionId)
@@ -110,9 +124,9 @@ public sealed class TerminalManager
             await CloseAsync(registration, "Oturum kullanıcı tarafından kapatıldı.");
     }
 
-    public async Task ResolveConfirmationAsync(string connectionId, Guid sessionId, string token, bool approve)
+    public async Task ResolveConfirmationAsync(string connectionId, Guid sessionId, string token, bool approve, ClaimsPrincipal? principal)
     {
-        if (!TryGetAttached(connectionId, sessionId, out var registration))
+        if (!TryGetAttached(connectionId, sessionId, out var registration) || !await EnsureAccessAsync(registration, principal))
             return;
 
         registration.TouchInput();
@@ -181,11 +195,33 @@ public sealed class TerminalManager
             await CloseAsync(registration, reason);
     }
 
+    /// <summary>Kullanıcının tüm terminal oturumlarını kapatır (pasifleştirme, kilitleme, rol değişikliği, çıkış).</summary>
+    public async Task<int> CloseForUserAsync(string userId, string reason)
+    {
+        _access.Invalidate(userId);
+
+        var closed = 0;
+        foreach (var registration in _sessions.Values.Where(r => r.Actor.UserId == userId).ToList())
+        {
+            await NotifyAsync(registration, "warning", reason);
+            await CloseAsync(registration, reason);
+            closed++;
+        }
+
+        if (closed > 0)
+            _logger.LogInformation("Kullanıcının {Count} terminal oturumu kapatıldı. UserId: {UserId}, Reason: {Reason}", closed, userId, reason);
+
+        return closed;
+    }
+
     private async Task<ServiceResult<Guid>> StartAsync(
         TerminalUser user,
         Func<ITerminalService, TerminalActor, TerminalSessionSink, CancellationToken, Task<ServiceResult<TerminalHandle>>> open,
         CancellationToken cancellationToken)
     {
+        if (await _access.IsUserStillValidAsync(user.Principal, cancellationToken) != true)
+            return ServiceResult<Guid>.Failure(AccessRevokedMessage, ServiceErrorType.Forbidden);
+
         var maxSessions = Math.Max(1, _options.MaxSessionsPerUser);
         if (!TryReserve(user.UserId, maxSessions))
         {
@@ -379,6 +415,23 @@ public sealed class TerminalManager
         {
             _logger.LogDebug(ex, "Terminal olayı istemciye gönderilemedi. Method: {Method}", method);
         }
+    }
+
+    /// <summary>
+    /// Bağlantının kimliği hub açıldığı andaki haliyle kalır; her girdide yetki ve kullanıcı durumu yeniden kontrol edilir.
+    /// Veritabanına geçici olarak ulaşılamazsa (null) oturum kesilmez.
+    /// </summary>
+    private async Task<bool> EnsureAccessAsync(TerminalRegistration registration, ClaimsPrincipal? principal)
+    {
+        var kind = registration.Handle?.Kind ?? TerminalSessionKind.Server;
+        if (TerminalAccessValidator.HasPermission(principal, kind)
+            && principal?.FindFirstValue(ClaimTypes.NameIdentifier) == registration.Actor.UserId
+            && await _access.IsUserStillValidAsync(principal) != false)
+            return true;
+
+        await NotifyAsync(registration, "error", AccessRevokedMessage);
+        await CloseAsync(registration, AccessRevokedMessage);
+        return false;
     }
 
     private bool TryGetAttached(string connectionId, Guid sessionId, out TerminalRegistration registration)

@@ -1,4 +1,7 @@
+using System.Data;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using ServerManager.Application.Auditing;
 using ServerManager.Application.Common;
 using ServerManager.Application.DTOs.AuditLogs;
 using ServerManager.Application.Interfaces.Repositories;
@@ -118,6 +121,95 @@ public class AuditLogRepository : Repository<AuditLog>, IAuditLogRepository
             .OrderBy(a => a.Id)
             .Take(take)
             .ToListAsync(cancellationToken);
+
+    public async Task RunInChainLockAsync(Func<CancellationToken, Task> action, CancellationToken cancellationToken = default)
+    {
+        // Çağıranın açık transaction'ı varsa ona katılınır; kilit o transaction bitene kadar tutulur.
+        if (_context.Database.CurrentTransaction is not null)
+        {
+            await AcquireChainLockAsync(cancellationToken);
+            await action(cancellationToken);
+            return;
+        }
+
+        // Yeniden deneme stratejisi (EnableRetryOnFailure) kullanıcı transaction'ını tek parça olarak tekrarlamayı gerektirir.
+        var strategy = _context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(
+            (Context: _context, Action: action),
+            async (_, state, ct) =>
+            {
+                await using var transaction = await state.Context.Database.BeginTransactionAsync(ct);
+                await AcquireChainLockAsync(ct);
+                await state.Action(ct);
+                await transaction.CommitAsync(ct);
+                return true;
+            },
+            verifySucceeded: null,
+            cancellationToken);
+    }
+
+    public Task<AuditChainAnchor?> GetChainAnchorAsync(CancellationToken cancellationToken = default) =>
+        _context.AuditChainAnchors
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == AuditChainAnchor.SingletonId, cancellationToken);
+
+    public async Task SaveChainAnchorAsync(AuditChainAnchor anchor, CancellationToken cancellationToken = default)
+    {
+        var updated = await _context.AuditChainAnchors
+            .Where(a => a.Id == anchor.Id)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(a => a.FirstSignedId, anchor.FirstSignedId)
+                .SetProperty(a => a.SigningStartedAt, anchor.SigningStartedAt)
+                .SetProperty(a => a.LastId, anchor.LastId)
+                .SetProperty(a => a.LastHash, anchor.LastHash)
+                .SetProperty(a => a.SignedCount, anchor.SignedCount)
+                .SetProperty(a => a.UpdatedAt, anchor.UpdatedAt)
+                .SetProperty(a => a.Signature, anchor.Signature), cancellationToken);
+        if (updated > 0)
+            return;
+
+        var entry = _context.AuditChainAnchors.Add(anchor);
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        finally
+        {
+            entry.State = EntityState.Detached;
+        }
+    }
+
+    public async Task<AuditChainSummary?> GetChainSummaryAsync(CancellationToken cancellationToken = default)
+    {
+        var signed = _dbSet.AsNoTracking().Where(a => a.ChainHash != null);
+        var first = await signed.OrderBy(a => a.Id).Select(a => new { a.Id, a.CreatedAt }).FirstOrDefaultAsync(cancellationToken);
+        if (first is null)
+            return null;
+
+        var last = await signed.OrderByDescending(a => a.Id).Select(a => new { a.Id, a.ChainHash }).FirstAsync(cancellationToken);
+        var count = await signed.LongCountAsync(cancellationToken);
+        return new AuditChainSummary(first.Id, first.CreatedAt, last.Id, last.ChainHash!, count);
+    }
+
+    public void Detach(AuditLog log)
+    {
+        var entry = _context.Entry(log);
+        if (entry.State != EntityState.Detached)
+            entry.State = EntityState.Detached;
+    }
+
+    private async Task AcquireChainLockAsync(CancellationToken cancellationToken)
+    {
+        var result = new SqlParameter("@result", SqlDbType.Int) { Direction = ParameterDirection.Output };
+        await _context.Database.ExecuteSqlRawAsync(
+            "EXEC @result = sp_getapplock @Resource = N'ServerManager.AuditChain', @LockMode = N'Exclusive', @LockOwner = N'Transaction', @LockTimeout = 15000;",
+            [result],
+            cancellationToken);
+
+        // 0: hemen alındı, 1: bekleyip alındı; negatif değerler zaman aşımı/iptal/kilitlenme.
+        if (result.Value is not int code || code < 0)
+            throw new InvalidOperationException($"Audit zincir kilidi alınamadı (sp_getapplock sonucu: {result.Value}).");
+    }
 
     private static IQueryable<AuditLog> ApplyFilter(IQueryable<AuditLog> query, AuditLogFilterDto filter)
     {

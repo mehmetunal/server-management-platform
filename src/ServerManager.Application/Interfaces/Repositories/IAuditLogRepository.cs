@@ -1,3 +1,4 @@
+using ServerManager.Application.Auditing;
 using ServerManager.Application.Common;
 using ServerManager.Application.DTOs.AuditLogs;
 using ServerManager.Domain.Entities;
@@ -24,4 +25,21 @@ public interface IAuditLogRepository : IRepository<AuditLog>
 
     /// <summary>Id'si <paramref name="afterId"/>'den büyük kayıtlar, Id sırasıyla.</summary>
     Task<IReadOnlyList<AuditLog>> GetChainBatchAsync(long afterId, int take, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// <paramref name="action"/>'ı bir transaction ve veritabanı düzeyinde zincir kilidi (sp_getapplock) altında çalıştırır;
+    /// birden fazla uygulama örneği aynı anda yazsa da zincir çatallanmaz. Geçici hatada işlem baştan tekrarlanabilir.
+    /// </summary>
+    Task RunInChainLockAsync(Func<CancellationToken, Task> action, CancellationToken cancellationToken = default);
+
+    Task<AuditChainAnchor?> GetChainAnchorAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Çapayı ekler ya da günceller (değişiklik izlenmez, hemen yazılır).</summary>
+    Task SaveChainAnchorAsync(AuditChainAnchor anchor, CancellationToken cancellationToken = default);
+
+    /// <summary>İmzalı kayıt yoksa null.</summary>
+    Task<AuditChainSummary?> GetChainSummaryAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Kaydedilemeyen kaydı izlemeden çıkarır; aksi halde paylaşılan context'in sonraki SaveChanges çağrısı onu eski imzayla yazar.</summary>
+    void Detach(AuditLog log);
 }

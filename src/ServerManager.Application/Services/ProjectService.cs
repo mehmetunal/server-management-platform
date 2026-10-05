@@ -8,6 +8,7 @@ using ServerManager.Application.Deployments;
 using ServerManager.Application.DTOs.AuditLogs;
 using ServerManager.Application.DTOs.Deployments;
 using ServerManager.Application.DTOs.Servers;
+using ServerManager.Application.Files;
 using ServerManager.Application.Interfaces;
 using ServerManager.Application.Interfaces.Deployments;
 using ServerManager.Application.Interfaces.Repositories;
@@ -136,6 +137,10 @@ public class ProjectService : IProjectService
         if (await _repository.ProjectNameExistsAsync(dto.Name, null, cancellationToken))
             return ServiceResult<Guid>.ValidationFailure(nameof(dto.Name), "Bu isimde bir proje zaten kayıtlı.");
 
+        var pathConflict = await FindDeployPathConflictAsync(dto.ServerId, dto.DeployPath, null, cancellationToken);
+        if (pathConflict is not null)
+            return ServiceResult<Guid>.ValidationFailure(nameof(dto.DeployPath), pathConflict);
+
         var integrationError = await ApplyIntegrationAsync(dto, cancellationToken);
         if (integrationError is not null)
             return ServiceResult<Guid>.ValidationFailure([integrationError]);
@@ -177,6 +182,10 @@ public class ProjectService : IProjectService
         if (await _repository.ProjectNameExistsAsync(dto.Name, project.Id, cancellationToken))
             return ServiceResult.ValidationFailure(nameof(dto.Name), "Bu isimde bir proje zaten kayıtlı.");
 
+        var pathConflict = await FindDeployPathConflictAsync(dto.ServerId, dto.DeployPath, project.Id, cancellationToken);
+        if (pathConflict is not null)
+            return ServiceResult.ValidationFailure(nameof(dto.DeployPath), pathConflict);
+
         var integrationError = await ApplyIntegrationAsync(dto, cancellationToken);
         if (integrationError is not null)
             return ServiceResult.ValidationFailure([integrationError]);
@@ -190,6 +199,11 @@ public class ProjectService : IProjectService
         if (await _repository.GetRunningDeploymentAsync(project.Id, cancellationToken) is not null)
             return ServiceResult.Failure("Proje için süren bir deployment var; bitmesini bekleyin veya iptal edin.", ServiceErrorType.Conflict);
 
+        var domainCheck = await _domains.ValidateProjectChangeAsync(project, dto.ServerId, dto.BuildType, cancellationToken);
+        if (!domainCheck.IsSuccess)
+            return domainCheck;
+
+        var serverChanged = project.ServerId != dto.ServerId;
         var changes = DescribeChanges(project, dto, server.Name);
         ApplyFormValues(project, dto);
 
@@ -218,6 +232,8 @@ public class ProjectService : IProjectService
         project.UpdatedAt = UtcNow;
         project.UpdatedBy = _currentUser.UserName;
         await _repository.SaveChangesAsync(cancellationToken);
+        if (serverChanged)
+            await _domains.OnProjectServerChangedAsync(project, cancellationToken);
 
         await AuditAsync(AuditActions.ProjectUpdate, project, changes.Count > 0 ? string.Join(" | ", changes) : "Değişiklik yok", cancellationToken);
         return ServiceResult.Success("Proje güncellendi.");
@@ -474,6 +490,18 @@ public class ProjectService : IProjectService
 
     private static string DescribeSource(DeploymentProject project) =>
         project.GitIntegration is null ? project.RepositoryUrl : $"{project.GitRepository} ({project.GitIntegration})";
+
+    /// <summary>Aynı sunucudaki başka bir projenin klasörüyle aynı, onun üstü veya altı olan yol için hata mesajı; çakışma yoksa null.</summary>
+    private async Task<string?> FindDeployPathConflictAsync(Guid serverId, string deployPath, Guid? excludeId, CancellationToken cancellationToken)
+    {
+        var projects = await _repository.GetProjectsByServerAsync(serverId, cancellationToken);
+        var conflict = projects.FirstOrDefault(p =>
+            p.Id != excludeId
+            && (RemotePath.IsSameOrDescendant(deployPath, p.DeployPath) || RemotePath.IsSameOrDescendant(p.DeployPath, deployPath)));
+        return conflict is null
+            ? null
+            : $"Bu sunucuda {conflict.Name} projesi {conflict.DeployPath} klasörünü kullanıyor; aynı klasör, üst veya alt klasörü seçilemez.";
+    }
 
     private async Task<string?> GenerateSlugAsync(string name, CancellationToken cancellationToken)
     {

@@ -1,4 +1,5 @@
 using FluentValidation;
+using Microsoft.Extensions.Options;
 using ServerManager.Application.Alerting;
 using ServerManager.Application.Auditing;
 using ServerManager.Application.Common;
@@ -8,7 +9,9 @@ using ServerManager.Application.DTOs.Servers;
 using ServerManager.Application.Interfaces;
 using ServerManager.Application.Interfaces.Repositories;
 using ServerManager.Application.Interfaces.Services;
+using ServerManager.Application.Monitoring;
 using ServerManager.Domain.Entities;
+using ServerManager.Domain.Enums;
 
 namespace ServerManager.Application.Services;
 
@@ -22,6 +25,7 @@ public class AlertRuleService : IAlertRuleService
     private readonly ICurrentUserService _currentUser;
     private readonly IValidator<AlertRuleFormDto> _validator;
     private readonly TimeProvider _timeProvider;
+    private readonly MonitoringOptions _monitoringOptions;
 
     public AlertRuleService(
         IAlertRepository repository,
@@ -29,7 +33,8 @@ public class AlertRuleService : IAlertRuleService
         IAuditLogService auditLogService,
         ICurrentUserService currentUser,
         IValidator<AlertRuleFormDto> validator,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IOptions<MonitoringOptions> monitoringOptions)
     {
         _repository = repository;
         _serverRepository = serverRepository;
@@ -37,6 +42,7 @@ public class AlertRuleService : IAlertRuleService
         _currentUser = currentUser;
         _validator = validator;
         _timeProvider = timeProvider;
+        _monitoringOptions = monitoringOptions.Value;
     }
 
     private DateTime UtcNow => _timeProvider.GetUtcNow().UtcDateTime;
@@ -186,6 +192,13 @@ public class AlertRuleService : IAlertRuleService
         if (!validation.IsValid)
             return ServiceResult.ValidationFailure(validation);
 
+        if (DurationExceedsRetention(dto.Kind, dto.DurationMinutes, _monitoringOptions))
+        {
+            return ServiceResult.ValidationFailure(nameof(dto.DurationMinutes),
+                $"Süre, ham metrik saklama süresini ({_monitoringOptions.EffectiveRawRetentionHours} saat) aşamaz; bu kural hiç tetiklenmez. " +
+                "Süreyi kısaltın veya Ayarlar'dan ham metrik saklama süresini artırın.");
+        }
+
         if (dto.ServerId is { } serverId && !await _serverRepository.AnyAsync(s => s.Id == serverId, cancellationToken))
             return ServiceResult.ValidationFailure(nameof(dto.ServerId), "Seçilen sunucu bulunamadı.");
 
@@ -194,6 +207,10 @@ public class AlertRuleService : IAlertRuleService
 
         return null;
     }
+
+    /// <summary>Metrik kuralının penceresi ham örneklerin saklandığı süreden uzunsa pencere hiçbir zaman dolmaz.</summary>
+    public static bool DurationExceedsRetention(AlertRuleKind kind, int durationMinutes, MonitoringOptions options) =>
+        AlertRuleKinds.IsMetric(kind) && durationMinutes > options.EffectiveRawRetentionHours * 60;
 
     private static void Normalize(AlertRuleFormDto dto)
     {

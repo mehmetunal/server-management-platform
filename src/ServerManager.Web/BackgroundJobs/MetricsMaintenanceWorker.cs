@@ -4,6 +4,7 @@ using ServerManager.Application.Monitoring;
 
 namespace ServerManager.Web.BackgroundJobs;
 
+/// <summary>Saatlik metrik özetini üretir; metrik, sağlık kontrolü ve panelden süresi verilen geçmiş/log kayıtlarını temizler.</summary>
 public sealed class MetricsMaintenanceWorker : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
@@ -19,18 +20,16 @@ public sealed class MetricsMaintenanceWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var interval = TimeSpan.FromMinutes(Math.Max(1, _options.MaintenanceIntervalMinutes));
-
         try
         {
             await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
 
-            using var timer = new PeriodicTimer(interval);
-            do
+            // Aralık her turda yeniden okunur; ayar değişikliği yeniden başlatma gerektirmez.
+            while (!stoppingToken.IsCancellationRequested)
             {
                 await RunOnceAsync(stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(Math.Max(1, _options.MaintenanceIntervalMinutes)), stoppingToken);
             }
-            while (await timer.WaitForNextTickAsync(stoppingToken));
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
@@ -44,7 +43,7 @@ public sealed class MetricsMaintenanceWorker : BackgroundService
             using var scope = _scopeFactory.CreateScope();
             await scope.ServiceProvider.GetRequiredService<IMonitoringService>().RunMaintenanceAsync(stoppingToken);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
         {
             _logger.LogError(ex, "Metrik bakımı (aggregation/retention) başarısız.");
         }

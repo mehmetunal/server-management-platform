@@ -10,6 +10,7 @@ using ServerManager.Application.Monitoring;
 using ServerManager.Application.Security;
 using ServerManager.Application.Services;
 using ServerManager.Domain.Entities;
+using ServerManager.Domain.Enums;
 
 namespace ServerManager.Application.Tests.Services;
 
@@ -19,15 +20,18 @@ public class PanelSettingsServiceTests
 
     private readonly IPanelSettingRepository _repository = Substitute.For<IPanelSettingRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
+    private readonly IAlertRepository _alertRepository = Substitute.For<IAlertRepository>();
     private readonly MonitoringOptions _monitoring = new();
     private readonly AlertingOptions _alerting = new();
     private readonly BackupOptions _backup = new();
     private readonly SecurityScanOptions _scan = new();
     private readonly CloudOptions _cloud = new();
+    private readonly RetentionOptions _retention = new();
 
     public PanelSettingsServiceTests()
     {
         _repository.GetAllAsync(Arg.Any<CancellationToken>()).Returns([]);
+        _alertRepository.GetRulesAsync(Arg.Any<CancellationToken>()).Returns([]);
     }
 
     [Fact]
@@ -87,6 +91,46 @@ public class PanelSettingsServiceTests
     }
 
     [Fact]
+    public async Task SaveAsync_rejects_raw_retention_shorter_than_a_metric_rule_window()
+    {
+        _alertRepository.GetRulesAsync(Arg.Any<CancellationToken>()).Returns(
+        [
+            new AlertRule { Name = "Uzun CPU", Kind = AlertRuleKind.CpuUsage, DurationMinutes = 600 }
+        ]);
+        var values = Current();
+        values["Monitoring:RawRetentionHours"] = "6";
+
+        var result = await Service().SaveAsync(values, Ct);
+
+        Assert.False(result.IsSuccess);
+        Assert.Contains(result.Errors, e => e.PropertyName == "Monitoring:RawRetentionHours" && e.Message.Contains("10 saat"));
+        Assert.Equal(48, _monitoring.RawRetentionHours);
+    }
+
+    [Fact]
+    public async Task SaveAsync_applies_retention_days_and_allows_zero_for_keep_forever()
+    {
+        var values = Current();
+        values["Retention:CommandRunDays"] = "0";
+        values["Retention:DeploymentLogDays"] = "30";
+
+        var result = await Service().SaveAsync(values, Ct);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(0, _retention.CommandRunDays);
+        Assert.Equal(30, _retention.DeploymentLogDays);
+    }
+
+    [Fact]
+    public void Groups_include_retention_section()
+    {
+        var group = Assert.Single(Service().GetGroups(), g => g.Title == "Kayıt saklama");
+
+        Assert.Equal(5, group.Fields.Count);
+        Assert.All(group.Fields, f => Assert.Equal("90", f.Value));
+    }
+
+    [Fact]
     public async Task SaveAsync_does_not_write_when_nothing_changed()
     {
         var result = await Service().SaveAsync(Current(), Ct);
@@ -111,8 +155,9 @@ public class PanelSettingsServiceTests
     }
 
     private PanelSettingsService Service() =>
-        new(_repository, _audit, TimeProvider.System, NullLogger<PanelSettingsService>.Instance,
-            Options.Create(_monitoring), Options.Create(_alerting), Options.Create(_backup), Options.Create(_scan), Options.Create(_cloud));
+        new(_repository, _alertRepository, _audit, TimeProvider.System, NullLogger<PanelSettingsService>.Instance,
+            Options.Create(_monitoring), Options.Create(_alerting), Options.Create(_backup), Options.Create(_scan), Options.Create(_cloud),
+            Options.Create(_retention));
 
     private Dictionary<string, string> Current()
     {

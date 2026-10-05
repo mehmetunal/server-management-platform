@@ -103,6 +103,18 @@ public class DokployOutputParserTests
         Assert.Null(DokployOutputParser.ParseSha256("sha256sum: missing"));
     }
 
+    [Fact]
+    public void Sha256_is_verified_only_when_an_expected_value_is_configured()
+    {
+        const string hash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+
+        Assert.Null(DokployOutputParser.VerifySha256(null, hash));
+        Assert.Null(DokployOutputParser.VerifySha256("", null));
+        Assert.Null(DokployOutputParser.VerifySha256(" " + hash.ToUpperInvariant() + " ", hash));
+        Assert.NotNull(DokployOutputParser.VerifySha256(hash, new string('0', 64)));
+        Assert.NotNull(DokployOutputParser.VerifySha256(hash, null));
+    }
+
     [Theory]
     [InlineData("""{"ok":true}""", true)]
     [InlineData("""{"ok": true}""", true)]

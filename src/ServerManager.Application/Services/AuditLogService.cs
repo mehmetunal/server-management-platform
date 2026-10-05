@@ -19,7 +19,10 @@ public class AuditLogService : IAuditLogService
     private const int VerifyBatchSize = 2_000;
     private const int TopActionCount = 5;
 
-    /// <summary>Önceki imzayı okuma ve yeni kaydı ekleme tek adım olmalı; aksi halde zincir çatallanır.</summary>
+    /// <summary>
+    /// Önceki imzayı okuma ve yeni kaydı ekleme tek adım olmalı; aksi halde zincir çatallanır. Asıl koruma veritabanı
+    /// kilididir (birden fazla örnek); bu semafor yalnızca aynı süreçteki yazıcıları veritabanına gitmeden sıraya sokar.
+    /// </summary>
     private static readonly SemaphoreSlim ChainLock = new(1, 1);
 
     private readonly IAuditLogRepository _auditLogRepository;
@@ -65,14 +68,12 @@ public class AuditLogService : IAuditLogService
             await ChainLock.WaitAsync(cancellationToken);
             locked = true;
 
-            var previousHash = await _auditLogRepository.GetLastChainHashAsync(cancellationToken);
-            log.ChainHash = _chainSigner.Sign(AuditChainFormat.Canonicalize(previousHash, log));
-
-            await _auditLogRepository.AddAsync(log, cancellationToken);
-            await _auditLogRepository.SaveChangesAsync(cancellationToken);
+            await _auditLogRepository.RunInChainLockAsync(ct => AppendAsync(log, ct), cancellationToken);
         }
         catch (Exception ex)
         {
+            // Paylaşılan DbContext'te Added olarak kalırsa sonraki SaveChanges kaydı eski zincir imzasıyla ekler.
+            _auditLogRepository.Detach(log);
             _logger.LogError(ex, "Audit log yazılamadı. Action: {Action}, EntityId: {EntityId}", entry.Action, entry.EntityId);
         }
         finally
@@ -80,6 +81,44 @@ public class AuditLogService : IAuditLogService
             if (locked)
                 ChainLock.Release();
         }
+    }
+
+    public async Task EnsureChainAnchorAsync(CancellationToken cancellationToken = default)
+    {
+        AuditChainSummary? created = null;
+        await ChainLock.WaitAsync(cancellationToken);
+        try
+        {
+            await _auditLogRepository.RunInChainLockAsync(async ct =>
+            {
+                created = null;
+                if (await _auditLogRepository.GetChainAnchorAsync(ct) is not null)
+                    return;
+
+                if (await _auditLogRepository.GetChainSummaryAsync(ct) is { } summary)
+                {
+                    await _auditLogRepository.SaveChainAnchorAsync(AuditChainVerifier.Create(summary, _chainSigner, DateTime.UtcNow), ct);
+                    created = summary;
+                }
+            }, cancellationToken);
+        }
+        finally
+        {
+            ChainLock.Release();
+        }
+
+        if (created is null)
+            return;
+
+        // Çapa çapa öncesi sürümden yükseltmede bir kez oluşur. Sonradan yeniden oluşması çapanın silindiğini gösterir;
+        // bu yüzden olay zincirin kendisine yazılır ve iz silinemez.
+        _logger.LogWarning("Audit zincir çapası mevcut {Count} imzalı kayıttan oluşturuldu (son kayıt #{LastId}).", created.SignedCount, created.LastSignedId);
+        await LogAsync(new AuditEntry(
+            AuditActions.AuditChainAnchorCreate,
+            AuditEntityTypes.AuditLog,
+            created.LastSignedId.ToString(CultureInfo.InvariantCulture),
+            Details: $"Çapa mevcut zincirden oluşturuldu. İmzalı kayıt: {created.SignedCount.ToString(CultureInfo.InvariantCulture)}, ilk imzalı kayıt: #{created.FirstSignedId.ToString(CultureInfo.InvariantCulture)}",
+            UserNameOverride: "system"), cancellationToken);
     }
 
     public async Task<PagedResult<AuditLogDto>> SearchAsync(AuditLogFilterDto filter, CancellationToken cancellationToken = default)
@@ -120,7 +159,10 @@ public class AuditLogService : IAuditLogService
 
     public async Task<AuditChainVerificationDto> VerifyChainAsync(CancellationToken cancellationToken = default)
     {
-        var result = await AuditChainVerifier.VerifyAsync(ReadChainAsync(cancellationToken), _chainSigner, cancellationToken);
+        // Çapa kayıtlardan önce okunur; doğrulama sırasında eklenen kayıtlar çapanın ötesinde kalır.
+        var anchor = await _auditLogRepository.GetChainAnchorAsync(cancellationToken);
+        var result = await AuditChainVerifier.VerifyAsync(
+            ReadChainAsync(cancellationToken), _chainSigner, anchor, anchorExpected: true, cancellationToken);
 
         await LogAsync(new AuditEntry(
             AuditActions.AuditVerify,
@@ -130,6 +172,29 @@ public class AuditLogService : IAuditLogService
             IsSuccess: result.IsValid), cancellationToken);
 
         return result;
+    }
+
+    /// <summary>Zincir kilidi altında çalışır; geçici hatada yeniden denenebileceği için her adım baştan kurulur.</summary>
+    private async Task AppendAsync(AuditLog log, CancellationToken cancellationToken)
+    {
+        var anchor = await _auditLogRepository.GetChainAnchorAsync(cancellationToken);
+
+        // İmzalı kayıt varken çapa yoksa çapa silinmiştir (yükseltme durumunu açılıştaki EnsureChainAnchorAsync karşılar).
+        // Burada sessizce yeniden oluşturulmaz; doğrulama eksik çapayı raporlar.
+        var updateAnchor = anchor is not null || await _auditLogRepository.GetChainSummaryAsync(cancellationToken) is null;
+        if (!updateAnchor)
+            _logger.LogWarning("Audit zincir çapası bulunamadı; kayıt çapa güncellenmeden yazılıyor.");
+
+        var previousHash = await _auditLogRepository.GetLastChainHashAsync(cancellationToken);
+        log.ChainHash = _chainSigner.Sign(AuditChainFormat.Canonicalize(previousHash, log));
+
+        _auditLogRepository.Detach(log);
+        log.Id = 0;
+        await _auditLogRepository.AddAsync(log, cancellationToken);
+        await _auditLogRepository.SaveChangesAsync(cancellationToken);
+
+        if (updateAnchor)
+            await _auditLogRepository.SaveChainAnchorAsync(AuditChainVerifier.Advance(anchor, log, _chainSigner, DateTime.UtcNow), cancellationToken);
     }
 
     private async IAsyncEnumerable<AuditLog> ReadChainAsync([EnumeratorCancellation] CancellationToken cancellationToken)

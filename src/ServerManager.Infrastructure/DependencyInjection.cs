@@ -2,6 +2,7 @@ using ServerManager.Application.Cloud;
 using ServerManager.Application.Interfaces.Commands;
 using ServerManager.Infrastructure.Commands;
 using FluentMigrator.Runner;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -63,14 +64,24 @@ public static class DependencyInjection
                 options.Password.RequireNonAlphanumeric = false;
                 options.User.RequireUniqueEmail = true;
                 options.Lockout.AllowedForNewUsers = true;
-                options.Lockout.MaxFailedAccessAttempts = 5;
-                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+                // Kaynak (hesap + IP) bazında artan bekleme LoginAttemptThrottle'dadır; Identity kilidi yalnızca dağıtık
+                // saldırıya karşı son savunmadır. Eşik düşük olursa herkes birkaç denemeyle başkasının hesabını kilitleyebilir.
+                options.Lockout.MaxFailedAccessAttempts = LoginAttemptThrottle.LockoutThreshold;
+                options.Lockout.DefaultLockoutTimeSpan = LoginAttemptThrottle.LockoutDuration;
                 options.SignIn.RequireConfirmedAccount = false;
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddErrorDescriber<TurkishIdentityErrorDescriber>()
             .AddClaimsPrincipalFactory<AppUserClaimsPrincipalFactory>()
             .AddDefaultTokenProviders();
+
+        // Anahtarlar veritabanında tutulur; yeniden başlatma veya birden fazla örnek cookie/antiforgery/2FA belirteçlerini geçersiz kılmaz.
+        services.AddDataProtection()
+            .SetApplicationName("MagServerManager")
+            .PersistKeysToDbContext<ApplicationDbContext>();
+
+        services.AddMemoryCache();
+        services.AddSingleton<LoginAttemptThrottle>();
 
         services.AddFluentMigratorCore()
             .ConfigureRunner(rb => rb
@@ -95,6 +106,7 @@ public static class DependencyInjection
         services.Configure<BackupOptions>(configuration.GetSection(BackupOptions.SectionName));
         services.Configure<SecurityScanOptions>(configuration.GetSection(SecurityScanOptions.SectionName));
         services.Configure<CloudOptions>(configuration.GetSection(CloudOptions.SectionName));
+        services.Configure<RetentionOptions>(configuration.GetSection(RetentionOptions.SectionName));
 
         services.AddHttpClient(UptimeProbe.HttpClientName, UptimeProbe.ConfigureClient)
             .ConfigurePrimaryHttpMessageHandler(UptimeProbe.CreateHandler);
@@ -170,6 +182,8 @@ public static class DependencyInjection
 
         var seeder = scope.ServiceProvider.GetRequiredService<IdentitySeeder>();
         await seeder.SeedAsync();
+
+        await scope.ServiceProvider.GetRequiredService<IAuditLogService>().EnsureChainAnchorAsync();
 
         await scope.ServiceProvider.GetRequiredService<IPanelSettingsService>().ApplyStoredAsync();
         await scope.ServiceProvider.GetRequiredService<IPluginService>().InitializeAsync();

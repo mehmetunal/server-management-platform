@@ -43,6 +43,9 @@ public class ProjectServiceTests
         _gitIntegrations.Find(Arg.Any<string>()).Returns((IGitIntegration?)null);
         _gitIntegrations.GetEnabled().Returns([]);
         _serverRepository.GetByIdAsync(_server.Id, Arg.Any<CancellationToken>()).Returns(_server);
+        _repository.GetProjectsByServerAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
+        _domains.ValidateProjectChangeAsync(Arg.Any<DeploymentProject>(), Arg.Any<Guid>(), Arg.Any<DeploymentBuildType>(), Arg.Any<CancellationToken>())
+            .Returns(ServiceResult.Success());
         _service = new ProjectService(
             _repository,
             _domains,
@@ -154,6 +157,73 @@ public class ProjectServiceTests
         Assert.Null(project.EncryptedEnvironment);
     }
 
+    [Theory]
+    [InlineData("/srv/apps/api")]
+    [InlineData("/srv/apps")]
+    [InlineData("/srv/apps/api/web")]
+    public async Task Create_rejects_a_folder_that_overlaps_another_project_on_the_same_server(string deployPath)
+    {
+        var other = ProjectTestData.Project(_server);
+        other.Name = "Diğer";
+        _repository.GetProjectsByServerAsync(_server.Id, Arg.Any<CancellationToken>()).Returns([other]);
+        var dto = ProjectTestData.ValidCreateDto(_server.Id);
+        dto.DeployPath = deployPath;
+
+        var result = await _service.CreateAsync(dto, Ct);
+
+        Assert.Equal(ServiceErrorType.Validation, result.ErrorType);
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(CreateProjectDto.DeployPath));
+        await _repository.DidNotReceiveWithAnyArgs().AddProjectAsync(default!, Ct);
+    }
+
+    [Fact]
+    public async Task Create_accepts_a_sibling_folder_and_update_ignores_its_own_folder()
+    {
+        var project = ProjectTestData.Project(_server);
+        _repository.GetProjectsByServerAsync(_server.Id, Arg.Any<CancellationToken>()).Returns([project]);
+        _repository.GetProjectAsync(project.Id, Arg.Any<CancellationToken>()).Returns(project);
+        var dto = ProjectTestData.ValidCreateDto(_server.Id);
+        dto.DeployPath = "/srv/apps/api-v2";
+
+        var created = await _service.CreateAsync(dto, Ct);
+        var updated = await _service.UpdateAsync(ProjectTestData.ValidUpdateDto(project), Ct);
+
+        Assert.True(created.IsSuccess);
+        Assert.True(updated.IsSuccess);
+    }
+
+    [Fact]
+    public async Task Update_moving_to_another_server_moves_the_domains()
+    {
+        var project = ProjectTestData.Project(_server);
+        var target = ProjectTestData.Server();
+        _serverRepository.GetByIdAsync(target.Id, Arg.Any<CancellationToken>()).Returns(target);
+        _repository.GetProjectAsync(project.Id, Arg.Any<CancellationToken>()).Returns(project);
+        var dto = ProjectTestData.ValidUpdateDto(project);
+        dto.ServerId = target.Id;
+
+        var result = await _service.UpdateAsync(dto, Ct);
+
+        Assert.True(result.IsSuccess);
+        await _domains.Received(1).ValidateProjectChangeAsync(project, target.Id, dto.BuildType, Arg.Any<CancellationToken>());
+        await _domains.Received(1).OnProjectServerChangedAsync(Arg.Is<DeploymentProject>(p => p.ServerId == target.Id), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Update_is_refused_when_domains_do_not_fit_the_change()
+    {
+        var project = ProjectTestData.Project(_server);
+        _repository.GetProjectAsync(project.Id, Arg.Any<CancellationToken>()).Returns(project);
+        _domains.ValidateProjectChangeAsync(project, Arg.Any<Guid>(), Arg.Any<DeploymentBuildType>(), Arg.Any<CancellationToken>())
+            .Returns(ServiceResult.ValidationFailure(nameof(ProjectFormDto.BuildType), "servis adı yok"));
+
+        var result = await _service.UpdateAsync(ProjectTestData.ValidUpdateDto(project), Ct);
+
+        Assert.Equal(ServiceErrorType.Validation, result.ErrorType);
+        await _repository.DidNotReceiveWithAnyArgs().SaveChangesAsync(Ct);
+        await _domains.DidNotReceiveWithAnyArgs().OnProjectServerChangedAsync(default!, Ct);
+    }
+
     [Fact]
     public async Task Update_is_blocked_while_deploying()
     {
@@ -222,7 +292,7 @@ public class ProjectServiceTests
 
         Assert.False(result.IsSuccess);
         Assert.False(project.IsDeleted);
-        await _domains.DidNotReceiveWithAnyArgs().OnProjectDeletedAsync(null!, default, false);
+        await _domains.DidNotReceiveWithAnyArgs().OnProjectDeletedAsync(null!, TestContext.Current.CancellationToken, false);
     }
 
     [Fact]

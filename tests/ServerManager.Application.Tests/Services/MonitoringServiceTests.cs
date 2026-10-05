@@ -28,6 +28,7 @@ public class MonitoringServiceTests
     private readonly IMetricsCollector _collector = Substitute.For<IMetricsCollector>();
     private readonly IMonitoringNotifier _notifier = Substitute.For<IMonitoringNotifier>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
+    private readonly RetentionOptions _retention = new();
     private readonly MonitoringService _service;
 
     public MonitoringServiceTests()
@@ -41,6 +42,7 @@ public class MonitoringServiceTests
             _auditLog,
             new FixedTimeProvider(Now),
             Options.Create(new MonitoringOptions()),
+            Options.Create(_retention),
             NullLogger<MonitoringService>.Instance);
     }
 
@@ -273,6 +275,51 @@ public class MonitoringServiceTests
         await _metricRepository.Received(1).DeleteExpiredAsync(RetentionTarget.HourlyMetrics, Now.UtcDateTime.AddDays(-90), 1, Arg.Any<CancellationToken>());
         await _metricRepository.Received(1).DeleteExpiredAsync(
             RetentionTarget.HealthChecks, Now.UtcDateTime.AddDays(-30), MonitoringService.ProtectedHealthChecksPerServer, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Maintenance_applies_history_retention_and_skips_keep_forever_targets()
+    {
+        _retention.DeploymentLogDays = 30;
+        _retention.CommandRunDays = 0;
+        _metricRepository.DeleteExpiredAsync(RetentionTarget.DeploymentLogs, Arg.Any<DateTime>(), Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns(7);
+
+        var result = await _service.RunMaintenanceAsync(Ct);
+
+        await _metricRepository.Received(1).DeleteExpiredAsync(
+            RetentionTarget.DeploymentLogs, Now.UtcDateTime.AddDays(-30), RetentionOptions.ProtectedDeploymentLogsPerProject, Arg.Any<CancellationToken>());
+        await _metricRepository.Received(1).DeleteExpiredAsync(
+            RetentionTarget.BackupRunLogs, Now.UtcDateTime.AddDays(-90), RetentionOptions.ProtectedBackupRunLogsPerJob, Arg.Any<CancellationToken>());
+        await _metricRepository.Received(1).DeleteExpiredAsync(RetentionTarget.TerminalSessions, Now.UtcDateTime.AddDays(-90), 1, Arg.Any<CancellationToken>());
+        await _metricRepository.Received(1).DeleteExpiredAsync(RetentionTarget.AlertEvents, Now.UtcDateTime.AddDays(-90), 1, Arg.Any<CancellationToken>());
+        await _metricRepository.DidNotReceive().DeleteExpiredAsync(RetentionTarget.CommandRuns, Arg.Any<DateTime>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        Assert.Equal(7, result.History![RetentionTarget.DeploymentLogs]);
+    }
+
+    [Fact]
+    public async Task Maintenance_continues_when_one_history_target_fails()
+    {
+        _metricRepository.DeleteExpiredAsync(RetentionTarget.DeploymentLogs, Arg.Any<DateTime>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("tablo kilitli"));
+
+        await _service.RunMaintenanceAsync(Ct);
+
+        await _metricRepository.Received(1).DeleteExpiredAsync(RetentionTarget.AlertEvents, Arg.Any<DateTime>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(-1, false)]
+    [InlineData(30, true)]
+    public void Retention_cutoff_is_null_for_keep_forever(int days, bool hasCutoff)
+    {
+        var now = Now.UtcDateTime;
+
+        var cutoff = RetentionOptions.Cutoff(days, now);
+
+        Assert.Equal(hasCutoff, cutoff.HasValue);
+        if (hasCutoff)
+            Assert.Equal(now.AddDays(-days), cutoff);
     }
 
     [Fact]

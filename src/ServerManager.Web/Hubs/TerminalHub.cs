@@ -51,6 +51,9 @@ public sealed class TerminalHub : Hub
         return new TerminalStartResponse(result.IsSuccess, result.Message, result.IsSuccess ? result.Data : null);
     }
 
+    // Attach/Input/Resize/Confirm hem sunucu hem container oturumlarında kullanılır; gereken yetki (terminal.execute
+    // veya docker.terminal) oturum türüne bağlı olduğu için öznitelikle değil TerminalManager içinde denetlenir.
+    // Stop yetki istemez: kullanıcı yalnızca kendi bağlantısına bağlı oturumu kapatabilir.
     public Task<TerminalAttachResponse> Attach(Guid sessionId, int columns, int rows) =>
         CurrentUser() is { } user
             ? _manager.AttachAsync(user, sessionId, columns, rows)
@@ -61,17 +64,17 @@ public sealed class TerminalHub : Hub
         if (string.IsNullOrEmpty(data) || data.Length > MaxInputLength)
             return Task.CompletedTask;
 
-        return _manager.WriteAsync(Context.ConnectionId, sessionId, data);
+        return _manager.WriteAsync(Context.ConnectionId, sessionId, data, Context.User);
     }
 
     public void Resize(Guid sessionId, int columns, int rows) =>
-        _manager.Resize(Context.ConnectionId, sessionId, columns, rows);
+        _manager.Resize(Context.ConnectionId, sessionId, columns, rows, Context.User);
 
     public Task Stop(Guid sessionId) =>
         _manager.StopAsync(Context.ConnectionId, sessionId);
 
     public Task Confirm(Guid sessionId, string token, bool approve) =>
-        _manager.ResolveConfirmationAsync(Context.ConnectionId, sessionId, token ?? string.Empty, approve);
+        _manager.ResolveConfirmationAsync(Context.ConnectionId, sessionId, token ?? string.Empty, approve, Context.User);
 
     public override Task OnDisconnectedAsync(Exception? exception)
     {
@@ -82,13 +85,14 @@ public sealed class TerminalHub : Hub
     private TerminalUser? CurrentUser()
     {
         var userId = Context.UserIdentifier;
-        if (string.IsNullOrEmpty(userId))
+        if (string.IsNullOrEmpty(userId) || Context.User is not { } principal)
             return null;
 
         return new TerminalUser(
             Context.ConnectionId,
             userId,
             Context.User?.Identity?.Name,
-            Context.GetHttpContext()?.Connection.RemoteIpAddress?.ToString());
+            Context.GetHttpContext()?.Connection.RemoteIpAddress?.ToString(),
+            principal);
     }
 }

@@ -46,7 +46,7 @@ public sealed class SslCheckWorker : BackgroundService
             using var scope = _scopeFactory.CreateScope();
             dueIds = await scope.ServiceProvider.GetRequiredService<ISslCertificateService>().GetDueIdsAsync(stoppingToken);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
         {
             _logger.LogError(ex, "Zamanı gelen SSL kontrolleri alınamadı.");
             return;
@@ -59,7 +59,7 @@ public sealed class SslCheckWorker : BackgroundService
                 using var scope = _scopeFactory.CreateScope();
                 await scope.ServiceProvider.GetRequiredService<ISslCertificateService>().RunCheckAsync(id, stoppingToken);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
             {
                 _logger.LogError(ex, "SSL kontrolü başarısız. MonitorId: {MonitorId}", id);
             }

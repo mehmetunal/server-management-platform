@@ -53,7 +53,7 @@ public sealed class MetricsCollectorWorker : BackgroundService
             using var scope = _scopeFactory.CreateScope();
             serverIds = await scope.ServiceProvider.GetRequiredService<IMonitoringService>().GetCollectableServerIdsAsync(stoppingToken);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
         {
             _logger.LogError(ex, "İzlenecek sunucu listesi alınamadı.");
             return;
@@ -72,7 +72,7 @@ public sealed class MetricsCollectorWorker : BackgroundService
                 var monitoringService = scope.ServiceProvider.GetRequiredService<IMonitoringService>();
                 await monitoringService.CollectAsync(serverId, manual: false, stoppingToken);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
             {
                 _logger.LogError(ex, "Metrik toplama başarısız. ServerId: {ServerId}", serverId);
             }
@@ -94,7 +94,7 @@ public sealed class MetricsCollectorWorker : BackgroundService
             if (count > 0)
                 _logger.LogWarning("Rapor göndermeyen {Count} agent için başarısız sağlık kaydı yazıldı.", count);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
         {
             _logger.LogError(ex, "Sessiz agent kontrolü yapılamadı.");
         }

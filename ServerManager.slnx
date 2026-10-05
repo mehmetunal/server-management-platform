@@ -30,5 +30,6 @@
     <Project Path="tests/ServerManager.Plugin.Storage.S3.Tests/ServerManager.Plugin.Storage.S3.Tests.csproj" />
     <Project Path="tests/ServerManager.Plugin.Storage.AzureBlob.Tests/ServerManager.Plugin.Storage.AzureBlob.Tests.csproj" />
     <Project Path="tests/ServerManager.Plugin.Cloud.Tests/ServerManager.Plugin.Cloud.Tests.csproj" />
+    <Project Path="tests/ServerManager.Web.Tests/ServerManager.Web.Tests.csproj" />
   </Folder>
 </Solution>

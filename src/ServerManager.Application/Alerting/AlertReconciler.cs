@@ -12,6 +12,9 @@ public static class AlertReconciler
 {
     public const string TargetGoneMessage = "Hedef artık izlenmiyor; alarm kapatıldı.";
 
+    /// <summary>Açık alarmın kapanması için gereken art arda "düzeldi" değerlendirme sayısı (eşik çevresinde dalgalanmayı önler).</summary>
+    public const int RequiredOkEvaluations = 2;
+
     public static AlertReconcileResult Reconcile(AlertRule rule, IReadOnlyList<AlertCondition> conditions, IReadOnlyList<AlertEvent> openEvents, DateTime now)
     {
         var result = new AlertReconcileResult();
@@ -41,16 +44,29 @@ public static class AlertReconciler
             switch (condition.State)
             {
                 case AlertConditionState.Ok:
-                    Resolve(open, now, condition.Message);
-                    result.Recovered.Add(open);
+                    open.ConsecutiveOkCount++;
+                    if (open.ConsecutiveOkCount >= RequiredOkEvaluations)
+                    {
+                        Resolve(open, now, condition.Message);
+                        result.Recovered.Add(open);
+                    }
                     break;
                 case AlertConditionState.Firing:
+                    open.ConsecutiveOkCount = 0;
                     open.Value = condition.Value;
                     open.Message = TextHelper.Truncate(condition.Message, 1000)!;
                     if (open.ServerName is null && condition.ServerName is not null)
                         open.ServerName = TextHelper.Truncate(condition.ServerName, 256);
-                    if (ShouldRemind(rule, open, condition, now))
+                    if (open.LastNotifiedAt is null)
+                    {
+                        // Açılış bildirimi gönderilemediyse (kanal hatası, kayıt öncesi kesinti) yeniden denenir; üstlenilmişse gerek yok.
+                        if (open.AcknowledgedAt is null)
+                            result.PendingNotifications.Add(open);
+                    }
+                    else if (ShouldRemind(rule, open, condition, now))
+                    {
                         result.Reminders.Add(open);
+                    }
                     break;
             }
         }

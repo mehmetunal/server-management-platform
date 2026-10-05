@@ -26,11 +26,11 @@ public class SshServerScriptExecutorTests
         SetupConnection(useSudo: false);
         var executor = new SshServerScriptExecutor(_connections, _runner);
 
-        var result = await executor.ExecuteAsync(_serverId, "id", elevate: true, TimeSpan.FromSeconds(10));
+        var result = await executor.ExecuteAsync(_serverId, "id", elevate: true, TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
 
         Assert.False(result.Executed);
         Assert.Contains("sudo", result.ErrorMessage);
-        await _runner.DidNotReceiveWithAnyArgs().RunAsync<RemoteCommandOutput>(default!, default!, default);
+        await _runner.DidNotReceiveWithAnyArgs().RunAsync<RemoteCommandOutput>(default!, default!, TestContext.Current.CancellationToken);
     }
 
     [Fact]
@@ -40,7 +40,7 @@ public class SshServerScriptExecutorTests
             .Returns(ServiceResult<ServerConnection>.Failure("Host key doğrulanmamış."));
         var executor = new SshServerScriptExecutor(_connections, _runner);
 
-        var result = await executor.ExecuteAsync(_serverId, "id", elevate: false, TimeSpan.FromSeconds(10));
+        var result = await executor.ExecuteAsync(_serverId, "id", elevate: false, TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
 
         Assert.False(result.Executed);
         Assert.Equal("Host key doğrulanmamış.", result.ErrorMessage);
@@ -58,7 +58,7 @@ public class SshServerScriptExecutorTests
             .Returns(call => call.Arg<Func<IRemoteCommandExecutor, CancellationToken, Task<ServiceResult<RemoteCommandOutput>>>>()(remote, CancellationToken.None));
         var executor = new SshServerScriptExecutor(_connections, _runner);
 
-        var result = await executor.ExecuteAsync(_serverId, "exit 3", elevate: true, TimeSpan.FromSeconds(10));
+        var result = await executor.ExecuteAsync(_serverId, "exit 3", elevate: true, TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
 
         Assert.True(result.Executed);
         Assert.False(result.IsSuccess);

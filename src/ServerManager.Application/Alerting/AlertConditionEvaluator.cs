@@ -12,7 +12,8 @@ public static class AlertConditionEvaluator
         IReadOnlyDictionary<Guid, IReadOnlyList<MetricSample>> samples,
         DateTime now,
         TimeSpan freshness,
-        TimeSpan sampleInterval)
+        TimeSpan sampleInterval,
+        IReadOnlyDictionary<Guid, MetricWindowStats>? windowStats = null)
     {
         var name = AlertRuleKinds.DisplayName(rule.Kind);
         return Scope(rule, servers).Select(server =>
@@ -21,7 +22,10 @@ public static class AlertConditionEvaluator
                 return Condition(server, AlertConditionState.Unknown, null, "Sunucu bakım modunda.");
 
             var serverSamples = samples.GetValueOrDefault(server.Id) ?? [];
-            var (state, value) = MetricRuleEvaluator.Evaluate(serverSamples, rule.Kind, rule.Threshold, rule.DurationMinutes, now, freshness, sampleInterval);
+            var (state, value) = windowStats is null
+                ? MetricRuleEvaluator.Evaluate(serverSamples, rule.Kind, rule.Threshold, rule.DurationMinutes, now, freshness, sampleInterval)
+                : MetricRuleEvaluator.EvaluateWindow(serverSamples, windowStats.GetValueOrDefault(server.Id), rule.Kind, rule.Threshold,
+                    rule.DurationMinutes, now, freshness, sampleInterval);
             var current = value is null ? "bilinmiyor" : AlertRuleKinds.Percent(value.Value);
             var message = state == AlertConditionState.Firing
                 ? $"{name} {current} (eşik {AlertRuleKinds.Percent(rule.Threshold)}{DurationText(rule.DurationMinutes)})."

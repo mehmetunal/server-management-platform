@@ -63,11 +63,40 @@ public class AlertReconcilerTests
     }
 
     [Fact]
-    public void Recovers_event_when_condition_is_ok()
+    public void Single_ok_evaluation_keeps_event_open()
     {
         var rule = Rule();
         var open = Open(rule, "a");
 
+        var result = AlertReconciler.Reconcile(rule, [Condition("a", AlertConditionState.Ok)], [open], Now);
+
+        Assert.Empty(result.Recovered);
+        Assert.Equal(AlertEventStatus.Firing, open.Status);
+        Assert.Equal(1, open.ConsecutiveOkCount);
+    }
+
+    [Fact]
+    public void Firing_between_ok_evaluations_resets_recovery_counter()
+    {
+        var rule = Rule();
+        var open = Open(rule, "a");
+
+        AlertReconciler.Reconcile(rule, [Condition("a", AlertConditionState.Ok)], [open], Now);
+        AlertReconciler.Reconcile(rule, [Condition("a", AlertConditionState.Firing)], [open], Now.AddMinutes(1));
+        var result = AlertReconciler.Reconcile(rule, [Condition("a", AlertConditionState.Ok)], [open], Now.AddMinutes(2));
+
+        Assert.Empty(result.Recovered);
+        Assert.Equal(AlertEventStatus.Firing, open.Status);
+        Assert.Equal(1, open.ConsecutiveOkCount);
+    }
+
+    [Fact]
+    public void Recovers_event_after_consecutive_ok_evaluations()
+    {
+        var rule = Rule();
+        var open = Open(rule, "a");
+
+        AlertReconciler.Reconcile(rule, [Condition("a", AlertConditionState.Ok)], [open], Now.AddMinutes(-1));
         var result = AlertReconciler.Reconcile(rule, [Condition("a", AlertConditionState.Ok)], [open], Now);
 
         Assert.Same(open, Assert.Single(result.Recovered));
@@ -143,7 +172,7 @@ public class AlertReconcilerTests
     }
 
     [Fact]
-    public void Never_notified_event_is_not_reminded()
+    public void Never_notified_event_is_retried_as_pending_not_reminded()
     {
         var rule = Rule(repeatMinutes: 1);
         var open = Open(rule, "a");
@@ -151,6 +180,19 @@ public class AlertReconcilerTests
         var result = AlertReconciler.Reconcile(rule, [Condition("a", AlertConditionState.Firing)], [open], Now);
 
         Assert.Empty(result.Reminders);
+        Assert.Same(open, Assert.Single(result.PendingNotifications));
+    }
+
+    [Fact]
+    public void Acknowledged_never_notified_event_is_not_pending()
+    {
+        var rule = Rule();
+        var open = Open(rule, "a");
+        open.AcknowledgedAt = Now.AddMinutes(-1);
+
+        var result = AlertReconciler.Reconcile(rule, [Condition("a", AlertConditionState.Firing)], [open], Now);
+
+        Assert.Empty(result.PendingNotifications);
     }
 
     [Fact]

@@ -31,14 +31,16 @@ internal sealed class SshCommandExecutor : IRemoteCommandExecutor
         timeoutCts.CancelAfter(command.Timeout);
 
         var executeTask = sshCommand.ExecuteAsync(timeoutCts.Token);
-        await WriteInputAsync(sshCommand, command, timeoutCts.Token);
 
         try
         {
+            // stdin yazımı da zaman aşımına tabidir; iptal çağıranın değilse zaman aşımı sonucu döner, istisna dışarı sızmaz.
+            await WriteInputAsync(sshCommand, command, timeoutCts.Token);
             await executeTask;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
+            Observe(executeTask);
             return new RemoteCommandOutput { TimedOut = true, Stdout = Limit(sshCommand.Result), Stderr = Limit(sshCommand.Error) };
         }
         catch (SshOperationTimeoutException)
@@ -67,7 +69,6 @@ internal sealed class SshCommandExecutor : IRemoteCommandExecutor
         timeoutCts.CancelAfter(command.Timeout);
 
         var executeTask = sshCommand.ExecuteAsync(timeoutCts.Token);
-        await WriteInputAsync(sshCommand, command, timeoutCts.Token);
 
         using var gate = new SemaphoreSlim(1, 1);
         var stdout = new OutputTail();
@@ -79,10 +80,12 @@ internal sealed class SshCommandExecutor : IRemoteCommandExecutor
         var timedOut = false;
         try
         {
+            await WriteInputAsync(sshCommand, command, timeoutCts.Token);
             await executeTask;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
+            Observe(executeTask);
             timedOut = true;
         }
         catch (SshOperationTimeoutException)
@@ -116,21 +119,34 @@ internal sealed class SshCommandExecutor : IRemoteCommandExecutor
         using var abortCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token);
 
         var executeTask = sshCommand.ExecuteAsync(abortCts.Token);
-        await WriteInputAsync(sshCommand, command, abortCts.Token);
 
         using var gate = new SemaphoreSlim(1, 1);
         var stderr = new OutputTail();
         var stderrPump = PumpAsync(sshCommand.ExtendedOutputStream, stderr, static (_, _) => Task.CompletedTask, gate, abortCts.Token);
 
         Exception? consumeError = null;
+        var inputTimedOut = false;
         try
         {
-            await consumeOutput(sshCommand.OutputStream, abortCts.Token);
+            await WriteInputAsync(sshCommand, command, abortCts.Token);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            consumeError = ex;
-            await abortCts.CancelAsync();
+            // Zaman aşımı: aşağıdaki WaitAsync TimedOut sonucunu üretir.
+            inputTimedOut = true;
+        }
+
+        if (!inputTimedOut)
+        {
+            try
+            {
+                await consumeOutput(sshCommand.OutputStream, abortCts.Token);
+            }
+            catch (Exception ex)
+            {
+                consumeError = ex;
+                await abortCts.CancelAsync();
+            }
         }
 
         var (exitCode, timedOut) = await WaitAsync(sshCommand, executeTask, cancellationToken, timeoutCts.Token);
@@ -214,6 +230,10 @@ internal sealed class SshCommandExecutor : IRemoteCommandExecutor
             return (null, true);
         }
     }
+
+    /// <summary>Beklenmeden bırakılan komut görevinin hatası gözlemlenir; gözlemsiz görev istisnası oluşmaz.</summary>
+    private static void Observe(Task task) =>
+        _ = task.ContinueWith(static t => _ = t.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
 
     private async Task WriteInputAsync(SshCommand sshCommand, RemoteCommand command, CancellationToken cancellationToken)
     {

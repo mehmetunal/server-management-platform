@@ -189,4 +189,27 @@ public class DeploymentCommandsTests
         Assert.DoesNotContain("docker rm -f 'sm-traefik'", command, StringComparison.Ordinal);
         Assert.DoesNotContain("docker rm -f sm-traefik", command, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Prepare_marks_the_folder_it_initializes_as_panel_managed()
+    {
+        var script = DeploymentCommands.PrepareWorkspace("/srv/apps/api");
+
+        Assert.Contains($": > \"$P/{DeploymentCommands.ManagedMarkerFile}\"", script, StringComparison.Ordinal);
+        Assert.True(script.IndexOf(DeploymentCommands.ManagedMarkerFile, StringComparison.Ordinal) > script.IndexOf("init -q", StringComparison.Ordinal));
+        Assert.True(script.IndexOf("exit 0", StringComparison.Ordinal) < script.IndexOf(DeploymentCommands.ManagedMarkerFile, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Remove_project_refuses_folders_without_the_marker_before_touching_anything()
+    {
+        var command = DeploymentCommands.RemoveProject(Plan());
+
+        var check = command.IndexOf($"exit {DeploymentCommands.NotManagedExitCode}", StringComparison.Ordinal);
+        Assert.True(check > 0);
+        Assert.Contains($"[ ! -f \"$P/{DeploymentCommands.ManagedMarkerFile}\" ]", command, StringComparison.Ordinal);
+        Assert.Contains("[ -L \"$P\" ]", command, StringComparison.Ordinal);
+        Assert.True(check < command.IndexOf("docker compose", StringComparison.Ordinal));
+        Assert.True(check < command.IndexOf("rm -rf", StringComparison.Ordinal));
+    }
 }

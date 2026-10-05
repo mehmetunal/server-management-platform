@@ -10,7 +10,10 @@ internal static class SudoCommandBuilder
     private const string TerminalPromptArgument = "[sm-sudo%%prompt]";
 
     /// <summary>
-    /// Parola varsa sudo stdin'den okur (-S, boş prompt); parola komut satırına hiçbir zaman yazılmaz.
+    /// Parola varsa stdin'in ilk satırıdır ve komut satırına hiçbir zaman yazılmaz. Sarmalayıcı bu satırı her durumda kendisi okur;
+    /// böylece sudo parola sormadığında (NOPASSWD, önbellekteki oturum) parola komutun stdin'ine (override dosyası, geri yükleme
+    /// arşivi …) karışmaz. Parola yalnızca sudo'ya verilir: önce <c>sudo -v</c> ile doğrulanır, sudo oturumu önbelleğe alıyorsa
+    /// komut <c>sudo -n</c> ile, almıyorsa (timestamp_timeout=0) parola yeniden sudo'ya verilerek çalışır.
     /// Parola yoksa -n ile parolasız sudo denenir ve gerekirse hemen hata verir.
     /// </summary>
     public static string Build(RemoteExecutionContext context, string commandText, bool elevate)
@@ -18,9 +21,21 @@ internal static class SudoCommandBuilder
         if (!elevate || !context.UseSudo)
             return commandText;
 
-        return string.IsNullOrEmpty(context.SudoPassword)
-            ? "sudo -n -- " + commandText
-            : "sudo -S -p '' -- " + commandText;
+        if (string.IsNullOrEmpty(context.SudoPassword))
+            return "sudo -n -- " + commandText;
+
+        var script =
+            "IFS= read -r sm_sudo_pw || sm_sudo_pw=\n" +
+            "if ! sudo -n true 2>/dev/null; then\n" +
+            "  printf '%s\\n' \"$sm_sudo_pw\" | sudo -S -p '' -v || exit 1\n" +
+            "fi\n" +
+            "if sudo -n true 2>/dev/null; then\n" +
+            "  unset sm_sudo_pw\n" +
+            "  sudo -n -- " + commandText + "\n" +
+            "else\n" +
+            "  { printf '%s\\n' \"$sm_sudo_pw\"; unset sm_sudo_pw; cat; } | sudo -S -p '' -- " + commandText + "\n" +
+            "fi\n";
+        return "sh -c " + ShellQuote.Quote(script);
     }
 
     public static bool RequiresPasswordInput(RemoteExecutionContext context, bool elevate) =>

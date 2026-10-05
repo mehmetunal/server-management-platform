@@ -25,7 +25,7 @@ public class ScalewayCloudProviderTests
             .Add("/instance/v1/zones/fr-par-1/servers", """{"servers":[{"id":"srv-1","name":"app-1","state":"running","commercial_type":"DEV1-S","zone":"fr-par-1","public_ip":{"address":"203.0.113.4"},"creation_date":"2026-09-01T10:00:00.000Z"}],"total_count":1}""")
             .Add("/instance/v1/zones/fr-par-1/products/servers", """{"servers":{"DEV1-S":{"hourly_price":0.01,"ncpus":2,"ram":2147483648}}}""");
 
-        var result = await _provider.ListServersAsync(Token);
+        var result = await _provider.ListServersAsync(Token, TestContext.Current.CancellationToken);
 
         Assert.True(result.IsSuccess);
         var server = Assert.Single(result.Data!);
@@ -41,7 +41,7 @@ public class ScalewayCloudProviderTests
     {
         _handler.Add("/account/v3/projects", """{"projects":[{"id":"p-1","name":"default"},{"id":"p-2","name":"other"}],"total_count":2}""");
 
-        var result = await _provider.ValidateTokenAsync(Token);
+        var result = await _provider.ValidateTokenAsync(Token, TestContext.Current.CancellationToken);
 
         Assert.Equal("Scaleway · default", result.Data);
     }
@@ -53,7 +53,7 @@ public class ScalewayCloudProviderTests
             .Add("/instance/v1/zones/fr-par-1/products/servers", """{"servers":{"DEV1-S":{"hourly_price":0.01,"ncpus":2,"ram":2147483648,"arch":"x86_64"}}}""")
             .Add("/instance/v1/zones/fr-par-1/images", """{"images":[{"id":"img-1","name":"Ubuntu 24.04","arch":"x86_64","public":true},{"id":"img-2","name":"Private","public":false}],"total_count":2}""");
 
-        var result = await _provider.GetCatalogAsync(Token);
+        var result = await _provider.GetCatalogAsync(Token, TestContext.Current.CancellationToken);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(["fr-par-1"], result.Data!.Regions.Select(r => r.Id));
@@ -72,7 +72,7 @@ public class ScalewayCloudProviderTests
             .Add("/instance/v1/zones/fr-par-1/servers/srv-9/user_data/cloud-init", "{}", HttpStatusCode.NoContent)
             .Add("/instance/v1/zones/fr-par-1/servers/srv-9/action", "{}", HttpStatusCode.Accepted);
 
-        var result = await _provider.CreateServerAsync(Token, new CloudCreateServerRequest("web-1", "fr-par-1", "DEV1-S", "Ubuntu 24.04", "#cloud-config\n"));
+        var result = await _provider.CreateServerAsync(Token, new CloudCreateServerRequest("web-1", "fr-par-1", "DEV1-S", "Ubuntu 24.04", "#cloud-config\n"), TestContext.Current.CancellationToken);
 
         Assert.True(result.IsSuccess);
         Assert.Equal("srv-9", result.Data!.Server.ExternalId);

@@ -11,6 +11,7 @@ namespace ServerManager.Application.Auditing;
 public static class AuditChainFormat
 {
     public const string VersionPrefix = "sm-audit-v1";
+    public const string AnchorVersionPrefix = "sm-audit-anchor-v1";
 
     /// <summary>Veritabanı yuvarlamasından etkilenmemek için zaman milisaniyeye indirilir.</summary>
     public static DateTime NormalizeTimestamp(DateTime value) =>
@@ -31,6 +32,19 @@ public static class AuditChainFormat
         Append(builder, log.IpAddress);
         Append(builder, log.UserAgent);
         Append(builder, log.IsSuccess ? "1" : "0");
+        return builder.ToString();
+    }
+
+    /// <summary>Çapa imzası kayıt imzasından ayrı bir önekle hesaplanır; biri diğerinin yerine kullanılamaz.</summary>
+    public static string CanonicalizeAnchor(AuditChainAnchor anchor)
+    {
+        var builder = new StringBuilder(160).Append(AnchorVersionPrefix);
+        Append(builder, anchor.Id.ToString(CultureInfo.InvariantCulture));
+        Append(builder, anchor.FirstSignedId.ToString(CultureInfo.InvariantCulture));
+        Append(builder, NormalizeTimestamp(anchor.SigningStartedAt).ToString("yyyy-MM-ddTHH:mm:ss.fff", CultureInfo.InvariantCulture));
+        Append(builder, anchor.LastId.ToString(CultureInfo.InvariantCulture));
+        Append(builder, anchor.LastHash);
+        Append(builder, anchor.SignedCount.ToString(CultureInfo.InvariantCulture));
         return builder.ToString();
     }
 

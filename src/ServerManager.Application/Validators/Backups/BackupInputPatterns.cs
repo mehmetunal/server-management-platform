@@ -7,4 +7,10 @@ public static class BackupInputPatterns
     public const string DatabaseName = "^[A-Za-z0-9_$][A-Za-z0-9_.$-]{0,127}$";
     public const string DatabaseUser = "^[A-Za-z0-9_][A-Za-z0-9_.@-]{0,127}$";
     public const string Host = "^[A-Za-z0-9_\\[][A-Za-z0-9_.:\\[\\]-]{0,254}$";
+
+    /// <summary>
+    /// Parola betiğe stdin'in ilk satırı olarak verilir; satır sonu veya NUL içerirse kalanı dump/geri yükleme verisine karışır.
+    /// </summary>
+    public static bool IsValidDatabasePassword(string? password) =>
+        password is null || password.IndexOfAny(['\r', '\n', '\0']) < 0;
 }

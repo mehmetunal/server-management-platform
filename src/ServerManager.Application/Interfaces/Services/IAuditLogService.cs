@@ -7,6 +7,9 @@ public interface IAuditLogService
 {
     Task LogAsync(AuditEntry entry, CancellationToken cancellationToken = default);
 
+    /// <summary>Açılışta çağrılır: imzalı kayıt var ama zincir çapası yoksa (çapa öncesi sürümden yükseltme) çapayı oluşturur.</summary>
+    Task EnsureChainAnchorAsync(CancellationToken cancellationToken = default);
+
     Task<PagedResult<AuditLogDto>> SearchAsync(AuditLogFilterDto filter, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<AuditLogDto>> GetRecentAsync(int count, CancellationToken cancellationToken = default);

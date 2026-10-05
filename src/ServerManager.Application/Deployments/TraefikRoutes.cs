@@ -47,14 +47,27 @@ public static class TraefikRoutes
         return labels;
     }
 
+    /// <summary>Compose override'ında servis anahtarı olamayacak (boş veya geçersiz servis adlı) ilk rota; yoksa null.</summary>
+    public static DeploymentRoute? FindRouteWithoutService(IReadOnlyList<DeploymentRoute> routes) =>
+        routes.FirstOrDefault(route => !DomainNames.IsValidServiceName(route.ServiceName));
+
+    /// <summary>
+    /// Servisi sm-proxy ağına ekler. <c>networks</c> yazıldığında compose örtük <c>default</c> ağını eklemez; servis
+    /// projedeki diğer servislere (veritabanı vb.) ulaşabilsin diye <c>default</c> da listelenir.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Rotalardan birinin geçerli servis adı yoksa.</exception>
     public static string ComposeOverride(IReadOnlyList<DeploymentRoute> routes)
     {
+        var missing = FindRouteWithoutService(routes);
+        if (missing is not null)
+            throw new InvalidOperationException($"{missing.Host} için Compose servis adı eksik veya geçersiz.");
+
         var builder = new StringBuilder();
         builder.Append("services:\n");
-        foreach (var group in routes.GroupBy(route => route.ServiceName ?? string.Empty, StringComparer.Ordinal))
+        foreach (var group in routes.GroupBy(route => route.ServiceName!, StringComparer.Ordinal))
         {
             builder.Append("  ").Append(group.Key).Append(":\n");
-            builder.Append("    networks:\n      - ").Append(DomainNames.ProxyNetwork).Append('\n');
+            builder.Append("    networks:\n      - default\n      - ").Append(DomainNames.ProxyNetwork).Append('\n');
             builder.Append("    labels:\n");
             foreach (var label in group.SelectMany(Labels).Distinct(StringComparer.Ordinal))
                 builder.Append("      - \"").Append(label.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal)).Append("\"\n");

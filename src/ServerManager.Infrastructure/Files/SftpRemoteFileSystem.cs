@@ -111,6 +111,19 @@ public sealed class SftpRemoteFileSystem : IRemoteFileSystem
     public Task<ServiceResult> CopyAsync(RemoteExecutionContext context, string source, string destination, CancellationToken cancellationToken = default) =>
         RunCommandAsync(context, RemoteFileCommands.Copy(source, destination), elevate: false, cancellationToken);
 
+    public async Task<ServiceResult<RemotePathResolution>> ResolveAsync(RemoteExecutionContext context, string path, CancellationToken cancellationToken = default) =>
+        await _commandRunner.RunAsync(context, async (executor, ct) =>
+        {
+            var output = await executor.ExecuteAsync(new RemoteCommand(RemoteFileCommands.Resolve(path), OperationTimeout, Elevate: true), ct);
+            if (!output.IsSuccess)
+                return ServiceResult<RemotePathResolution>.Failure("Yol sunucuda çözümlenemedi: " + DescribeFailure(output));
+
+            var resolution = RemoteFileCommands.ParseResolution(output.Stdout, path);
+            return resolution is null
+                ? ServiceResult<RemotePathResolution>.Failure("Yol sunucuda çözümlenemedi; sembolik bağlantının hedefi okunamadı.")
+                : ServiceResult<RemotePathResolution>.Success(resolution);
+        }, cancellationToken);
+
     public Task<ServiceResult> DeleteRecursiveAsync(RemoteExecutionContext context, string path, CancellationToken cancellationToken = default) =>
         RunCommandAsync(context, RemoteFileCommands.RemoveRecursive(path), elevate: false, cancellationToken);
 

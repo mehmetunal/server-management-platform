@@ -28,7 +28,11 @@ public sealed class CommandRunManager : IDisposable
         if (result.IsSuccess)
         {
             var runId = result.Data;
-            _runs[runId] = Task.Run(() => ExecuteAsync(runId), CancellationToken.None);
+
+            // Görev sözlüğe yazılmadan biterse TryRemove boşa çalışır ve IsRunning hep true kalır; bu yüzden kayıttan sonra başlar.
+            var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            _runs[runId] = Task.Run(() => ExecuteAsync(runId, start.Task), CancellationToken.None);
+            start.SetResult();
         }
 
         return result;
@@ -47,8 +51,9 @@ public sealed class CommandRunManager : IDisposable
 
     public void Dispose() => _stopping.Dispose();
 
-    private async Task ExecuteAsync(Guid runId)
+    private async Task ExecuteAsync(Guid runId, Task start)
     {
+        await start;
         try
         {
             await using var scope = _scopeFactory.CreateAsyncScope();

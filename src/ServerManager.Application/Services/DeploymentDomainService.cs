@@ -22,6 +22,7 @@ public class DeploymentDomainService : IDeploymentDomainService
 {
     private const string ProjectNotFound = "Proje bulunamadı.";
     private const string DomainNotFound = "Domain bulunamadı.";
+    private const string DeploymentRunning = "Proje için süren bir deployment var; bitmesini bekleyin veya iptal edin.";
 
     private readonly IDeploymentRepository _projects;
     private readonly IDeploymentDomainRepository _domains;
@@ -119,6 +120,9 @@ public class DeploymentDomainService : IDeploymentDomainService
         if (project.BuildType == DeploymentBuildType.Commands)
             return ServiceResult.Failure("Komutla dağıtılan projeye domain bağlanamaz. Docker Compose veya Dockerfile kullanın.");
 
+        if (await IsDeployingAsync(project, cancellationToken))
+            return ServiceResult.Failure(DeploymentRunning, ServiceErrorType.Conflict);
+
         DomainNames.TryNormalizeHost(dto.Host, out var host, out _);
         DomainNames.TryNormalizePath(dto.Path, out var path, out _);
         var serviceName = string.IsNullOrWhiteSpace(dto.ServiceName) ? null : dto.ServiceName.Trim();
@@ -149,6 +153,13 @@ public class DeploymentDomainService : IDeploymentDomainService
             var existing = await _domains.GetAsync(dto.Id!.Value, cancellationToken);
             if (existing is null || existing.ProjectId != project.Id)
                 return ServiceResult.NotFound(DomainNotFound);
+
+            if (dto.TlsMode == DeploymentTlsMode.Custom
+                && string.IsNullOrWhiteSpace(dto.CertificatePem)
+                && (existing.EncryptedCertificate is null || existing.EncryptedPrivateKey is null))
+            {
+                return ServiceResult.ValidationFailure(nameof(DomainFormDto.CertificatePem), "Özel sertifikaya geçmek için sertifika ve özel anahtarı birlikte yapıştırın.");
+            }
 
             domain = existing;
             domain.UpdatedAt = UtcNow;
@@ -188,6 +199,9 @@ public class DeploymentDomainService : IDeploymentDomainService
         if (!string.Equals(confirmationHost?.Trim(), domain.Host, StringComparison.OrdinalIgnoreCase))
             return ServiceResult.ValidationFailure("ConfirmationHost", "Silmek için host adını birebir yazın.");
 
+        if (await IsDeployingAsync(project, cancellationToken))
+            return ServiceResult.Failure(DeploymentRunning, ServiceErrorType.Conflict);
+
         domain.IsDeleted = true;
         domain.DeletedAt = UtcNow;
         domain.DeletedBy = _currentUser.UserName;
@@ -209,8 +223,62 @@ public class DeploymentDomainService : IDeploymentDomainService
         if (project.BuildType == DeploymentBuildType.Commands)
             return ServiceResult.Failure("Komutla dağıtılan projede yönlendirme uygulanmaz.");
 
+        if (await IsDeployingAsync(project, cancellationToken))
+            return ServiceResult.Failure(DeploymentRunning, ServiceErrorType.Conflict);
+
         return await ApplyProjectAsync(project, cancellationToken);
     }
+
+    public async Task<ServiceResult> ValidateProjectChangeAsync(
+        DeploymentProject project, Guid serverId, DeploymentBuildType buildType, CancellationToken cancellationToken = default)
+    {
+        var domains = await _domains.ListByProjectAsync(project.Id, cancellationToken);
+        if (domains.Count == 0)
+            return ServiceResult.Success();
+
+        if (buildType == DeploymentBuildType.DockerCompose)
+        {
+            var missing = domains.FirstOrDefault(domain => !DomainNames.IsValidServiceName(domain.ServiceName));
+            if (missing is not null)
+            {
+                return ServiceResult.ValidationFailure(
+                    nameof(ProjectFormDto.BuildType),
+                    $"{missing.Host} domaininde Compose servis adı yok. Docker Compose'a geçmeden önce domainleri düzenleyip servis adını girin veya domainleri silin.");
+            }
+        }
+
+        if (serverId == project.ServerId)
+            return ServiceResult.Success();
+
+        foreach (var domain in domains)
+        {
+            if (await _domains.HostPathExistsAsync(serverId, domain.Host, domain.Path, domain.Id, cancellationToken))
+                return ServiceResult.Failure($"Seçilen sunucuda {domain.Host}{domain.Path} başka bir domaine ait; proje bu sunucuya taşınamaz.", ServiceErrorType.Conflict);
+        }
+
+        return ServiceResult.Success();
+    }
+
+    public async Task OnProjectServerChangedAsync(DeploymentProject project, CancellationToken cancellationToken = default)
+    {
+        var domains = await _domains.ListByProjectAsync(project.Id, cancellationToken);
+        var moved = domains.Where(domain => domain.ServerId != project.ServerId).ToList();
+        if (moved.Count == 0)
+            return;
+
+        foreach (var domain in moved)
+        {
+            domain.ServerId = project.ServerId;
+            domain.UpdatedAt = UtcNow;
+            domain.UpdatedBy = _currentUser.UserName;
+        }
+
+        await _domains.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Proje başka sunucuya taşındı; domain kayıtları güncellendi. ProjectId: {ProjectId}, Count: {Count}", project.Id, moved.Count);
+    }
+
+    private async Task<bool> IsDeployingAsync(DeploymentProject project, CancellationToken cancellationToken) =>
+        await _projects.GetRunningDeploymentAsync(project.Id, cancellationToken) is not null;
 
     public async Task OnProjectDeletedAsync(DeploymentProject project, CancellationToken cancellationToken = default, bool detachRouting = true)
     {
@@ -292,6 +360,9 @@ public class DeploymentDomainService : IDeploymentDomainService
                 if (string.IsNullOrEmpty(certificate) || string.IsNullOrEmpty(key))
                     return ServiceResult<IReadOnlyList<DeploymentRoute>>.Failure($"{domain.Host} için özel sertifika eksik.");
             }
+
+            if (project.BuildType == DeploymentBuildType.DockerCompose && !DomainNames.IsValidServiceName(domain.ServiceName))
+                return ServiceResult<IReadOnlyList<DeploymentRoute>>.Failure($"{domain.Host} domaininde Compose servis adı yok; domaini düzenleyip servis adını girin (ör. web).");
 
             routes.Add(new DeploymentRoute
             {

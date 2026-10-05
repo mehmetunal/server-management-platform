@@ -101,9 +101,19 @@ public class AlertService : IAlertService
 
         foreach (var rule in rules)
         {
-            var conditions = await BuildConditionsAsync(rule, data, now);
-            var ruleEvents = openEvents.Where(e => e.RuleId == rule.Id).ToList();
-            var result = AlertReconciler.Reconcile(rule, conditions, ruleEvents, now);
+            // Bir kuralın verisi okunamazsa (beklenmeyen veri, sorgu hatası) diğer kurallar yine değerlendirilir.
+            AlertReconcileResult result;
+            try
+            {
+                var conditions = await BuildConditionsAsync(rule, data, now);
+                var ruleEvents = openEvents.Where(e => e.RuleId == rule.Id).ToList();
+                result = AlertReconciler.Reconcile(rule, conditions, ruleEvents, now);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogError(ex, "Alarm kuralı değerlendirilemedi. RuleId: {RuleId}, Kind: {Kind}", rule.Id, rule.Kind);
+                continue;
+            }
 
             foreach (var alert in result.Opened)
             {
@@ -111,6 +121,7 @@ public class AlertService : IAlertService
                 notifications.Add((alert, rule, NotificationKind.Firing));
             }
 
+            notifications.AddRange(result.PendingNotifications.Select(e => (e, rule, NotificationKind.Firing)));
             if (rule.NotifyRecovery)
                 notifications.AddRange(result.Recovered.Select(e => (e, rule, NotificationKind.Recovery)));
             notifications.AddRange(result.Reminders.Select(e => (e, rule, NotificationKind.Reminder)));
@@ -127,18 +138,26 @@ public class AlertService : IAlertService
             closed++;
         }
 
+        // Yeni alarmlar bildirim zamanı boş (bekliyor) olarak kaydedilir; gönderim kesilirse sonraki turda yeniden denenir.
         await _repository.SaveChangesAsync(cancellationToken);
 
         int deliveries = 0, failed = 0;
         foreach (var (alert, rule, kind) in notifications)
         {
-            var (sent, errors) = await NotifyAsync(alert, rule, kind, now, cancellationToken);
-            deliveries += sent;
-            failed += errors;
-        }
+            try
+            {
+                var (sent, errors) = await NotifyAsync(alert, rule, kind, now, cancellationToken);
+                deliveries += sent;
+                failed += errors;
 
-        if (notifications.Count > 0)
-            await _repository.SaveChangesAsync(cancellationToken);
+                // Her gönderimin sonucu hemen kaydedilir; sonraki bir hata önceki bildirimlerin tekrar gönderilmesine yol açmaz.
+                await _repository.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogError(ex, "Alarm bildirimi gönderilemedi. AlertId: {AlertId}, Kind: {Kind}", alert.Id, kind);
+            }
+        }
 
         var summary = new AlertEvaluationResult(rules.Count, opened, recovered, closed, reminders, deliveries, failed);
         if (opened + recovered + closed + reminders > 0)
@@ -167,7 +186,8 @@ public class AlertService : IAlertService
     private async Task<IReadOnlyList<AlertCondition>> BuildConditionsAsync(AlertRule rule, AlertEvaluationData data, DateTime now) => rule.Kind switch
     {
         AlertRuleKind.CpuUsage or AlertRuleKind.MemoryUsage or AlertRuleKind.DiskUsage =>
-            AlertConditionEvaluator.ForMetrics(rule, await data.ServersAsync(), await data.SamplesAsync(), now, Freshness, SampleInterval),
+            AlertConditionEvaluator.ForMetrics(rule, await data.ServersAsync(), await data.SamplesAsync(), now, Freshness, SampleInterval,
+                AlertEvaluationData.UsesWindowStats(rule) ? await data.WindowStatsAsync(rule.DurationMinutes) : null),
         AlertRuleKind.ServerOffline => AlertConditionEvaluator.ForServerOffline(rule, await data.ServersAsync(), now),
         AlertRuleKind.UptimeCheckDown => AlertConditionEvaluator.ForUptime(rule, await data.UptimeAsync(), now),
         AlertRuleKind.SslCertificateExpiry => AlertConditionEvaluator.ForSsl(rule, await data.SslAsync(), now),
@@ -177,33 +197,40 @@ public class AlertService : IAlertService
         _ => []
     };
 
+    /// <summary>
+    /// Bildirimi kanallara gönderir. Açılış ve hatırlatmada bildirim zamanı yalnızca en az bir kanal başarılıysa
+    /// (veya kuralın uygun kanalı yoksa) işaretlenir; tüm kanallar başarısızsa sonraki turda yeniden denenir.
+    /// </summary>
     private async Task<(int Sent, int Failed)> NotifyAsync(AlertEvent alert, AlertRule rule, NotificationKind kind, DateTime now, CancellationToken cancellationToken)
     {
-        if (kind != NotificationKind.Recovery)
-        {
-            alert.LastNotifiedAt = now;
-            alert.NotifiedValue = alert.Value;
-        }
-
         var channels = rule.Channels
             .Select(link => link.Channel)
             .Where(channel => channel is { IsEnabled: true, IsDeleted: false } && alert.Severity >= channel.MinimumSeverity)
             .Select(channel => channel!)
             .ToList();
-        if (channels.Count == 0)
-            return (0, 0);
 
-        var message = AlertMessageBuilder.Build(alert, kind, now, _options.PublicBaseUrl);
         int sent = 0, failed = 0;
-        foreach (var channel in channels)
+        if (channels.Count > 0)
         {
-            var result = await _dispatcher.SendAsync(channel, message, alert.Id, cancellationToken);
-            if (result.IsSuccess) sent++;
-            else failed++;
+            var message = AlertMessageBuilder.Build(alert, kind, now, _options.PublicBaseUrl);
+            foreach (var channel in channels)
+            {
+                var result = await _dispatcher.SendAsync(channel, message, alert.Id, cancellationToken);
+                if (result.IsSuccess) sent++;
+                else failed++;
+            }
+        }
+
+        if (kind != NotificationKind.Recovery && ShouldMarkNotified(sent, failed))
+        {
+            alert.LastNotifiedAt = now;
+            alert.NotifiedValue = alert.Value;
         }
 
         return (sent, failed);
     }
+
+    public static bool ShouldMarkNotified(int sent, int failed) => sent > 0 || failed == 0;
 
     private static AlertEventDto ToDto(AlertEvent e) => new(
         e.Id, e.RuleId, e.RuleName, e.Kind, e.Severity, e.ServerId, e.ServerName, e.TargetName, e.Status,

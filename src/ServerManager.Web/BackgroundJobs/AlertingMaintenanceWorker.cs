@@ -42,7 +42,7 @@ public sealed class AlertingMaintenanceWorker : BackgroundService
             await scope.ServiceProvider.GetRequiredService<IUptimeService>().RunMaintenanceAsync(stoppingToken);
             await scope.ServiceProvider.GetRequiredService<IAlertService>().RunMaintenanceAsync(stoppingToken);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
         {
             _logger.LogError(ex, "Alarm bakımı (saklama süresi temizliği) başarısız.");
         }

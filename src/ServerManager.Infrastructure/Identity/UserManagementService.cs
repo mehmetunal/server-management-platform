@@ -7,6 +7,7 @@ using ServerManager.Application.Common;
 using ServerManager.Application.DTOs.AuditLogs;
 using ServerManager.Application.DTOs.Users;
 using ServerManager.Application.Interfaces;
+using ServerManager.Application.Interfaces.Security;
 using ServerManager.Application.Interfaces.Services;
 
 namespace ServerManager.Infrastructure.Identity;
@@ -20,19 +21,22 @@ public class UserManagementService : IUserManagementService
     private readonly ICurrentUserService _currentUser;
     private readonly IValidator<CreateUserDto> _createValidator;
     private readonly IValidator<UpdateUserDto> _updateValidator;
+    private readonly IUserSessionRevoker _sessionRevoker;
 
     public UserManagementService(
         UserManager<ApplicationUser> userManager,
         IAuditLogService auditLogService,
         ICurrentUserService currentUser,
         IValidator<CreateUserDto> createValidator,
-        IValidator<UpdateUserDto> updateValidator)
+        IValidator<UpdateUserDto> updateValidator,
+        IUserSessionRevoker sessionRevoker)
     {
         _userManager = userManager;
         _auditLogService = auditLogService;
         _currentUser = currentUser;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
+        _sessionRevoker = sessionRevoker;
     }
 
     public async Task<IReadOnlyList<UserListItemDto>> GetUsersAsync(CancellationToken cancellationToken = default)
@@ -184,6 +188,10 @@ public class UserManagementService : IUserManagementService
         if (roleChanged || activeChanged || emailChanged)
             await _userManager.UpdateSecurityStampAsync(user);
 
+        // Security stamp değişikliği cookie'yi en geç doğrulama aralığında düşürür; açık terminaller hemen kapatılır.
+        if (roleChanged || (activeChanged && !dto.IsActive) || passwordChanged)
+            await _sessionRevoker.RevokeAsync(user.Id.ToString(), RevokeReason(roleChanged, dto.IsActive), cancellationToken);
+
         var details = new List<string>();
         if (emailChanged)
             details.Add($"E-posta: {previousEmail} -> {email}");
@@ -221,6 +229,7 @@ public class UserManagementService : IUserManagementService
             await _userManager.SetLockoutEnabledAsync(user, true);
             await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
             await _userManager.UpdateSecurityStampAsync(user);
+            await _sessionRevoker.RevokeAsync(user.Id.ToString(), "Hesabınız yönetici tarafından kilitlendi; terminal oturumu kapatıldı.", cancellationToken);
         }
         else
         {
@@ -253,6 +262,7 @@ public class UserManagementService : IUserManagementService
         await _userManager.ResetAuthenticatorKeyAsync(user);
         await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 0);
         await _userManager.UpdateSecurityStampAsync(user);
+        await _sessionRevoker.RevokeAsync(user.Id.ToString(), "İki adımlı doğrulamanız sıfırlandı; terminal oturumu kapatıldı.", cancellationToken);
 
         await _auditLogService.LogAsync(new AuditEntry(
             AuditActions.UserTwoFactorReset,
@@ -262,6 +272,11 @@ public class UserManagementService : IUserManagementService
 
         return ServiceResult.Success("İki adımlı doğrulama sıfırlandı. Kullanıcı sonraki girişte yeniden kurabilir.");
     }
+
+    private static string RevokeReason(bool roleChanged, bool isActive) =>
+        !isActive ? "Hesabınız pasifleştirildi; terminal oturumu kapatıldı."
+        : roleChanged ? "Rolünüz değiştirildi; terminal oturumu kapatıldı."
+        : "Parolanız yönetici tarafından sıfırlandı; terminal oturumu kapatıldı.";
 
     private bool IsCurrentUser(ApplicationUser user) =>
         string.Equals(_currentUser.UserId, user.Id.ToString(), StringComparison.OrdinalIgnoreCase);
