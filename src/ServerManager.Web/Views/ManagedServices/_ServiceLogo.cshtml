@@ -1,2 +1,8 @@
 @model ServerManager.Application.ManagedServices.ServiceTemplate?
-<span class="service-logo" style="@ManagedServiceDisplay.LogoStyle(Model)" aria-hidden="true">@(Model?.LogoText ?? "?")</span>
+@* Yerleşik logolar wwwroot/images/services, eklenti logoları eklentinin Content klasöründen (/plugins/{systemname}/) sunulur. *@
+<span class="service-logo" aria-hidden="true">
+    @if (Model?.LogoPath is { } logoPath)
+    {
+        <img src="@Url.Content($"~/{logoPath}")" alt="" />
+    }
+</span>

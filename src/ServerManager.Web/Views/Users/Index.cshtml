@@ -6,10 +6,17 @@
 
 <div class="page-header">
     <div>
-        <h1 class="page-title">Kullanıcılar</h1>
+        <h1 class="page-title">Kullanıcılar<partial name="_HelpLink" model="GuideAnchors.Users" /></h1>
         <p class="page-lead">Panel kullanıcıları ve rolleri</p>
     </div>
-    <a asp-action="Create" class="btn-primary" title="Yeni panel kullanıcısı oluştur">@Icons.Render("plus", "h-4 w-4") Kullanıcı ekle</a>
+    <div class="flex flex-wrap gap-2">
+        @if (User.HasPermission(Permissions.RolesManage))
+        {
+            <a asp-controller="Roles" asp-action="Index" class="btn-secondary" title="Rolleri ve izinlerini yönet">@Icons.Render("shield", "h-4 w-4") Roller</a>
+        }
+        <a asp-controller="ApiKeys" asp-action="All" class="btn-secondary" title="Tüm kullanıcıların API anahtarları">@Icons.Render("key", "h-4 w-4") API anahtarları</a>
+        <a asp-action="Create" class="btn-primary" title="Yeni panel kullanıcısı oluştur">@Icons.Render("plus", "h-4 w-4") Kullanıcı ekle</a>
+    </div>
 </div>
 
 <div data-ajax-list>

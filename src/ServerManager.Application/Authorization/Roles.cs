@@ -10,6 +10,13 @@ public static class Roles
 
     public static readonly IReadOnlyList<string> All = [SuperAdmin, Admin, Operator, Developer, Viewer];
 
+    /// <summary>Panelle gelen (silinemeyen, adı değiştirilemeyen) rol mü.</summary>
+    public static bool IsBuiltIn(string? roleName) =>
+        roleName is not null && All.Contains(roleName, StringComparer.OrdinalIgnoreCase);
+
+    public static bool IsSuperAdmin(string? roleName) =>
+        string.Equals(roleName, SuperAdmin, StringComparison.OrdinalIgnoreCase);
+
     public static readonly IReadOnlyDictionary<string, string> Descriptions = new Dictionary<string, string>
     {
         [SuperAdmin] = "Her şeye erişebilir.",

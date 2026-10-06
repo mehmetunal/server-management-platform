@@ -44,6 +44,9 @@ public interface IBackupRepository
     /// <summary>İşin dosyası silinmemiş başarılı yedekleri (saklama politikası için).</summary>
     Task<IReadOnlyList<BackupRun>> GetAvailableBackupsAsync(Guid jobId, CancellationToken cancellationToken = default);
 
+    /// <summary>Her iş için dosyası silinmemiş en yeni başarılı yedek; yedeği olmayan iş sözlükte yer almaz.</summary>
+    Task<IReadOnlyDictionary<Guid, BackupArtifactRef>> GetLatestAvailableBackupsAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default);
+
     Task UpdateRunLogAsync(Guid id, string log, CancellationToken cancellationToken = default);
 
     Task<int> InterruptRunningAsync(DateTime completedAt, string reason, CancellationToken cancellationToken = default);

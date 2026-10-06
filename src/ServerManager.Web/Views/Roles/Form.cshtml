@@ -1,0 +1,145 @@
+@using ServerManager.Application.DTOs.Roles
+@model RoleFormViewModel
+@{
+    var editor = Model.Editor;
+    var form = editor.Form;
+    var selected = form.Permissions.ToHashSet(StringComparer.Ordinal);
+    var defaults = editor.Defaults.ToHashSet(StringComparer.Ordinal);
+    var readOnly = editor.IsSuperAdmin;
+    ViewData["Title"] = Model.IsNew ? "Yeni rol" : $"{form.Name} · Rol";
+    ViewData["Page"] = "role-form";
+    var otherRoles = ViewData["RoleOptions"] as IReadOnlyList<RoleListItemDto> ?? [];
+}
+
+<div class="page-header">
+    <div>
+        <a asp-action="Index" class="back-link" title="Rol listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Roller</a>
+        <h1 class="page-title">@(Model.IsNew ? "Yeni rol" : form.Name)<partial name="_HelpLink" model="GuideAnchors.Roles" /></h1>
+        <p class="page-lead">
+            @if (readOnly)
+            {
+                <text>SuperAdmin her izne her zaman sahiptir; izinleri değiştirilemez. Yeni eklenen izinler (eklentiler dahil) otomatik olarak dahildir.</text>
+            }
+            else if (editor.IsBuiltIn)
+            {
+                <text>Yerleşik rol: adı değiştirilemez, silinemez. İzinlerini değiştirebilir veya varsayılana döndürebilirsiniz.</text>
+            }
+            else
+            {
+                <text>Rolün adını, açıklamasını ve izinlerini belirleyin.</text>
+            }
+            @if (!Model.IsNew)
+            {
+                <text> Bu rolde @editor.UserCount kullanıcı var.</text>
+            }
+        </p>
+    </div>
+</div>
+
+<form asp-action="@(Model.IsNew ? "Create" : "Edit")" asp-route-id="@form.Id" method="post" class="role-form" data-role-form novalidate autocomplete="off">
+    <input type="hidden" name="ConfirmSelfLockout" value="false" data-confirm-self />
+    <section class="panel">
+        <div class="panel-body role-form-grid">
+            <p class="alert-error sm:col-span-2" data-form-error hidden></p>
+            <div>
+                <label for="Name" class="form-label">Rol adı *</label>
+                <input id="Name" name="Name" value="@form.Name" class="form-control" maxlength="64" readonly="@(editor.IsBuiltIn)" />
+                <span data-valmsg-for="Name" class="field-validation-error"></span>
+            </div>
+            <div>
+                <label for="Description" class="form-label">Açıklama</label>
+                <input id="Description" name="Description" value="@form.Description" class="form-control" maxlength="256" readonly="@readOnly" />
+                <span data-valmsg-for="Description" class="field-validation-error"></span>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel role-permissions">
+        <div class="panel-header">
+            <h2 class="panel-title">İzinler</h2>
+            <span class="role-permission-count" data-permission-count></span>
+        </div>
+        <div class="panel-body">
+            <span data-valmsg-for="Permissions" class="field-validation-error"></span>
+            @if (!readOnly && editor.Grantable.Count < editor.Catalog.Count)
+            {
+                <p class="form-hint">Yalnızca kendi hesabınızda olan izinleri bir role verebilirsiniz; diğerleri kilitli gösterilir.</p>
+            }
+            <div class="permission-groups">
+                @foreach (var group in Model.Groups)
+                {
+                    <fieldset class="permission-group" data-permission-group>
+                        <legend class="permission-group-title">
+                            <span>@group.Key</span>
+                            @if (group.First().IsPlugin)
+                            {
+                                <span class="badge-neutral">Eklenti</span>
+                            }
+                            @if (!readOnly)
+                            {
+                                <button type="button" class="btn-ghost btn-sm" data-group-toggle title="Bu modüldeki tüm izinleri seç / kaldır">Tümü</button>
+                            }
+                        </legend>
+                        @foreach (var permission in group)
+                        {
+                            var isChecked = selected.Contains(permission.Name);
+                            var locked = readOnly || (!isChecked && !editor.Grantable.Contains(permission.Name));
+                            <label class="permission-item" title="@permission.Name">
+                                <input type="checkbox" name="Permissions" value="@permission.Name" class="form-check" checked="@isChecked" disabled="@locked" data-permission />
+                                <span>
+                                    <span class="permission-name">@permission.DisplayName</span>
+                                    <span class="permission-code">@permission.Name @if (defaults.Contains(permission.Name) && !readOnly) { <span class="permission-default">varsayılan</span> }</span>
+                                </span>
+                            </label>
+                        }
+                    </fieldset>
+                }
+            </div>
+        </div>
+    </section>
+
+    @if (!readOnly)
+    {
+        <div class="role-form-actions">
+            @if (editor.IsBuiltIn && !Model.IsNew)
+            {
+                <button type="button" class="btn-secondary" data-role-reset data-url="@Url.Action("ResetToDefault", new { id = form.Id })"
+                        title="Bu rolün izinlerini panelin varsayılanlarına döndür">@Icons.Render("refresh", "h-4 w-4") Varsayılana döndür</button>
+            }
+            <span class="flex-1"></span>
+            <a asp-action="Index" class="btn-secondary" title="Kaydetmeden listeye dön">İptal</a>
+            <button type="submit" class="btn-primary" title="Rolü kaydet"><span class="spinner" data-spinner hidden></span> Kaydet</button>
+        </div>
+    }
+</form>
+
+@if (!Model.IsNew && !editor.IsBuiltIn)
+{
+    <section class="panel role-delete" id="rol-sil">
+        <div class="panel-header">
+            <h2 class="panel-title">Rolü sil</h2>
+        </div>
+        <form asp-action="Delete" asp-route-id="@form.Id" method="post" class="panel-body role-delete-body" data-role-delete data-role-name="@form.Name">
+            @if (editor.UserCount > 0)
+            {
+                <p class="form-hint">Bu rolde @editor.UserCount kullanıcı var. Silmeden önce taşınacakları rolü seçin; kullanıcıların oturumu yenilenir.</p>
+                <div>
+                    <label for="reassignToRoleId" class="form-label">Kullanıcıları taşı</label>
+                    <select id="reassignToRoleId" name="reassignToRoleId" class="form-control">
+                        @foreach (var role in otherRoles)
+                        {
+                            <option value="@role.Id" selected="@(role.Name == Roles.Viewer)">@role.Name</option>
+                        }
+                    </select>
+                </div>
+            }
+            else
+            {
+                <p class="form-hint">Bu rolde kullanıcı yok.</p>
+            }
+            <div>
+                <button type="submit" class="btn-danger" title="Rolü kalıcı olarak sil">@Icons.Render("trash", "h-4 w-4") Rolü sil</button>
+            </div>
+        </form>
+    </section>
+}

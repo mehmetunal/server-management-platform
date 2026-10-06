@@ -1,0 +1,46 @@
+{
+  "$schema": "../../../../docs/schemas/service-template.schema.json",
+  "categories": [
+    { "key": "services.extra.search", "displayName": "Arama ve analitik", "order": 30 }
+  ],
+  "templates": [
+    {
+      "key": "services.extra.meilisearch",
+      "displayName": "Meilisearch",
+      "category": "application",
+      "group": "services.extra.search",
+      "description": "Hızlı, yazım hatalarına dayanıklı tam metin arama motoru (REST API).",
+      "logo": "meilisearch.svg",
+      "color": "#FF5CAA",
+      "image": "getmeili/meilisearch",
+      "tags": ["v1.15", "v1.14", "v1.13"],
+      "ports": [
+        { "name": "http", "containerPort": 7700, "role": "primary", "label": "HTTP API" }
+      ],
+      "credentials": {
+        "username": "none",
+        "password": "none",
+        "generateEncryptionKey": true
+      },
+      "dataPath": "/meili_data",
+      "environment": [
+        { "key": "MEILI_MASTER_KEY", "value": "{{encryptionKey}}", "secret": true }
+      ],
+      "defaultEnvironment": [
+        { "key": "MEILI_ENV", "value": "production" },
+        { "key": "MEILI_NO_ANALYTICS", "value": "true" }
+      ],
+      "healthCommand": "curl -fsS http://127.0.0.1:7700/health >/dev/null",
+      "readinessCommand": "curl -fsS -H \"Authorization: Bearer $MEILI_MASTER_KEY\" http://127.0.0.1:7700/version >/dev/null",
+      "connectionString": "http://{{host}}:{{port}}",
+      "suggestedEnvironment": {
+        "MEILI_HOST": "http://{{host}}:{{port}}",
+        "MEILI_MASTER_KEY": "{{encryptionKey}}"
+      },
+      "minMemoryMb": 256,
+      "memoryHint": "İndeks boyutuna göre artar; küçük projeler için 256 MB, üretimde 1 GB+ önerilir.",
+      "warnOnMajorUpgrade": true,
+      "notes": "Master key kurulumda üretilir ve Kimlik bilgileri bölümünde gösterilir. Sürüm yükseltmelerinde veri biçimi değişebilir; önce dump alın."
+    }
+  ]
+}

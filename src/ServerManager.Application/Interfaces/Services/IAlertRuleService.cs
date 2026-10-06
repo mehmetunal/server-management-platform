@@ -20,4 +20,7 @@ public interface IAlertRuleService
 
     /// <summary>Alarm, uptime ve SSL formlarındaki sunucu seçimi için.</summary>
     Task<IReadOnlyList<ServerOptionDto>> GetServerOptionsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Kaldırılmamış yönetilen servisler (servis kuralları için).</summary>
+    Task<IReadOnlyList<AlertServiceOptionDto>> GetServiceOptionsAsync(CancellationToken cancellationToken = default);
 }

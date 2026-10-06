@@ -1,0 +1,97 @@
+@model ApiDocsViewModel
+@{
+    ViewData["Title"] = "API belgesi";
+    ViewData["Page"] = "api-keys";
+    var token = "smk_xxxxxxxxxxxx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">API belgesi<partial name="_HelpLink" model="GuideAnchors.ApiKeys" /></h1>
+        <p class="page-lead">JSON (camelCase) REST API. Hatalar <code>application/problem+json</code> (ProblemDetails) olarak döner.</p>
+    </div>
+</div>
+
+<partial name="_ApiTabs" />
+
+<section class="panel api-section">
+    <div class="panel-body api-docs">
+        <dl class="api-facts">
+            <dt>Temel adres</dt>
+            <dd><code>@Model.BaseUrl</code></dd>
+            <dt>Kimlik doğrulama</dt>
+            <dd><code>Authorization: Bearer smk_&lt;önek&gt;_&lt;gizli&gt;</code> — yalnızca API anahtarı; tarayıcı oturumu /api/v1'e erişemez.</dd>
+            <dt>Yetki</dt>
+            <dd>Her uç paneldeki izni ister. Etkin izinler = anahtarın kapsamı ∩ hesabınızın o anki izinleri. Yetki yoksa 403.</dd>
+            <dt>Hız sınırı</dt>
+            <dd>Anahtar başına dakikada @Model.RequestsPerMinute istek; aşılırsa 429.</dd>
+            <dt>Sayfalama</dt>
+            <dd><code>?page=1&amp;pageSize=20</code> (en çok 100). Yanıt: <code>{ items, page, pageSize, totalCount, totalPages }</code>.</dd>
+            <dt>OpenAPI</dt>
+            <dd><a href="@Model.BaseUrl/openapi.json" target="_blank" rel="noopener" title="OpenAPI belgesini aç">@Model.BaseUrl/openapi.json</a> (oturumunuzla veya API anahtarıyla okunur)</dd>
+        </dl>
+        @if (!Model.Enabled)
+        {
+            <p class="alert-error">API anahtarları bu kurulumda kapalı; tüm istekler 401 döner.</p>
+        }
+    </div>
+</section>
+
+<section class="panel api-section">
+    <div class="panel-header">
+        <h2 class="panel-title">Örnekler (curl)</h2>
+    </div>
+    <div class="panel-body api-docs">
+        <p class="form-hint">Kendi anahtarınızı bir ortam değişkeninde tutun, betiğe yazmayın.</p>
+        <pre class="api-code">export SM_API_KEY="@token"
+
+# Anahtarın kimliği ve etkin izinleri
+curl -s -H "Authorization: Bearer $SM_API_KEY" @Model.BaseUrl/me
+
+# Sunucular
+curl -s -H "Authorization: Bearer $SM_API_KEY" "@Model.BaseUrl/servers?page=1&amp;pageSize=50"
+
+# Deploy başlat (202) ve durumunu izle
+curl -s -X POST -H "Authorization: Bearer $SM_API_KEY" -H "Content-Type: application/json" \
+     -d '{"commitSha": null}' @Model.BaseUrl/projects/&lt;proje-id&gt;/deployments
+curl -s -H "Authorization: Bearer $SM_API_KEY" @Model.BaseUrl/deployments/&lt;deployment-id&gt;
+curl -s -H "Authorization: Bearer $SM_API_KEY" "@Model.BaseUrl/deployments/&lt;deployment-id&gt;/log?tail=100"
+
+# Yedeklemeyi başlat ve dosyayı indir
+curl -s -X POST -H "Authorization: Bearer $SM_API_KEY" @Model.BaseUrl/backups/jobs/&lt;iş-id&gt;/run
+curl -fL -H "Authorization: Bearer $SM_API_KEY" -o yedek.tar.gz @Model.BaseUrl/backups/runs/&lt;yedek-id&gt;/download
+
+# Açık alarmlar ve üstlenme
+curl -s -H "Authorization: Bearer $SM_API_KEY" @Model.BaseUrl/alerts
+curl -s -X POST -H "Authorization: Bearer $SM_API_KEY" @Model.BaseUrl/alerts/&lt;alarm-id&gt;/acknowledge</pre>
+    </div>
+</section>
+
+<section class="panel api-section">
+    <div class="panel-header">
+        <h2 class="panel-title">Uçlar</h2>
+    </div>
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Yöntem</th>
+                    <th>Yol</th>
+                    <th>İzin</th>
+                    <th>Açıklama</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var endpoint in ApiDocsViewModel.Endpoints)
+                {
+                    <tr>
+                        <td><span class="@(endpoint.Method == "GET" ? "badge-neutral" : "badge-brand")">@endpoint.Method</span></td>
+                        <td><code class="api-path">@endpoint.Path</code></td>
+                        <td><code>@endpoint.Permission</code></td>
+                        <td>@endpoint.Description</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
+using ServerManager.Application.Alerting;
 using ServerManager.Application.Authorization;
 using ServerManager.Application.DTOs.Alerting;
 using ServerManager.Application.Interfaces.Services;
+using ServerManager.Domain.Enums;
 using ServerManager.Web.Framework.Authorization;
 using ServerManager.Web.Framework.Mvc;
 
@@ -12,6 +14,7 @@ public class AlertRulesController : Controller
 {
     public const string ServerOptionsKey = "ServerOptions";
     public const string ChannelOptionsKey = "ChannelOptions";
+    public const string ServiceOptionsKey = "ServiceOptions";
 
     private readonly IAlertRuleService _ruleService;
     private readonly INotificationChannelService _channelService;
@@ -31,10 +34,22 @@ public class AlertRulesController : Controller
 
     [HttpGet]
     [HasPermission(Permissions.AlertManage)]
-    public async Task<IActionResult> Create(CancellationToken cancellationToken)
+    public async Task<IActionResult> Create(AlertRuleKind? kind, Guid? serviceId, CancellationToken cancellationToken)
     {
         await SetFormDataAsync(cancellationToken);
-        return View(new AlertRuleFormDto());
+        var form = new AlertRuleFormDto();
+        if (kind is { } selected && Enum.IsDefined(selected))
+        {
+            var (threshold, duration) = AlertRuleKinds.Defaults(selected);
+            form.Kind = selected;
+            form.Threshold = threshold;
+            form.DurationMinutes = duration;
+            form.Name = AlertRuleKinds.DisplayName(selected);
+            if (AlertRuleKinds.UsesService(selected))
+                form.ManagedServiceId = serviceId;
+        }
+
+        return View(form);
     }
 
     [HttpPost]
@@ -104,5 +119,6 @@ public class AlertRulesController : Controller
     {
         ViewData[ServerOptionsKey] = await _ruleService.GetServerOptionsAsync(cancellationToken);
         ViewData[ChannelOptionsKey] = await _channelService.GetChannelOptionsAsync(cancellationToken);
+        ViewData[ServiceOptionsKey] = await _ruleService.GetServiceOptionsAsync(cancellationToken);
     }
 }

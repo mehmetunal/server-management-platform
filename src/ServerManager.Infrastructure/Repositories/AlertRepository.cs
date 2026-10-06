@@ -266,6 +266,52 @@ public class AlertRepository : IAlertRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<AlertContainerSample>> GetContainerSamplesAsync(
+        DateTime since, IReadOnlyCollection<Guid>? serverIds, CancellationToken cancellationToken = default)
+    {
+        var query = _context.ContainerMetricSamples.AsNoTracking().Where(m => m.CollectedAt >= since);
+        if (serverIds is not null)
+            query = query.Where(m => serverIds.Contains(m.ServerId));
+
+        return await query
+            .OrderBy(m => m.CollectedAt)
+            .Select(m => new AlertContainerSample(m.ServerId, m.ContainerName, m.CollectedAt, m.State, m.Health, m.RestartCount))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<AlertManagedServiceSnapshot>> GetManagedServiceSnapshotsAsync(CancellationToken cancellationToken = default) =>
+        await _context.ManagedServices
+            .AsNoTracking()
+            .Where(s => s.Status != ManagedServiceStatus.Removed)
+            .Join(_context.Servers, s => s.ServerId, server => server.Id, (s, server) => new AlertManagedServiceSnapshot(
+                s.Id, s.Name, s.ContainerName, s.Status, server.Id, server.Name, server.Status))
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<AlertReclaimableSnapshot>> GetReclaimableSnapshotsAsync(CancellationToken cancellationToken = default) =>
+        await _context.Servers
+            .AsNoTracking()
+            .GroupJoin(_context.ServerReclaimableSpace, server => server.Id, r => r.ServerId, (server, rows) => new { server, rows })
+            .SelectMany(x => x.rows.DefaultIfEmpty(), (x, r) => new AlertReclaimableSnapshot(
+                x.server.Id,
+                x.server.Name,
+                x.server.Status,
+                r == null ? null : r.ScannedAt,
+                r == null ? 0 : r.ReclaimableBytes,
+                r == null ? 0 : r.SafeReclaimableBytes))
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<AlertEvent>> GetOpenServiceEventsAsync(Guid serviceId, string restartLoopTargetKey, CancellationToken cancellationToken = default)
+    {
+        var serviceKey = serviceId.ToString();
+        return await _context.AlertEvents
+            .AsNoTracking()
+            .Where(e => e.Status == AlertEventStatus.Firing)
+            .Where(e => (e.Kind == AlertRuleKind.ServiceDown && e.TargetKey == serviceKey)
+                        || (e.Kind == AlertRuleKind.ContainerRestartLoop && e.TargetKey == restartLoopTargetKey))
+            .OrderByDescending(e => e.StartedAt)
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
         _context.SaveChangesAsync(cancellationToken);
 }

@@ -1,0 +1,60 @@
+@using ServerManager.Application.Cleanup
+@model ServerCleanupPageViewModel
+@{
+    var page = Model.Page;
+    var server = page.Server;
+    var options = Model.Options;
+    ViewData["Title"] = $"{server.Name} · Temizlik";
+    ViewData["Page"] = "server-cleanup";
+}
+
+<partial name="_ServerHeader" model="page" />
+
+<div class="cleanup-toolbar">
+    <partial name="_HelpLink" model="GuideAnchors.Cleanup" />
+    <form method="get" action="@Url.Action("Scan", new { id = server.Id })" class="cleanup-options" data-cleanup-options data-page-url="@Url.Action("Index", new { id = server.Id })">
+        <label class="cleanup-option" title="/var/log altındaki döndürülmüş loglar (gz, .1, .old …) bu kadar günden eskiyse listelenir">
+            <span>Eski log</span>
+            <input type="number" name="logDays" value="@options.LogDays" min="@CleanupRules.MinDays" max="@CleanupRules.MaxDays" class="form-control" aria-label="Eski log günü" />
+            <span>günden eski</span>
+        </label>
+        <label class="cleanup-option" title="/tmp altındaki dosyalar bu kadar gündür değiştirilmemiş ve okunmamışsa listelenir">
+            <span>/tmp</span>
+            <input type="number" name="tempDays" value="@options.TempDays" min="@CleanupRules.MinDays" max="@CleanupRules.MaxDays" class="form-control" aria-label="/tmp günü" />
+            <span>günden eski</span>
+        </label>
+        <label class="cleanup-option" title="journalctl --vacuum-size hedefi">
+            <span>Journal hedefi</span>
+            <input type="number" name="journalMaxMegabytes" value="@options.JournalMaxMegabytes" min="@CleanupRules.MinJournalMegabytes" max="@CleanupRules.MaxJournalMegabytes" class="form-control" aria-label="Journal hedef boyutu (MB)" />
+            <span>MB</span>
+        </label>
+        <button type="submit" class="btn-secondary" title="Bu eşiklerle sunucuyu yeniden tara">@Icons.Render("search", "h-4 w-4") Tara</button>
+    </form>
+    <div class="system-toolbar-actions">
+        <span class="text-xs text-slate-500" data-panel-updated></span>
+        <button type="button" class="btn-secondary" data-panel-refresh title="Sunucuyu yeniden tara">
+            <span class="spinner" data-spinner hidden></span>
+            @Icons.Render("refresh", "h-4 w-4") Yenile
+        </button>
+    </div>
+</div>
+
+<section class="panel mb-6" data-cleanup-run hidden>
+    <div class="panel-header">
+        <div>
+            <h2 class="panel-title" data-cleanup-run-title>Temizlik günlüğü</h2>
+            <p class="text-xs text-slate-500" data-cleanup-run-summary></p>
+        </div>
+        <button type="button" class="btn-ghost btn-sm" data-cleanup-run-close title="Günlüğü gizle">@Icons.Render("x", "h-4 w-4")</button>
+    </div>
+    <ol class="cleanup-log" data-cleanup-log aria-live="polite"></ol>
+</section>
+
+<div data-remote-panel data-url="@Model.PanelUrl" data-execute-url="@Url.Action("Execute", new { id = server.Id })">
+    <section class="panel">
+        <div class="empty-state">
+            <span class="spinner h-6 w-6"></span>
+            <p>Sunucu taranıyor… Docker ve büyük /var/log klasörlerinde bu birkaç saniye sürebilir.</p>
+        </div>
+    </section>
+</div>

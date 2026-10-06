@@ -7,7 +7,7 @@
 <div class="page-header">
     <div>
         <a asp-controller="CommandRuns" asp-action="Index" class="back-link" title="Toplu komut sayfasına dön">@Icons.Render("chevron-left", "h-4 w-4") Toplu komut</a>
-        <h1 class="page-title">Sunucu şablonları</h1>
+        <h1 class="page-title">Sunucu şablonları<partial name="_HelpLink" model="GuideAnchors.Commands" /></h1>
         <p class="page-lead">Sık kullanılan kabuk betiklerini toplu komutta tek tıkla çalıştırmak, cloud-init şablonlarını da bulut sağlayıcıda yeni sunucu kurarken kullanmak için saklayın.</p>
     </div>
     @if (User.HasPermission(Permissions.TemplateManage))

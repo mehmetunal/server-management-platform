@@ -7,6 +7,9 @@
     var canExecute = User.HasPermission(Permissions.BackupExecute);
     var canRestore = User.HasPermission(Permissions.BackupRestore);
     var canManage = User.HasPermission(Permissions.BackupManage);
+    var canDownload = User.HasPermission(Permissions.BackupDownload);
+    var downloadUnavailable = BackupDownloads.UnavailableReason(run.Operation, run.Status, run.ArtifactDeletedAt, run.ArtifactDeletedBy, run.IsArtifactAvailable || run.ArtifactDeletedAt is not null);
+    var encryptedFileName = run.FileName ?? "yedek.tar.gz.smbk";
     var downloadError = TempData[ServerManager.Web.Controllers.BackupRunsController.DownloadErrorKey] as string;
 }
 
@@ -46,15 +49,10 @@
         @if (canRestore && run.IsArtifactAvailable)
         {
             <a asp-action="Restore" asp-route-id="@run.Id" class="btn-primary" title="Bu yedeği bir sunucuya geri yükle">@Icons.Render("upload", "h-4 w-4") Geri yükle</a>
-            @if (run.IsEncrypted)
-            {
-                <a asp-action="Download" asp-route-id="@run.Id" asp-route-decrypt="true" class="btn-secondary" title="Panelde şifresini çözerek .gz dosyası olarak indir">@Icons.Render("download", "h-4 w-4") İndir (çözülmüş)</a>
-                <a asp-action="Download" asp-route-id="@run.Id" class="btn-ghost" title="Şifreli .smbk dosyasını olduğu gibi indir; parolayla tools/backup-decrypt.py ile açılır">@Icons.Render("lock", "h-4 w-4") Şifreli indir</a>
-            }
-            else
-            {
-                <a asp-action="Download" asp-route-id="@run.Id" class="btn-secondary" title="Yedek dosyasını indir">@Icons.Render("download", "h-4 w-4") İndir</a>
-            }
+        }
+        @if (canDownload && !isRestore)
+        {
+            <partial name="_DownloadButton" model='new BackupDownloadButtonModel(run.Id, run.IsEncrypted, downloadUnavailable, run.IsEncrypted ? "Şifreli indir" : "İndir", Compact: false)' />
         }
         @if (canManage && run.IsArtifactAvailable)
         {
@@ -71,7 +69,32 @@
 
 @if (downloadError is not null)
 {
-    <p class="alert-error mb-6">@downloadError</p>
+    <p class="alert-error mb-6" role="alert">@downloadError</p>
+}
+
+@if (canDownload && !isRestore && run.IsEncrypted && downloadUnavailable is null)
+{
+    <details class="panel mb-6" data-backup-decrypt open="@(downloadError is not null)">
+        <summary class="panel-header" title="Şifreli yedeği parolayla panelde çözüp .gz olarak indir">
+            <h2 class="panel-title">@Icons.Render("lock", "h-4 w-4") Parolayla çözerek indir</h2>
+        </summary>
+        <div class="panel-body grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <form asp-action="Download" asp-route-id="@run.Id" method="post" autocomplete="off" novalidate>
+                <label for="decrypt-passphrase" class="form-label">Şifreleme parolası</label>
+                <input id="decrypt-passphrase" name="passphrase" type="password" class="form-control" autocomplete="off" maxlength="1024" required />
+                <p class="form-hint">Yedek işine girilen parola. Önce doğrulanır; doğruysa dosya panelde akış hâlinde çözülerek @BackupNames.DecryptedFileName(encryptedFileName) olarak iner ve SHA-256 özeti kontrol edilir. Parola saklanmaz.</p>
+                <div class="mt-4 flex flex-wrap gap-2">
+                    <button type="submit" class="btn-primary" title="Parolayı doğrula ve çözülmüş dosyayı indir">@Icons.Render("download", "h-4 w-4") Çözülmüş indir</button>
+                </div>
+            </form>
+            <div>
+                <p class="form-label">Panel olmadan çözmek için</p>
+                <p class="form-hint">Şifreli dosyayı indirip depodaki araçla parolayla açabilirsiniz:</p>
+                <pre class="backup-log">python3 -m pip install cryptography
+python3 tools/backup-decrypt.py @encryptedFileName @BackupNames.DecryptedFileName(encryptedFileName)</pre>
+            </div>
+        </div>
+    </details>
 }
 
 <div class="backup-details-grid" data-backup-run data-region="backup-run-body" data-running="@(run.IsRunning ? "true" : "false")">

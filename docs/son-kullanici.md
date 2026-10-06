@@ -10,7 +10,7 @@ Mag Server Manager, birden fazla sunucuyu tek ekrandan görmenizi sağlar. Sunuc
 2. E-posta ve parolanızı yazın.
 3. Hesabınızda ikinci doğrulama açıksa telefonunuzdaki kodu da girin.
 
-Bir süre işlem yapmazsanız oturum kapanır; yeniden giriş yapmanız gerekir. Beş kez yanlış parola denerseniz hesap kısa süre kilitlenir.
+Bir süre işlem yapmazsanız oturum kapanır; yeniden giriş yapmanız gerekir. Arka arkaya yanlış parola denerseniz önce beklemeniz istenir; çok sayıda hatalı denemede hesap 15 dakika kilitlenir.
 
 Sağ üstten koyu veya açık görünüme geçebilirsiniz.
 
@@ -42,6 +42,7 @@ Soldaki menü, hesabınızın yetkisine göre değişir. Göremediğiniz bir say
 | Audit Log | Panelde kimin ne yaptığı |
 | Eklentiler | Ek araçları açma veya kapatma |
 | Ayarlar | Panelin sürümü ve ne sıklıkta kontrol ettiği. Parola ve anahtar burada değişmez. Aralıkları yalnızca yönetici kaydeder |
+| Kullanım Kılavuzu | Bu kılavuz ve adım adım anlatımlar. Sayfa başlığındaki **?** simgesi o sayfanın bölümünü açar |
 
 Bir sunucuya tıkladığınızda üstte sekmeler çıkar: özet, grafikler, Docker, terminal, dosyalar, dağıtımlar, güvenlik ve sistem kayıtları. Hesabınızın görmesine izin verilen sekmeler listelenir. Dokploy veya Dokku gibi ek araçlar da, yöneticiniz açtıysa, burada ayrı sekme olur.
 
@@ -89,7 +90,9 @@ Dört günlük rol vardır. Üstüne bir de her şeyi görebilen sistem yönetic
 | Yönetici | Sunucu ekler, kullanıcı dışında neredeyse her şeyi yönetir |
 | Sistem yöneticisi | Kullanıcılar, eklentiler ve ayarlar dahil tamamı |
 
-Bir düğme görünmüyorsa o iş size açık değildir.
+Yönetici bunlara ek özel roller tanımlayabilir ve bir kişiye birden fazla rol verebilir. Bir düğme görünmüyorsa o iş size açık değildir.
+
+Betik veya CI aracı paneli sizin adınıza kullanacaksa sağ üstteki hesap menüsünden **API anahtarları** sayfasında kişisel bir anahtar oluşturun. Anahtar yalnızca bir kez gösterilir ve sizde olmayan bir izni yapamaz.
 
 ## Silinen kayıtlar
 

@@ -9,6 +9,7 @@ using ServerManager.Application.DTOs.AuditLogs;
 using ServerManager.Application.Interfaces;
 using ServerManager.Application.Interfaces.Repositories;
 using ServerManager.Application.Interfaces.Services;
+using ServerManager.Application.ManagedServices;
 using ServerManager.Application.Plugins;
 using ServerManager.Application.Services;
 using ServerManager.Application.Tests.Fakes;
@@ -45,7 +46,8 @@ public class PluginServiceTests
         _currentUser,
         Options.Create(_options),
         new FixedTimeProvider(Now),
-        NullLogger<PluginService>.Instance);
+        NullLogger<PluginService>.Instance,
+        new ServiceTemplateCatalog(catalog, [], [], NullLogger<ServiceTemplateCatalog>.Instance));
 
     [Fact]
     public async Task Install_runs_migrations_seeds_permissions_and_enables_plugin()

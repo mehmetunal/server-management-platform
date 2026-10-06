@@ -19,6 +19,9 @@ public class AlertRule : BaseEntity
     /// <summary>Boşsa kural tüm sunuculara uygulanır.</summary>
     public Guid? ServerId { get; set; }
 
+    /// <summary>Servis kurallarında (çalışmıyor, yeniden başlama döngüsü) tek bir yönetilen servise daraltır; boşsa kapsamdaki tüm servisler.</summary>
+    public Guid? ManagedServiceId { get; set; }
+
     public bool IsEnabled { get; set; } = true;
 
     public bool NotifyRecovery { get; set; } = true;

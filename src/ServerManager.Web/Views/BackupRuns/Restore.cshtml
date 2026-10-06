@@ -27,6 +27,12 @@
         <h1 class="page-title">Yedeği geri yükle</h1>
         <p class="page-lead">@run.JobName işinin @DateDisplay.Format(run.StartedAt, "dd.MM.yyyy HH:mm") tarihli yedeği (@BackupDisplay.Size(run.SizeBytes)) seçtiğiniz sunucuya aktarılır. Şifreli yedeklerin şifresi panelde çözülür ve bütünlüğü (SHA-256) doğrulanır.</p>
     </div>
+    @if (User.HasPermission(Permissions.BackupDownload))
+    {
+        <div class="flex shrink-0 flex-wrap gap-2 whitespace-nowrap">
+            <partial name="_DownloadButton" model='BackupDownloadButtonModel.For(run, run.IsEncrypted ? "Şifreli indir" : "İndir", compact: false)' />
+        </div>
+    }
 </div>
 
 <form asp-action="Restore" asp-route-id="@run.Id" method="post" data-restore-form novalidate autocomplete="off"

@@ -69,6 +69,18 @@ public class DeploymentProject : BaseEntity
     /// <summary>Son webhook teslimatının kısa sonucu (ör. "Deploy başlatıldı: abc1234", "İmza doğrulanamadı").</summary>
     public string? WebhookLastDeliveryMessage { get; set; }
 
+    /// <summary>
+    /// Deployment sürerken gelen push için bekleyen tek takip deploy'u (kuyruk); doluysa süren deployment bitince veya
+    /// uygulama yeniden açıldığında dalın son hali deploy edilir. Sonraki push'lar aynı kaydı günceller.
+    /// </summary>
+    public DateTime? PendingWebhookDeployAt { get; set; }
+
+    /// <summary>Kuyruğa alınan son push'un commit'i (bilgi amaçlı; deploy dalın son halini alır).</summary>
+    public string? PendingWebhookCommit { get; set; }
+
+    /// <summary>Kuyruğa alan teslimatın IP adresi (audit/aktör için).</summary>
+    public string? PendingWebhookIpAddress { get; set; }
+
     public bool IsDeleted { get; set; }
 
     public DateTime? DeletedAt { get; set; }

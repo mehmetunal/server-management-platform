@@ -1,0 +1,18 @@
+@using ServerManager.Application.DTOs.Roles
+@model IReadOnlyList<RoleListItemDto>
+@{
+    ViewData["Title"] = "Roller";
+    ViewData["Page"] = "roles-index";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Roller<partial name="_HelpLink" model="GuideAnchors.Roles" /></h1>
+        <p class="page-lead">Rollerin izinleri. Kullanıcılara rol, Kullanıcılar sayfasında atanır; bir kullanıcının birden fazla rolü olabilir.</p>
+    </div>
+    <a asp-action="Create" class="btn-primary" title="Yeni özel rol oluştur">@Icons.Render("plus", "h-4 w-4") Rol ekle</a>
+</div>
+
+<div data-ajax-list>
+    <partial name="_RoleList" model="Model" />
+</div>

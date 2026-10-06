@@ -181,6 +181,15 @@ public class AlertService : IAlertService
 
     private TimeSpan Freshness => TimeSpan.FromSeconds(Math.Max(120, _monitoringOptions.IntervalSeconds * 4));
 
+    /// <summary>Container örneği bu süreden eskiyse durum bilinmiyor sayılır (kaynak geçmişi aralığının 3 katı, en az 15 dk).</summary>
+    private TimeSpan ContainerFreshness => TimeSpan.FromMinutes(Math.Max(15, Math.Max(1, _monitoringOptions.ResourceHistoryIntervalMinutes) * 3));
+
+    public async Task<IReadOnlyList<AlertEventDto>> GetOpenServiceAlertsAsync(Guid serviceId, Guid serverId, string containerName, CancellationToken cancellationToken = default)
+    {
+        var events = await _repository.GetOpenServiceEventsAsync(serviceId, AlertRuleKinds.ContainerTargetKey(serverId, containerName), cancellationToken);
+        return events.Select(ToDto).ToList();
+    }
+
     private TimeSpan SampleInterval => TimeSpan.FromSeconds(Math.Max(10, _monitoringOptions.IntervalSeconds));
 
     private async Task<IReadOnlyList<AlertCondition>> BuildConditionsAsync(AlertRule rule, AlertEvaluationData data, DateTime now) => rule.Kind switch
@@ -194,6 +203,11 @@ public class AlertService : IAlertService
         AlertRuleKind.DeploymentFailed => AlertConditionEvaluator.ForDeployments(rule, await data.DeploymentsAsync()),
         AlertRuleKind.BackupFailed => AlertConditionEvaluator.ForBackups(rule, await data.BackupsAsync()),
         AlertRuleKind.SecurityFinding => AlertConditionEvaluator.ForSecurity(rule, await data.SecurityAsync()),
+        AlertRuleKind.ServiceDown => AlertConditionEvaluator.ForServiceDown(
+            rule, await data.ServicesAsync(), await data.ContainerSamplesAsync(ContainerFreshness), now, ContainerFreshness),
+        AlertRuleKind.ContainerRestartLoop => AlertConditionEvaluator.ForRestartLoop(
+            rule, await data.ServersAsync(), await data.ServicesAsync(), await data.ContainerSamplesAsync(ContainerFreshness), now, ContainerFreshness),
+        AlertRuleKind.ReclaimableSpace => AlertConditionEvaluator.ForReclaimable(rule, await data.ReclaimableAsync()),
         _ => []
     };
 

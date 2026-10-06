@@ -10,6 +10,7 @@
 | [Son kullanıcı kılavuzu](docs/son-kullanici.md) | Paneli kullanan herkes | Ekranların ne işe yaradığı, günlük dilde. Kurulum ve teknik terim yok. |
 | [Kullanma kılavuzu](docs/kullanim-kilavuzu.md) | Operatör ve yönetici | Menü menü nasıl yapılır: sunucu ekleme, izleme, Docker, yedek, alarm, dağıtım. |
 | [Teknik doküman](docs/teknik-dokuman.md) | Geliştirici ve kurulum sorumlusu | Mimari, güvenlik, veri, eklentiler ve yapılandırma. |
+| [Eklenti geliştirme](docs/plugin-gelistirme.md) | Eklenti yazan geliştirici | Servis şablonu eklentisi (C# ve JSON), alan başvurusu, doğrulama ve güvenlik kuralları. |
 
 Bu dosyanın 1–82. bölümleri ürün hedefi ve yol haritasıdır. Çalışan sistemin kurulumu ve ayrıntılı davranışı [Geliştirme Ortamı](#geliştirme-ortamı) bölümünden başlar; teknik doküman oradaki ayrıntıya bağlanır.
 
@@ -164,6 +165,8 @@ Her sunucunun kendine ait detay ekranı olacaktır.
 - Logs
 - Network
 - Storage
+- Kaynak Kullanımı
+- Temizlik
 - Security
 - Deployments
 - Backups
@@ -969,67 +972,123 @@ Sistem sadece tespit etmeli; otomatik düzeltmeler açık kullanıcı onayı olm
 
 # 36. User & Role Management
 
-RBAC sistemi:
+RBAC: izinler rollere, roller kullanıcılara verilir. Bir kullanıcının birden fazla rolü olabilir; izinleri rollerin birleşimidir.
 
-### Super Admin
-
-Her şeye erişebilir.
-
-### Admin
-
-Sunucu ve deployment yönetebilir.
-
-### Operator
-
-Docker, logs, services ve terminal kullanabilir.
-
-### Developer
-
-Deployment, logs ve sınırlı terminal kullanabilir.
-
-### Viewer
-
-Sadece görüntüleme.
+- **Yerleşik roller:** SuperAdmin (her izin, değiştirilemez), Admin, Operator, Developer, Viewer. Yerleşik rollerin izinleri **Yönetim → Roller** sayfasından değiştirilebilir ve **Varsayılana döndür** ile geri alınır; adları değişmez, silinemezler.
+- **Özel roller:** ad, açıklama ve modüllere göre gruplanmış izin kutularıyla oluşturulur (eklenti izinleri dahil), kopyalanabilir, silinebilir (kullanıcıları varsa önce başka role taşınır). `roles.manage` izni gerekir (varsayılan: SuperAdmin, Admin).
+- **Güvenlik kuralları:** SuperAdmin olmayan rol yöneticisi yalnızca kendinde olan izinleri verebilir; `user.manage` / `roles.manage` son aktif sahibinden alınamaz; kendi yönetim yetkisini kaldıran değişiklik ek onay ister. İzin kaldırılınca etkilenen kullanıcıların oturumu (security stamp) en geç 1 dakikada yenilenir ve açık terminalleri kapanır.
+- **Yükseltme:** seeder her rol için daha önce önerdiği izinleri `RoleKnownPermissions` tablosunda tutar; yeni sürümde yalnızca YENİ varsayılan izinler eklenir, yöneticinin kaldırdığı izinler geri gelmez.
+- **Audit:** `role.create`, `role.update`, `role.permissions_change`, `role.delete`, `role.assign`.
 
 ---
 
 # 37. Permission Matrix
 
-Yetkiler ayrı ayrı tanımlanmalıdır.
+Varsayılan izinler (✓). Eklentiler (Dokploy, Dokku, GitHub) kendi izinlerini ve rol önerilerini `IPermissionProvider` ile ekler.
 
-Örneğin:
+| İzin | Açıklama | SuperAdmin | Admin | Operator | Developer | Viewer |
+| --- | --- | :-: | :-: | :-: | :-: | :-: |
+| `dashboard.view` | Dashboard görüntüleme | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `server.view` | Sunucu görüntüleme | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `server.create` | Sunucu ekleme | ✓ | ✓ |  |  |  |
+| `server.edit` | Sunucu düzenleme | ✓ | ✓ |  |  |  |
+| `server.delete` | Sunucu silme | ✓ | ✓ |  |  |  |
+| `server.connect` | Sunucuya bağlanma | ✓ | ✓ | ✓ |  |  |
+| `docker.view` | Docker görüntüleme (container, image, volume, network, log) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `docker.start` | Container başlatma / devam ettirme | ✓ | ✓ | ✓ |  |  |
+| `docker.stop` | Container durdurma / duraklatma / kill | ✓ | ✓ | ✓ |  |  |
+| `docker.restart` | Container yeniden başlatma | ✓ | ✓ | ✓ | ✓ |  |
+| `docker.delete` | Docker silme (container, image, volume, network, prune) | ✓ | ✓ |  |  |  |
+| `docker.manage` | Docker yönetimi (image pull, volume/network oluşturma, yeniden adlandırma) | ✓ | ✓ |  |  |  |
+| `docker.terminal` | Container terminali | ✓ | ✓ | ✓ |  |  |
+| `terminal.view` | Terminal sayfası ve oturum geçmişi görüntüleme | ✓ | ✓ | ✓ |  |  |
+| `terminal.execute` | Sunucuda terminal oturumu açma | ✓ | ✓ | ✓ |  |  |
+| `file.view` | Dosya listeleme ve içerik görüntüleme | ✓ | ✓ | ✓ | ✓ |  |
+| `file.create` | Dosya / klasör oluşturma ve kopyalama | ✓ | ✓ | ✓ |  |  |
+| `file.edit` | Dosya düzenleme, yeniden adlandırma ve taşıma | ✓ | ✓ | ✓ |  |  |
+| `file.delete` | Dosya / klasör silme | ✓ | ✓ |  |  |  |
+| `file.upload` | Dosya yükleme | ✓ | ✓ | ✓ |  |  |
+| `file.download` | Dosya indirme | ✓ | ✓ | ✓ | ✓ |  |
+| `file.permissions` | Dosya izinleri ve sahiplik değiştirme (chmod / chown) | ✓ | ✓ |  |  |  |
+| `deployment.view` | Deployment projeleri, geçmişi ve logları görüntüleme | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `deployment.manage` | Deployment projesi ekleme, düzenleme, silme (Git erişim anahtarı ve ortam değişkenleri dahil) | ✓ | ✓ |  |  |  |
+| `deployment.execute` | Deployment başlatma, iptal etme, yeniden dağıtma, geri dönüş ve yeniden başlatma | ✓ | ✓ | ✓ | ✓ |  |
+| `deployment.secrets` | Proje ortam değişkeni değerlerini görme ve .env olarak indirme | ✓ | ✓ |  |  |  |
+| `alert.view` | Alarmlar, uptime kontrolleri ve SSL sertifikalarını görüntüleme | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `alert.acknowledge` | Alarmı üstlenme (görüldü olarak işaretleme) | ✓ | ✓ | ✓ |  |  |
+| `alert.manage` | Alarm kuralları, bildirim kanalları, uptime ve SSL kontrollerini yönetme | ✓ | ✓ |  |  |  |
+| `backup.view` | Yedekleme işleri, depolama hedefleri ve yedek geçmişini görüntüleme | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `backup.execute` | Yedeklemeyi elle başlatma ve süren yedeklemeyi iptal etme | ✓ | ✓ | ✓ |  |  |
+| `backup.manage` | Yedekleme işi ve depolama hedefi ekleme, düzenleme, silme (veritabanı parolası ve şifreleme parolası dahil); yedek dosyası silme | ✓ | ✓ |  |  |  |
+| `backup.restore` | Yedeği bir sunucuya geri yükleme | ✓ | ✓ |  |  |  |
+| `backup.download` | Yedek dosyasını indirme (şifreli yedekte parola girilerek çözülmüş indirme dahil) | ✓ | ✓ | ✓ |  |  |
+| `plugin.manage` | Eklenti kurma, etkinleştirme ve devre dışı bırakma | ✓ |  |  |  |  |
+| `user.manage` | Kullanıcı yönetimi | ✓ |  |  |  |  |
+| `roles.manage` | Rol yönetimi (rol oluşturma, izinlerini değiştirme, silme) | ✓ | ✓ |  |  |  |
+| `audit.view` | Audit log görüntüleme | ✓ | ✓ |  |  |  |
+| `audit.export` | Audit log'u CSV olarak dışa aktarma ve bütünlüğünü doğrulama | ✓ | ✓ |  |  |  |
+| `security.view` | Güvenlik merkezi ve sunucu güvenlik taramalarını görüntüleme | ✓ | ✓ | ✓ |  |  |
+| `security.scan` | Sunucuda güvenlik taraması başlatma (yalnızca okuma yapar) | ✓ | ✓ | ✓ |  |  |
+| `system.view` | Sunucu servisleri, process'ler, loglar, ağ ve disk bilgisini görüntüleme | ✓ | ✓ | ✓ | ✓ |  |
+| `system.manage` | Sunucu servisini başlatma, durdurma, yeniden başlatma ve process sonlandırma | ✓ | ✓ | ✓ |  |  |
+| `server.cleanup` | Sunucu temizliği (kullanılmayan Docker kaynakları, paket önbelleği, eski loglar ve geçici dosyaları silme) | ✓ | ✓ | ✓ |  |  |
+| `command.view` | Toplu komut geçmişini ve sunucu şablonlarını görüntüleme | ✓ | ✓ | ✓ |  |  |
+| `command.run` | Birden fazla sunucuda aynı anda komut çalıştırma | ✓ | ✓ |  |  |  |
+| `template.manage` | Sunucu şablonlarını (betik / cloud-init) ekleme, düzenleme ve silme | ✓ | ✓ |  |  |  |
+| `cloud.view` | Bulut sağlayıcı hesaplarını, sunucu listesini ve maliyetleri görüntüleme | ✓ | ✓ | ✓ |  |  |
+| `cloud.manage` | Bulut sağlayıcı hesabı ekleme, düzenleme, silme ve eşitleme | ✓ | ✓ |  |  |  |
+| `cloud.provision` | Bulut sağlayıcıda yeni sunucu oluşturma | ✓ | ✓ |  |  |  |
+| `settings.view` | Sistem ayarlarını ve uygulama bilgisini görüntüleme | ✓ | ✓ |  |  |  |
+| `settings.manage` | İzleme, alarm, yedekleme, tarama ve bulut aralıklarını değiştirme | ✓ | ✓ |  |  |  |
+| `services.view` | Servisleri (veritabanı ve uygulamalar), loglarını ve işlem geçmişini görüntüleme | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `services.manage` | Servis kurma, ayarlarını değiştirip yeniden oluşturma, sürüm yükseltme, durdurma ve kaldırma | ✓ | ✓ | ✓ |  |  |
+| `services.console` | Servis konsolunu açma (psql, mysql, redis-cli …) | ✓ | ✓ | ✓ |  |  |
+| `services.reveal_secrets` | Servis parolalarını ve parolalı bağlantı adreslerini görüntüleme | ✓ | ✓ |  |  |  |
 
-```text
-server.view
-server.create
-server.edit
-server.delete
-server.connect
+---
 
-terminal.view
-terminal.execute
+# 37.1 REST API ve API anahtarları
 
-docker.view
-docker.start
-docker.stop
-docker.restart
-docker.delete
+Panel `/api/v1` altında JSON REST API sunar. Kimlik doğrulama yalnızca kişisel API anahtarıyladır; tarayıcı oturumu (cookie) bu uçlara erişemez.
 
-file.view
-file.create
-file.edit
-file.delete
-file.upload
-file.download
+- Anahtar **Hesap menüsü → API anahtarları** sayfasında oluşturulur: ad, süre (30 / 90 / 365 gün; `ApiKeys:AllowNoExpiry` açıksa süresiz), kapsam (kullanıcının kendi izinlerinden seçim) ve isteğe bağlı IP / CIDR listesi. Anahtar (`smk_<önek>_<gizli>`) yalnızca bir kez gösterilir; veritabanında önek ve SHA-256 özeti durur.
+- İstek anındaki izinler = anahtarın kapsamı ∩ kullanıcının o anki izinleri. Her uç panelle aynı izni ister; yetki yoksa 403.
+- İptal edilen, süresi dolan, izin listesi dışındaki IP'den gelen veya sahibi pasif / kilitli olan anahtar 401 alır. Anahtar başına dakikada 120 istek (429).
+- Yanıtlar camelCase JSON; listeler `{ items, page, pageSize, totalCount, totalPages }`; hatalar ProblemDetails (`application/problem+json`).
+- OpenAPI belgesi: `/api/v1/openapi.json` (anahtar veya panel oturumu ile). Panelde **API anahtarları → API belgesi** sekmesi curl örneklerini gösterir.
 
-deployment.view
-deployment.create
-deployment.execute
+```bash
+export SM_API_KEY="smk_..."
+BASE=https://panel.example.com/api/v1
 
-backup.view
-backup.create
-backup.restore
+curl -s -H "Authorization: Bearer $SM_API_KEY" $BASE/servers
+curl -s -H "Authorization: Bearer $SM_API_KEY" $BASE/servers/<id>/status
+curl -s -X POST -H "Authorization: Bearer $SM_API_KEY" -H "Content-Type: application/json" \
+     -d '{"commitSha": null}' $BASE/projects/<id>/deployments          # 202 + statusUrl
+curl -s -H "Authorization: Bearer $SM_API_KEY" "$BASE/deployments/<id>/log?tail=100"
+curl -s -X POST -H "Authorization: Bearer $SM_API_KEY" $BASE/services/<id>/restart
+curl -s -X POST -H "Authorization: Bearer $SM_API_KEY" $BASE/backups/jobs/<id>/run
+curl -fL -H "Authorization: Bearer $SM_API_KEY" -o backup.tar.gz $BASE/backups/runs/<id>/download
+curl -s -H "Authorization: Bearer $SM_API_KEY" $BASE/alerts
+curl -s -X POST -H "Authorization: Bearer $SM_API_KEY" $BASE/alerts/<id>/acknowledge
 ```
+
+| Uç | İzin |
+| --- | --- |
+| `GET /me` | — |
+| `GET /servers`, `/servers/{id}`, `/servers/{id}/status` | `server.view` |
+| `GET /projects`, `/projects/{id}/deployments` | `deployment.view` |
+| `POST /projects/{id}/deployments`, `/projects/{id}/restart` | `deployment.execute` |
+| `GET /deployments/{id}`, `/deployments/{id}/log?tail=` | `deployment.view` |
+| `GET /services`, `/services/{id}`, `/services/{id}/status` | `services.view` |
+| `POST /services/{id}/start`, `/stop`, `/restart` | `services.manage` |
+| `GET /backups/jobs`, `/backups/runs`, `/backups/runs/{id}` | `backup.view` |
+| `POST /backups/jobs/{id}/run` | `backup.execute` |
+| `GET /backups/runs/{id}/download` | `backup.download` |
+| `GET /alerts?status=firing\|resolved\|all` | `alert.view` |
+| `POST /alerts/{id}/acknowledge` | `alert.acknowledge` |
+
+Yapılandırma: `ApiKeys:Enabled` (true), `ApiKeys:MaxLifetimeDays` (365), `ApiKeys:AllowNoExpiry` (false), `ApiKeys:RequestsPerMinute` (120), `ApiKeys:MaxKeysPerUser` (20). Audit: `api_key.create`, `api_key.revoke`, `api_key.use` (anahtar başına saatte en çok bir kez veya kaynak IP değişince).
 
 ---
 
@@ -1397,6 +1456,7 @@ src/
     ├── ServerManager.Plugin.Git.GitHub/
     ├── ServerManager.Plugin.Notifications.{Email,Telegram,Discord}/
     ├── ServerManager.Plugin.Storage.{S3,AzureBlob}/
+    ├── ServerManager.Plugin.Services.Extra/      # Servis şablonları (Meilisearch, ClickHouse, Keycloak)
     └── ServerManager.Plugin.Cloud.{Hetzner,DigitalOcean,Vultr,Linode,Scaleway}/
 ```
 
@@ -2500,13 +2560,66 @@ dotnet test --project tests/ServerManager.Web.Tests
 
 Derleme uyarıları hata olarak ele alınır (`Directory.Build.props` → `TreatWarningsAsErrors`).
 
+### CI
+
+GitHub Actions iş akışı `.github/workflows/ci.yml` her branch'e yapılan push'ta ve her pull request'te çalışır; aynı branch/PR için yeni koşu başlarsa eskisi iptal edilir.
+
+| İş | Ne yapar |
+| --- | --- |
+| `build-test` | `global.json`'daki SDK ile `dotnet restore` + `dotnet build -c Release` (uyarılar hata), SQL Server 2022 servis konteyneriyle `dotnet test --solution ServerManager.slnx` (web entegrasyon testleri dahil; `SM_TEST_SQL` koşuya özel üretilen parolayla ayarlanır, secret gerekmez). TRX sonuçları `test-results` artifact'ı olarak yüklenir. Son adımda `dotnet list package --vulnerable --include-transitive` bir paket bulursa iş başarısız olur. |
+| `frontend` | `.nvmrc`'deki Node sürümüyle `npm ci`, `npm run build:vendor` ve `npm run build:css`; ardından `src/ServerManager.Web/wwwroot` ve `src/Plugins/*/Content` altında `git diff` boş değilse (derlenmiş CSS/vendor dosyaları commit edilmemişse) başarısız olur. Stil değiştirdiyseniz yerelde `npm run build` çalıştırıp çıktıyı commit edin. |
+| `docker` | Kök `Dockerfile`'ı buildx ile derler (push yok, GitHub Actions önbelleği). |
+| `e2e` | Uçtan uca testler (aşağıda). Yavaş ve privileged konteyner gerektirdiği için PR'larda çalışmaz; **elle** (Actions → CI → Run workflow), **her gece** (02:30 UTC) ve `main`'e push'ta çalışır. |
+
+Bağımlılık güncellemeleri `.github/dependabot.yml` ile haftalık (pazartesi) ve gruplanmış olarak açılır: NuGet, npm (`src/ServerManager.Web`), GitHub Actions ve Docker imajları (kök `Dockerfile`, `docker/e2e-ubuntu`, `docker/ssh-docker-test`).
+
+### Uçtan uca testler
+
+`tests/ServerManager.E2E.Tests` uygulamayı `WebApplicationFactory<Program>` ile **Production** ortamında ve geçici bir veritabanıyla (`SmE2E_<guid>`, sonda silinir) açar; gerçek akışları HTTP yerine uygulama servisleri üzerinden, gerçek bir SSH sunucusuna karşı çalıştırır:
+
+| Akış | Kapsam |
+| --- | --- |
+| Sunucu ekleme | Kayıt → bağlantı testi → host key'in ilk testte sabitlenmesi → ikinci testte aynı anahtar; kayıtlı anahtar bozulunca bağlantının reddedilmesi (`FingerprintMismatch`); yanlış parolada anahtarın sabitlenmemesi; NOPASSWD sudo kullanıcısıyla Docker genel bakışı |
+| Docker | Genel bakış (sürüm, CPU, bellek, container/imaj sayıları) ve container listesi |
+| Servisler | Redis ve PostgreSQL kurulumu → `healthy` → panelde saklanan parolayla bağlantı (redis-cli PING / psql sorgusu) → çalışma logları → (PostgreSQL) yerel depolamaya yedek işi + manuel yedek → indirme akışı boş değil → verisiyle kaldırma (container ve volume gerçekten silinmiş mi) |
+| Temizlik | Durmuş bir container'ın taramada bulunması; önizlemenin (dry run) hiçbir şey silmemesi |
+| Kaynak kullanımı | Anlık görüntünün ayrıştırılması (çekirdek, yük, bellek yüzdesi 0–100, süreç listesi, container'lar) ve disk taraması |
+| Deployment | Sunucuda `git init --bare` ile açılan depoya küçük bir Dockerfile uygulaması push edilir; proje `file://` depo adresiyle (doğrulayıcı `file://`'ı kabul eder) oluşturulur, dallar `git ls-remote` ile okunur, deploy edilir, uygulama HTTP'den yanıt verir; proje "sunucudan da sil" ile kaldırılır |
+
+Her test kendi oluşturduğu kayıtları ve sunucudaki container/volume/klasörleri sonunda siler. Ortam değişkenleri tanımlı değilse testler **atlanır** (başarısız sayılmaz):
+
+| Değişken | Açıklama |
+| --- | --- |
+| `SM_TEST_SQL` | Veritabanı adı içermeyen SQL Server bağlantı dizesi |
+| `SM_E2E_SSH_HOST` / `SM_E2E_SSH_PORT` | E2E sunucusu (ör. `127.0.0.1` / `2224`) |
+| `SM_E2E_SSH_USER` / `SM_E2E_SSH_PASSWORD` | Parolalı sudo kullanıcısı (`smtest`) ve parolası (`.env` → `E2E_SSH_PASSWORD`) |
+| `SM_E2E_SSH_NOPASSWD_USER` | İsteğe bağlı; NOPASSWD sudo kullanıcısı (`smnopw`), aynı parola |
+
+E2E sunucusu `docker/e2e-ubuntu` imajıdır: Ubuntu 24.04, openssh-server, sudo, Docker CE + compose eklentisi (privileged konteynerde Docker-in-Docker), git, curl, iptables, python3. `smtest` sudo grubunda (parolalı), `smnopw` NOPASSWD sudo; ikisi de `docker` grubunda. systemd PID 1 olarak çalışmaz: `systemctl` ve journald yoktur (journal temizliği ve Linux servis yönetimi bu ortamda kullanılamaz; testler bunlara bağlı değildir). Çekirdekte nftables yoksa `.env`'de `E2E_IPTABLES_LEGACY=1` verilebilir.
+
+```bash
+# .env: E2E_SSH_PASSWORD (ve isteğe bağlı E2E_SSH_PORT=2224)
+docker compose up -d db
+docker compose -p sm-e2e --profile e2e up -d --build --wait sm-e2e-ubuntu
+
+export SM_TEST_SQL="Server=127.0.0.1,14340;User Id=sa;Password=<MSSQL_SA_PASSWORD>;TrustServerCertificate=True"
+export SM_E2E_SSH_HOST=127.0.0.1 SM_E2E_SSH_PORT=2224 SM_E2E_SSH_USER=smtest SM_E2E_SSH_PASSWORD=<E2E_SSH_PASSWORD>
+export SM_E2E_SSH_NOPASSWD_USER=smnopw
+dotnet test --project tests/ServerManager.E2E.Tests
+
+# Bitince E2E konteynerini, ağını ve Docker-in-Docker volume'unu kaldırın:
+docker compose -p sm-e2e --profile e2e down -v
+```
+
+`-p sm-e2e` ayrı bir compose projesi adı verir; `down -v` yalnızca bu projedeki kaynakları siler, varsayılan projedeki veritabanı (`server-manager-db`) ve diğer test konteynerleri etkilenmez. İlk koşuda Redis/PostgreSQL/busybox imajları E2E sunucusunun içine indirildiği için birkaç dakika sürebilir; sonraki koşular (konteyner silinmedikçe) birkaç on saniyedir.
+
 ### Roller ve izinler
 
 | Rol | İzinler |
 | --- | --- |
 | SuperAdmin | Tümü (eklenti yönetimi `plugin.manage` yalnızca SuperAdmin'dedir) |
-| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker, terminal, dosya ve deployment izinleri, sistem bilgisi görüntüleme/yönetim, alarm görüntüleme/üstlenme/yönetim, yedekleme, güvenlik merkezi, audit log görüntüleme/dışa aktarma, toplu komut görüntüleme/çalıştırma, şablon yönetimi, bulut sağlayıcı görüntüleme/yönetim/sunucu oluşturma, ayarlar |
-| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal, sunucu terminali, sistem bilgisi görüntüleme/yönetim, dosya görüntüleme/oluşturma/düzenleme/yükleme/indirme, deployment görüntüleme/çalıştırma, alarm görüntüleme/üstlenme, yedek görüntüleme/çalıştırma, güvenlik görüntüleme/tarama, toplu komut geçmişi görüntüleme, bulut sağlayıcı görüntüleme |
+| Admin | Dashboard, sunucu görüntüleme/ekleme/düzenleme/silme/bağlantı testi, tüm Docker, terminal, dosya ve deployment izinleri, sistem bilgisi görüntüleme/yönetim, sunucu temizliği, alarm görüntüleme/üstlenme/yönetim, yedekleme, güvenlik merkezi, audit log görüntüleme/dışa aktarma, toplu komut görüntüleme/çalıştırma, şablon yönetimi, bulut sağlayıcı görüntüleme/yönetim/sunucu oluşturma, ayarlar |
+| Operator | Dashboard, sunucu görüntüleme, bağlantı testi, Docker görüntüleme/başlatma/durdurma/yeniden başlatma/terminal, sunucu terminali, sistem bilgisi görüntüleme/yönetim, sunucu temizliği, dosya görüntüleme/oluşturma/düzenleme/yükleme/indirme, deployment görüntüleme/çalıştırma, alarm görüntüleme/üstlenme, yedek görüntüleme/çalıştırma/indirme, güvenlik görüntüleme/tarama, toplu komut geçmişi görüntüleme, bulut sağlayıcı görüntüleme |
 | Developer | Dashboard, sunucu görüntüleme, sistem bilgisi görüntüleme, Docker görüntüleme/yeniden başlatma, dosya görüntüleme/indirme, deployment görüntüleme/çalıştırma, alarm görüntüleme |
 | Viewer | Dashboard, sunucu görüntüleme, Docker görüntüleme, deployment görüntüleme, alarm görüntüleme |
 
@@ -2531,6 +2644,8 @@ Arka plan servisi (`MetricsCollectorWorker`) izlemesi açık ve host key fingerp
 | `HourlyRetentionDays` | `90` | Saatlik özetlerin saklama süresi |
 | `HealthCheckRetentionDays` | `30` | Sağlık kontrolü kayıtlarının saklama süresi |
 | `MaintenanceIntervalMinutes` | `10` | Özetleme ve saklama işinin çalışma aralığı |
+| `ResourceHistoryIntervalMinutes` | `5` | Kaynak geçmişi (container + process örnekleri) toplama aralığı; `0` kapatır. Ayrı worker'da çalışır |
+| `ReclaimableScanIntervalHours` | `6` | "Temizlenebilir alan" alarmı için silmeyen temizlik taraması aralığı; `0` kapatır |
 
 Durum kuralları:
 
@@ -2542,7 +2657,7 @@ Durum kuralları:
 Saklama politikası (`MetricsMaintenanceWorker`):
 
 - Tamamlanmış saatler önce `ServerMetricsHourly` tablosuna özetlenir, ardından süresi dolan ham kayıtlar silinir. 1 saat – 24 saat grafikleri ham veriden, 7 gün ve 30 gün grafikleri saatlik özetten çizilir.
-- Silme yalnızca geçici tablolarda (`ServerMetrics`, `ServerMetricsHourly`, `ServerHealthChecks`, `UptimeCheckResults`, `NotificationDeliveries`) çalışır; bu liste dışında bir tablo, zaman sütunu veya gruplama sütunu istenirse işlem hata verip durur. Uptime ve bildirim kayıtlarının saklaması için bkz. [Alarmlar ve izleme](#alarmlar-ve-izleme).
+- Silme yalnızca geçici tablolarda (`ServerMetrics`, `ServerMetricsHourly`, `ServerHealthChecks`, `UptimeCheckResults`, `NotificationDeliveries`, kaynak geçmişi için `ContainerMetricSamples`, `ContainerMetricsHourly`, `ProcessSnapshots`) ve panelden saklama süresi verilen geçmiş tablolarında çalışır; bu liste dışında bir tablo, zaman sütunu veya gruplama sütunu istenirse işlem hata verip durur. Uptime ve bildirim kayıtlarının saklaması için bkz. [Alarmlar ve izleme](#alarmlar-ve-izleme).
 - Her sunucunun en son ölçümü ve son 50 sağlık kontrolü süre dolsa bile korunur. Sunucu, kullanıcı ve audit kayıtlarına dokunulmaz.
 - Silme 5000 satırlık partilerle yapılır; her çalışmanın özeti (özetlenen saat ve silinen kayıt sayıları) loglanır.
 
@@ -2771,7 +2886,7 @@ Güvenlik notları:
 - **Compose ve .env:** compose `.env`'yi yalnızca `${DEĞİŞKEN}` yerleştirmesi için okur. Panel bu yüzden `docker compose config --services` ile servisleri okur ve `sm-proxy.override.yml` içinde **tüm servislere** `env_file: [<klasör>/.env]` ekler (servisin kendi `environment:` değerleri önceliklidir). Projeye bağlı servis varsa tüm servisler `sm-services` ağına da alınır (bkz. [Projeye bağla](#projeye-bağla)). Override ortam değişkeni kaydı, domain veya bağlı servis olduğunda yazılır, hiçbiri yoksa silinir.
 - **Uygula / Yeniden başlat:** kaynak kod çekilmeden ve build yapılmadan `.env` ve override yeniden yazılır; Compose'da `up -d --no-build --remove-orphans` (yapılandırması değişen servisler yeniden oluşturulur), Dockerfile'da container `latest` imajıyla yeniden oluşturulur. Deployment kaydı "Yeniden başlatma" türüyle, canlı logla açılır; süren deployment varsa başlamaz. `deployment.execute` ister.
 - **Çalışma logları sekmesi:** projenin container'ları (Compose: `com.docker.compose.project=sm-<proje>`, Dockerfile: `sm-<proje>`) listelenir; seçilen container için son N satır, arama, "yalnızca hata/uyarı" (error, fatal, panic, exception, warn), stderr filtresi, canlı takip ve indirme. `deployment.view` ve `docker.view` ister.
-- **Push ile otomatik deploy:** proje başına açılır; ilk açılışta 64 karakterlik gizli anahtar üretilir (şifreli saklanır, yalnızca üretildiğinde gösterilir, yenilenebilir). Adres `POST /api/webhooks/projects/{id}` (anonim, IP başına dakikada 30 istek, gövde en fazla 5 MB). GitHub `X-Hub-Signature-256` (HMAC-SHA256, sabit zamanlı karşılaştırma) veya GitLab `X-Gitlab-Token` doğrulanır. Yalnızca proje dalına gelen push deploy edilir (push'taki commit); diğer olaylar ve dallar `200` ile yok sayılır, ping `200`, imza hatası `401`, kapalıysa `403`. Deploy başlarsa `202`. **Süren deployment varsa** yeni deploy başlatılmaz; proje başına **tek bir takip deploy'u kuyruğa alınır** (`202`) ve süren deployment bitince dalın son hali deploy edilir (art arda push'larda sonuncusu kaybolmaz). Kuyruğa alınamayan çakışma `409`. Başlatan "webhook" olarak kaydedilir; son teslimatın sonucu sekmede görünür. GitHub App eklentisi webhook kullanmaz; depo webhook'u proje başına ayrı tanımlanır. Kurulum: GitHub'da depo *Settings → Webhooks → Add webhook*: Payload URL sekmedeki adres, Content type `application/json`, Secret paneldeki anahtar, "Just the push event". GitLab'da *Settings → Webhooks*: URL, "Secret token" ve "Push events" (isteğe bağlı dal filtresi). Panel ters vekil arkasındaysa adresin doğru üretilmesi için `Deployment:PublicBaseUrl` doldurulmalıdır.
+- **Push ile otomatik deploy:** proje başına açılır; ilk açılışta 64 karakterlik gizli anahtar üretilir (şifreli saklanır, yalnızca üretildiğinde gösterilir, yenilenebilir). Adres `POST /api/webhooks/projects/{id}` (anonim, IP başına dakikada 30 istek, gövde en fazla 5 MB). GitHub `X-Hub-Signature-256` (HMAC-SHA256, sabit zamanlı karşılaştırma) veya GitLab `X-Gitlab-Token` doğrulanır. Yalnızca proje dalına gelen push deploy edilir (push'taki commit); diğer olaylar ve dallar `200` ile yok sayılır, ping `200`, imza hatası `401`, kapalıysa `403`. Deploy başlarsa `202`. **Süren deployment varsa** (bu örnekte veya veritabanında) yeni deploy başlatılmaz; proje başına **tek bir takip deploy'u kalıcı kuyruğa alınır** (`202`; `DeploymentProjects.PendingWebhook*`) ve süren deployment bitince dalın son hali deploy edilir (art arda push'larda sonuncusu kaybolmaz). Kuyruk uygulama yeniden başlasa da korunur: açılışta yarım kalan deployment'lar "kesildi" yapıldıktan sonra kuyruk işlenir ve dakikada bir yoklanır. Başlatan "webhook" olarak kaydedilir; son teslimatın sonucu sekmede görünür. GitHub App eklentisi webhook kullanmaz; depo webhook'u proje başına ayrı tanımlanır. Kurulum: GitHub'da depo *Settings → Webhooks → Add webhook*: Payload URL sekmedeki adres, Content type `application/json`, Secret paneldeki anahtar, "Just the push event". GitLab'da *Settings → Webhooks*: URL, "Secret token" ve "Push events" (isteğe bağlı dal filtresi). Panel ters vekil arkasındaysa adresin doğru üretilmesi için `Deployment:PublicBaseUrl` doldurulmalıdır.
 - **Geri dönüş:** deployment geçmişinde, çalışan sürüm dışındaki başarılı deployment'larda **Bu sürüme geri dön**. Yeni kayıt "Geri dönüş" türüyle açılır. Dockerfile'da `sm-<proje>:<kısa-sha>` imajı duruyorsa kaynak kod ve build atlanır, imaj `latest` olarak etiketlenip çalıştırılır; yoksa commit yeniden çekilip build edilir. Compose ve komut projelerinde commit çekilip build edilir. Ortam değişkenleri ve domainler projenin güncel ayarlarından gelir.
 
 #### Domain, Traefik ve Let's Encrypt
@@ -2825,7 +2940,7 @@ Proje sayfasının *Ortam değişkenleri* sekmesinde **Bağlı servisler** liste
 
 #### Otomatik yedek
 
-Veritabanı şablonlarında (PostgreSQL, MySQL, MariaDB, MongoDB, Redis, SQL Server) kurulum sihirbazında **Otomatik yedek** bölümü vardır (`backup.manage` yoksa gizlidir): depolama hedefi, zamanlama (her gün belirli saatte veya N saatte bir), saklanacak son yedek sayısı ve isteğe bağlı şifreleme parolası (en az 12 karakter). SQL Server'da yedeklenecek veritabanı adı da istenir. Ayarlar kurulumdan önce doğrulanır; yedekleme işi **yalnızca kurulum başarıyla bittikten sonra**, kurulumu başlatan kullanıcı adına `IBackupJobService.CreateForContainerDatabaseAsync` ile açılır ve sonuç canlı kurulum çıktısına yazılır (başarısızsa kurulum etkilenmez).
+Veritabanı şablonlarında (PostgreSQL, MySQL, MariaDB, MongoDB, Redis, SQL Server) kurulum sihirbazında **Otomatik yedek** bölümü vardır (`backup.manage` yoksa gizlidir): depolama hedefi, zamanlama (her gün belirli saatte veya N saatte bir), saklanacak son yedek sayısı ve isteğe bağlı şifreleme parolası (en az 12 karakter). SQL Server'da yedeklenecek veritabanı adı da istenir. Ayarlar kurulumdan önce doğrulanır; yedekleme işi **yalnızca kurulum başarıyla bittikten sonra**, kurulumu başlatan kullanıcı adına `IBackupJobService.CreateForContainerDatabaseAsync` ile açılır ve sonuç canlı kurulum çıktısına yazılır (başarısızsa kurulum etkilenmez). İstek kurulum kaydında şifreli (parola dahil) saklanır (`ManagedServiceOperations.PendingAutoBackup`); panel kurulum sırasında yeniden başlarsa, kurulum başarılı bitmişse iş açılışta oluşturulur, başarısız/kesilmişse istek silinir.
 
 | Şablon | Motor | Yedek kullanıcısı | Veritabanı |
 | --- | --- | --- | --- |
@@ -2856,7 +2971,7 @@ Menüde **Alarmlar** (açık ve geçmiş alarmlar, kurallar, bildirim kanalları
 | `alert.acknowledge` | Alarmı üstlenme (görüldü olarak işaretleme) | SuperAdmin, Admin, Operator |
 | `alert.manage` | Kurallar, bildirim kanalları, uptime ve SSL kontrollerini ekleme, düzenleme, silme; kanal testi, "Şimdi kontrol et" | SuperAdmin, Admin |
 
-**Kurallar.** Her kuralın türü, önem derecesi (Uyarı / Kritik), eşiği, süresi, isteğe bağlı sunucu kapsamı, bağlı kanalları, "düzelince bildir" seçeneği ve tekrar aralığı vardır. Türler: CPU, RAM, disk (en dolu bölüm), sunucu erişilemiyor, uptime kontrolü başarısız, SSL sertifikası süresi, deployment başarısız ve yedekleme başarısız. Metrik kuralları süre boyunca her ölçümde eşiğin aşılmasını bekler; tek bir anlık sıçrama alarm açmaz. `AlertEvaluationWorker` kuralları `EvaluationIntervalSeconds` aralığıyla (en az 15 sn) değerlendirir.
+**Kurallar.** Her kuralın türü, önem derecesi (Uyarı / Kritik), eşiği, süresi, isteğe bağlı sunucu kapsamı, bağlı kanalları, "düzelince bildir" seçeneği ve tekrar aralığı vardır. Türler: CPU, RAM, disk (en dolu bölüm), sunucu erişilemiyor, uptime kontrolü başarısız, SSL sertifikası süresi, deployment başarısız, yedekleme başarısız, kritik güvenlik bulgusu, **servis çalışmıyor** (yönetilen servisin container'ı durmuş/sağlıksız; servis başına veya sunucudaki tüm servisler; süre kadar sürmeli, önerilen 5 dk), **container yeniden başlama döngüsü** (pencere içinde `RestartCount` artışı ≥ N; önerilen 30 dk içinde 3) ve **temizlenebilir alan** (otomatik temizlik taramasında silinebilir alan ≥ eşik GB; önerilen 10 GB). Servis türleri kaynak geçmişi örneklerine dayanır; örnek yoksa veya eskiyse durum bilinmiyor sayılır ve açık alarm kapanmaz. Servis sayfası servise ait açık alarmları gösterir. Metrik kuralları süre boyunca her ölçümde eşiğin aşılmasını bekler; tek bir anlık sıçrama alarm açmaz. `AlertEvaluationWorker` kuralları `EvaluationIntervalSeconds` aralığıyla (en az 15 sn) değerlendirir.
 
 Kurallar kurulumda otomatik eklenmez; panelden oluşturulur. Kurala kanal bağlanmazsa alarm yalnızca panelde (zil ve Alarmlar sayfası) görünür.
 
@@ -2924,7 +3039,8 @@ Menüde **Yedekleme** altında üç sekme bulunur: **İşler** (yedekleme işler
 | `backup.view` | İşleri, geçmişi ve çalışma ayrıntılarını (log dahil) görüntüleme | SuperAdmin, Admin, Operator, Developer, Viewer |
 | `backup.execute` | "Şimdi yedekle", süren işlemi iptal etme | SuperAdmin, Admin, Operator |
 | `backup.manage` | İş ve depolama hedefi ekleme, düzenleme, silme; depolama testi; yedek dosyasını elle silme | SuperAdmin, Admin |
-| `backup.restore` | Geri yükleme ve yedek dosyasını indirme | SuperAdmin, Admin |
+| `backup.restore` | Yedeği bir sunucuya geri yükleme | SuperAdmin, Admin |
+| `backup.download` | Yedek dosyasını indirme; şifreli yedekte parola girilerek çözülmüş indirme | SuperAdmin, Admin, Operator |
 
 #### Yedek türleri
 
@@ -2980,14 +3096,24 @@ Tüm yedekler gzip ile sıkıştırılır. Şifreleme iş başına açılır (va
 - Biçim (`SMBK`, sürüm 1): 36 baytlık başlık (`SMBK` | sürüm | bayrak | 2 boş bayt | PBKDF2 tur sayısı (uint32, big-endian) | 16 bayt salt | 8 bayt nonce öneki), ardından 1 MiB'lık AES-256-GCM parçaları (son-parça bayrağı | uzunluk | şifreli veri | 16 bayt etiket).
 - Anahtar PBKDF2-HMAC-SHA256 (varsayılan 600.000 tur, `Backup:KeyDerivationIterations`) ile türetilir. Her parçanın nonce'u önek + parça sırasıdır; başlık, parça sırası ve son-parça bayrağı ek doğrulama verisidir. Bu sayede parçaların yer değiştirmesi, kesilme ve sona veri ekleme tespit edilir; çözme ilk bozuk parçada durur ve işlem başarısız sayılır.
 - Parola işte `Security:MasterKey` ile şifreli saklanır; her çalışma kendi parolasının kopyasını tutar. İşin parolası sonradan değiştirilse bile eski yedekler kendi parolasıyla açılır.
-- Çalışma ayrıntısındaki **İndir** şifreli dosyayı olduğu gibi, **Çözülmüş indir** ise panelde çözerek `.tar.gz` / `.sql.gz` (veya `.archive.gz`, `.rdb.gz`, `.bak.gz`) olarak verir. İndirmelerde SHA-256 özeti çalışma kaydındakiyle karşılaştırılabilir.
+- **Şifreli indir** dosyayı olduğu gibi (`.smbk`) verir. Çalışma ayrıntısındaki **Parolayla çözerek indir** ise kullanıcının girdiği parolayla panelde çözüp `.tar.gz` / `.sql.gz` (veya `.archive.gz`, `.rdb.gz`, `.bak.gz`) olarak verir (bkz. [İndirme](#indirme)).
+
+#### İndirme
+
+Yedek dosyası, yedeğin göründüğü her yerden indirilebilir: Geçmiş listesi, iş ayrıntısındaki son yedekler, çalışma ayrıntısı, geri yükleme sayfası, sunucunun **Backups** sekmesi, İşler listesi ve Servisler → **Yedekleme** kartı (son iki yerde "Son yedek" işin dosyası duran en yeni başarılı yedeğidir). Dosya, kaynak türünden (dosya, Docker volume, veritabanı) bağımsız olarak aynı uç noktadan (`GET /BackupRuns/Download/{id}`) iner.
+
+- Yetki `backup.download` (varsayılan SuperAdmin, Admin, Operator). Başarısız, süren, geri yükleme kaydı veya dosyası saklama politikasıyla/elle silinmiş çalışmalarda düğme pasiftir; nedeni araç ipucunda yazar.
+- Dosya depolamadan (yerel disk, S3, Azure Blob) panel üzerinden **akış hâlinde** aktarılır; belleğe veya geçici diske alınmaz, büyük yedeklerde sorun çıkarmaz. Yanıtta `Content-Disposition: attachment` (kayıtlı dosya adı, güvenli karakterlere indirgenmiş), biliniyorsa `Content-Length` ve `Cache-Control: no-store` bulunur. Depolama dosyayı açamazsa (eklenti kapalı, anahtar hatalı, dosya yok) çalışma ayrıntısında Türkçe hata gösterilir.
+- **Çözülmüş indirme** (`POST /BackupRuns/Download/{id}`, antiforgery korumalı) yalnızca kullanıcı parolayı girdiğinde yapılır; panelde kayıtlı parola kullanılmaz. Parola önce başlık ve ilk parça çözülerek doğrulanır (yanlışsa indirme başlamadan hata verilir), ardından dosya 1 MiB'lık parçalarla akış hâlinde çözülür ve sonunda SHA-256 özeti kayıtla karşılaştırılır; uyuşmazsa bağlantı kesilir. Panel olmadan çözmek için `tools/backup-decrypt.py` kullanılır (komut çalışma ayrıntısında gösterilir).
+- Her indirme (başarısız denemeler ve yanlış parola dahil) `backup.download` audit kaydı bırakır: çalışma kimliği, iş, dosya adı, boyut ve depolama. Uç nokta kullanıcı başına dakikada 20 istekle sınırlıdır (`backup-action`).
+- S3 / Azure için ön imzalı (pre-signed) bağlantı üretilmez; depolama anahtarları ve bucket panel dışına açılmaz, indirme her zaman panel üzerinden yapılır.
 
 #### Anahtar kaybı ve kurtarma planı
 
 Yedekler panelden bağımsız açılabilir; tek gereken şifreleme parolasıdır.
 
 1. **Şifreleme parolalarını panel dışında saklayın** (parola yöneticisi, kasa). Parola kaybolursa ve panel de yoksa şifreli yedek açılamaz; bu tasarım gereğidir.
-2. **`Security:MasterKey` kaybolursa** panel kayıtlı parolaları çözemez: indirme ve geri yükleme "Yedek şifreleme parolası çözülemedi (master key değişmiş olabilir)" hatası verir; şifreli **İndir** yine çalışır. Yedek dosyaları sağlamdır; dosyayı depolamadan (S3 konsolu, `aws s3 cp`, yerel klasör) alıp aşağıdaki araçla açın. Ardından yeni MasterKey ile işin parolasını yeniden girin.
+2. **`Security:MasterKey` kaybolursa** panel kayıtlı parolaları çözemez: geri yükleme "Yedek şifreleme parolası çözülemedi (master key değişmiş olabilir)" hatası verir; **Şifreli indir** ve parolayla çözerek indirme yine çalışır (parola kullanıcıdan alınır). Yedek dosyaları sağlamdır; dosyayı depolamadan (S3 konsolu, `aws s3 cp`, yerel klasör) alıp aşağıdaki araçla açın. Ardından yeni MasterKey ile işin parolasını yeniden girin.
 3. **Panel tamamen kaybolursa** aynı yol geçerlidir: yedek dosyası + parola yeterlidir.
 
 ```bash
@@ -3134,6 +3260,41 @@ Sunucu sayfasındaki **Sistem Servisleri**, **Processes**, **Logs**, **Network**
 
 Servis kontrolü ve process sonlandırma audit log'a yazılır (`system.service_control`, `system.process_signal`). Bu işlemler kullanıcı başına dakikada 20 istekle sınırlıdır.
 
+#### Kaynak Kullanımı ("Neden yavaş?")
+
+**Kaynak Kullanımı** sekmesi (`/ServerResources/Index/{id}`, menüde *İzleme → Kaynak Kullanımı*) sunucuyu neyin yavaşlattığını tek ekranda gösterir. Salt okunurdur ve `system.view` ister; tek SSH bağlantısıyla okunur:
+
+- **Neden yavaş?** paneli: eşiklerle Türkçe bulgular ve ilgili bölüme / Temizlik sayfasına bağlantı. Kurallar: 1 dk yük > çekirdek sayısı (2 katı kritik), kullanılabilir bellek < %10 (< %5 kritik), swap ≥ %50 (≥ %80 kritik; 64 MB altı yok sayılır), G/Ç bekleme ≥ %10 (≥ %20 kritik), steal ≥ %10, dosya sistemi veya inode ≥ %90 (≥ %95 kritik), tek process > %80 CPU, son 24 saatte OOM kaydı (journal; yoksa dmesg), container > %80 CPU veya bellek limitinin > %90'ı.
+- Yük ortalaması ve çekirdek sayısı, `vmstat 1 2` (yoksa `/proc/stat` iki örnek) ile 1 saniyelik CPU dağılımı (kullanıcı / sistem / G/Ç bekleme / steal / boşta), `/proc/meminfo` ile bellek (kullanılan / önbellek / kullanılabilir) ve swap.
+- En çok CPU ve RAM kullanan 10 process (kullanıcı, komut, %CPU, RSS / %MEM, süre). `system.manage` varsa satırdan SIGTERM / SIGKILL gönderilir (Processes sekmesiyle aynı uç nokta ve audit). `ps` %CPU değeri process ömrü boyunca ortalamadır.
+- Swap kullanan process'ler (swap doluysa `VmSwap`) ve `pidstat` (sysstat) kuruluysa disk G/Ç yapan process'ler.
+- Container'lar: `docker stats --no-stream` (CPU / RAM / ağ / disk G/Ç, sıralanabilir), container sayfasına bağlantı ve `sm.project`, `sm.service`, `com.docker.compose.project=sm-<proje>` etiketlerinden panel projesi / servis eşlemesi (`docker.view` ister).
+- Dosya sistemleri (doluluk, inode) ve isteğe bağlı **En büyük klasörler ve dosyalar** taraması: `du -x -k -d 2` (GNU du'da `--threshold=10M`) ve `find -xdev -type f -size +100 MB`, her biri `timeout 60`, `nice -n 19`, `ionice -c3` ile. `/proc`, `/sys`, `/dev` ve `..` içeren yollar reddedilir; tarama kullanıcı başına dakikada 20 istekle sınırlıdır.
+- **Otomatik yenile (15 sn)** kutusu paneli sekme görünürken yeniler (disk taraması hariç).
+- **Geçmiş** bölümü ("dün gece ne yavaşlattı?"): `ResourceHistoryWorker`, `Monitoring:ResourceHistoryIntervalMinutes` (varsayılan 5 dk) aralıkla ana metrik toplayıcıdan ayrı olarak her sunucudan container kullanımı / durumu / yeniden başlama sayısını (`docker stats` + `docker inspect`) ve en çok CPU ve RSS kullanan process'leri (iki `/proc` okuması arasındaki gerçek CPU) kaydeder (`ContainerMetricSamples`, `ProcessSnapshots`; saatlik özet `ContainerMetricsHourly`). Aralık seçici (1 sa / 6 sa / 24 sa / 7 gün / özel), en çok kaynak kullanan 5 container için Chart.js CPU ve RAM grafikleri, "Bu aralıkta en çok kaynak kullananlar" tabloları (container ve process) ve grafikte tıklanan ana en yakın process anlık görüntüsü. 48 saati aşan aralıklar saatlik özetten çizilir. Uç noktalar `GET /ServerResources/History/{id}` ve `GET /ServerResources/ProcessSnapshot/{id}` (`system.view`).
+
+#### Temizlik
+
+**Temizlik** sekmesi (`/ServerCleanup/Index/{id}`, menüde *Operasyon → Temizlik*) silinebilecekleri tahmini kazanılacak alanla gruplar ve her öğeyi **Güvenle silinebilir** ya da gerekçeli **Dikkat** olarak işaretler. Sayfa ve silme `server.cleanup` izni ister (varsayılan: SuperAdmin, Admin, Operator).
+
+| Grup | Kaynak | Komut | Seviye |
+| --- | --- | --- | --- |
+| Durmuş container'lar | `docker system df -v` (exited / created / dead) | `docker rm` | Güvenle; panel projesine / servisine aitse Dikkat "Panel projesine ait" |
+| Kullanılmayan imajlar | hiçbir container'ın kullanmadığı imajlar | `docker image rm` | Güvenle; geri dönüş imajı `sm-<proje>:<sha>` (`Deployment:KeepImageCount`) Dikkat |
+| Kullanılmayan ağlar | `docker network ls --filter dangling=true` | `docker network rm` | Güvenle; panel compose ağı Dikkat. `sm-proxy`, `sm-services`, `bridge`, `host`, `none`, `docker_gwbridge`, `ingress` listelenmez |
+| Kullanılmayan volume'lar | `Links = 0` | `docker volume rm` | Anonim Güvenle; isimli, compose ve `sm-svc-*-data` Dikkat. Volume'lar hiç önceden seçilmez |
+| Build cache | kullanımda olmayan kayıtlar | `docker builder prune -f` | Güvenle |
+| Paket önbelleği | `/var/cache/apt` (dnf / yum) | `apt-get clean` / `dnf`, `yum clean all` | Güvenle |
+| Journal | `journalctl --disk-usage` | `journalctl --vacuum-size=<MB>M` | Güvenle |
+| Eski log dosyaları | `/var/log` altında `*.gz`, `*.xz`, `*.bz2`, `*.zst`, `*.[0-9]`, `*.old`, `*-YYYYMMDD`, N günden eski (journal hariç) | aynı `find … -delete` | Güvenle |
+| Geçici dosyalar | `/tmp` altında N gündür değişmemiş ve okunmamış normal dosyalar (`systemd-private-*`, soket klasörleri, `*.pid`, `*.lock` hariç) | aynı `find … -delete` | Dikkat |
+| Eski snap sürümleri | `snap list --all` → disabled | `snap remove <ad> --revision=<rev>` | Güvenle |
+| Eski çekirdekler | `dpkg-query` / `rpm -q kernel` (çalışan hariç) | yalnızca gösterilir, öneri yazılır | Dikkat |
+
+- **Önizle** hiçbir şey silmez (`apt-get -s clean`, silmeden `find`; diğerleri için çalışacak komut gösterilir). **Seçilenleri temizle** onay ister; "Dikkat" öğesi seçiliyse `temizle` yazılmalıdır.
+- Çalıştırmada sunucu yeniden taranır, yalnızca hâlâ silinebilir olan anahtarlar işlenir; istekten gelen ad komuta girmez. Günlük satır satır akar (NDJSON); kazanılan alan `df` ile önce / sonra boş alan farkıdır.
+- Komutlar sudo açıksa sudo ile çalışır. Gerçek çalıştırma audit log'a `server.cleanup` (öğeler + kazanılan bayt) olarak yazılır; önizleme yazılmaz. Kullanıcı başına dakikada 20 istek, tek seferde en fazla 500 öğe.
+
 **Backups**, **Alerts** ve **Activity** sekmeleri ilgili modülün listesini yalnızca bu sunucuya süzerek gösterir: sunucunun yedekleme işleri ve yedek geçmişi (`backup.view`), sunucuya ait alarmlar (`alert.view`) ve sunucu üzerinde yapılan işlemlerin audit kayıtları (`audit.view`). Sekmeler yalnızca ilgili izni olan kullanıcılara görünür.
 
 ### Sunucu grupları, maliyet ve sunucu seçici
@@ -3142,7 +3303,7 @@ Servis kontrolü ve process sonlandırma audit log'a yazılır (`system.service_
 
 - Sunucu formunda grup, **aylık maliyet** (0–1.000.000) ve para birimi (USD, EUR, TRY, GBP) seçilir. Maliyet girilip para birimi seçilmezse USD kabul edilir.
 - Sunucu listesi gruba göre süzülebilir; grup kartlarında sunucu sayısı, erişilebilir sunucu sayısı ve para birimine göre toplam aylık maliyet görünür.
-- Menüdeki **Docker, İmajlar, Volume'lar, Ağlar, Terminal, Dosyalar, Sistem Servisleri, Process'ler, Loglar** ve **Metrikler** bağlantıları önce sunucu seçiciyi açar; seçilen sunucunun ilgili sekmesine gider. Seçici, kullanıcının o özellik için izni yoksa menüde görünmez.
+- Menüdeki **Docker, İmajlar, Volume'lar, Ağlar, Terminal, Dosyalar, Sistem Servisleri, Process'ler, Loglar, Temizlik, Metrikler** ve **Kaynak Kullanımı** bağlantıları önce sunucu seçiciyi açar; seçilen sunucunun ilgili sekmesine gider. Seçici, kullanıcının o özellik için izni yoksa menüde görünmez.
 
 ### Toplu komut ve şablonlar
 
@@ -3286,7 +3447,7 @@ Yerel test için gerçek GitHub yerine sahte bir API kullanın (`GitHub__ApiUrl`
 
 ### Eklenti geliştirme
 
-Aşağıdaki adımlar örnek bir **Dokku** eklentisi üzerinden anlatılır; yeni bir DevOps aracı için host kodunda değişiklik gerekmez.
+Aşağıdaki adımlar örnek bir **Dokku** eklentisi üzerinden anlatılır; yeni bir DevOps aracı için host kodunda değişiklik gerekmez. **Servisler** modülüne yeni servis türü (şablon) ekleyen eklentiler için ayrı rehber: [docs/plugin-gelistirme.md](docs/plugin-gelistirme.md) (C# `IServiceTemplateProvider` veya kodsuz `templates/*.json`, örnek: `ServerManager.Plugin.Services.Extra`).
 
 **1. Proje** — `src/Plugins/ServerManager.Plugin.DevOps.Dokku/ServerManager.Plugin.DevOps.Dokku.csproj`. Proje adı `ServerManager.Plugin.{SystemName}` olmalıdır; çıktı klasörü bu addan türetilir. Projeyi `ServerManager.slnx` içindeki `/src/Plugins/` klasörüne ekleyin; Web projesi `src/Plugins/*/*.csproj` projelerini otomatik olarak önce derler (assembly referansı vermeden).
 
@@ -3493,6 +3654,9 @@ Geçmiş kayıtları `Retention:` anahtarlarıyla gün cinsinden sınırlanır; 
 | `TerminalSessionDays` | Terminal oturum ve komut geçmişi |
 | `AlertEventDays` | Alarm olayları |
 | `ServiceOperationLogDays` | Servisler modülünün işlem kayıtları ve logları |
+| `ContainerMetricDays` | Kaynak geçmişi: ham container örnekleri (varsayılan 7) |
+| `ContainerMetricHourlyDays` | Kaynak geçmişi: container saatlik özetleri (varsayılan 90) |
+| `ProcessSnapshotDays` | Kaynak geçmişi: process anlık görüntüleri (varsayılan 7) |
 
 Varsayılan değerler `appsettings.json` dosyasındadır.
 

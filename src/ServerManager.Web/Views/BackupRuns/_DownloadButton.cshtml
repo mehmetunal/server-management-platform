@@ -1,0 +1,21 @@
+@model BackupDownloadButtonModel
+@{
+    var css = Model.Compact ? "btn-ghost btn-sm" : "btn-secondary";
+}
+@if (Model.RunId is Guid runId && Model.DisabledReason is null)
+{
+    var title = Model.IsEncrypted
+        ? "Şifreli .smbk dosyasını olduğu gibi indir. Çözülmüş indirmek için yedek ayrıntılarında parolayı girin."
+        : "Yedek dosyasını indir";
+    <a asp-controller="BackupRuns" asp-action="Download" asp-route-id="@runId" class="@css" title="@title" data-backup-download>
+        @Icons.Render(Model.IsEncrypted ? "lock" : "download", "h-4 w-4") @Model.Label
+    </a>
+}
+else
+{
+    <span title="@Model.DisabledReason">
+        <button type="button" class="@css" disabled aria-label="@Model.Label: @Model.DisabledReason">
+            @Icons.Render("download", "h-4 w-4") @Model.Label
+        </button>
+    </span>
+}

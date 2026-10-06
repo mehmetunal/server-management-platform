@@ -1,8 +1,11 @@
 // Servisler modülünün ortak stilleri (liste, form, detay, işlem sayfaları).
 
 .service-logo {
-  @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold uppercase tracking-tight text-white shadow-sm;
-  background-color: var(--service-color, #64748b);
+  @apply inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-1 ring-1 ring-slate-200 dark:bg-slate-100 dark:ring-slate-600;
+
+  img {
+    @apply h-full w-full object-contain;
+  }
 }
 
 .service-cell {

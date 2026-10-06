@@ -57,12 +57,13 @@ public class ManagedServiceServiceTests
             _docker,
             _protector,
             _audit,
-            new CreateManagedServiceDtoValidator(options),
+            new CreateManagedServiceDtoValidator(options, TestTemplates.Catalog),
             new UpdateManagedServiceDtoValidator(options),
             new UpgradeManagedServiceDtoValidator(),
             options,
             new FixedTimeProvider(Now),
-            NullLogger<ManagedServiceService>.Instance);
+            NullLogger<ManagedServiceService>.Instance,
+            TestTemplates.Catalog);
     }
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
@@ -250,8 +251,8 @@ public class ManagedServiceServiceTests
     [Fact]
     public void Major_upgrade_warning_rules()
     {
-        var postgres = ServiceTemplates.Find(ServiceTemplates.Postgres)!;
-        var redis = ServiceTemplates.Find(ServiceTemplates.Redis)!;
+        var postgres = TestTemplates.Find(ServiceTemplates.Postgres)!;
+        var redis = TestTemplates.Find(ServiceTemplates.Redis)!;
 
         Assert.Null(ManagedServiceService.MajorUpgradeWarning(postgres, "17", "17"));
         Assert.Null(ManagedServiceService.MajorUpgradeWarning(postgres, "16.3", "16.4"));
@@ -292,7 +293,7 @@ public class ManagedServiceServiceTests
     public void Plan_contains_secrets_only_in_environment_file_and_firewall_rules()
     {
         var stored = Stored();
-        var template = ServiceTemplates.Find(stored.TemplateKey)!;
+        var template = TestTemplates.Find(stored.TemplateKey)!;
         var credentials = new ServiceCredentials { Username = "app", Password = "Str0ngPassword123", Database = "app" };
 
         var plan = _service.BuildPlan(stored, template, credentials, "API_KEY=abcdefghijk\n", "17", replaceExisting: true);
@@ -316,7 +317,7 @@ public class ManagedServiceServiceTests
         var stored = Stored();
         stored.ExposePublicly = false;
 
-        var plan = ManagedServiceService.FirewallPlan(stored, ServiceTemplates.Find(stored.TemplateKey)!);
+        var plan = ManagedServiceService.FirewallPlan(stored, TestTemplates.Find(stored.TemplateKey)!);
 
         Assert.False(plan.HasRules);
         Assert.Equal("sm-svc-ana-db", plan.Tag);

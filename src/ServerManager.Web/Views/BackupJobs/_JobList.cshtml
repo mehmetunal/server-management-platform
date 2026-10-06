@@ -2,6 +2,7 @@
 @{
     var canExecute = User.HasPermission(Permissions.BackupExecute);
     var canManage = User.HasPermission(Permissions.BackupManage);
+    var canDownload = User.HasPermission(Permissions.BackupDownload);
 }
 
 <section class="panel">
@@ -75,6 +76,10 @@
                                 }
                             </td>
                             <td class="text-right whitespace-nowrap">
+                                @if (canDownload)
+                                {
+                                    <partial name="~/Views/BackupRuns/_DownloadButton.cshtml" model='BackupDownloadButtonModel.ForLatest(job, "Son yedek")' />
+                                }
                                 @if (canExecute)
                                 {
                                     <button type="button" class="btn-secondary btn-sm" title="Şimdi yedek al ve ilerlemeyi izle" data-ajax-action data-redirect

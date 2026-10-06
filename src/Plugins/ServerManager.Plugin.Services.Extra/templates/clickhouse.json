@@ -1,0 +1,50 @@
+{
+  "$schema": "../../../../docs/schemas/service-template.schema.json",
+  "key": "services.extra.clickhouse",
+  "displayName": "ClickHouse",
+  "category": "database",
+  "group": "services.extra.search",
+  "description": "Sütun tabanlı, analitik sorgular için yüksek performanslı veritabanı.",
+  "logo": "clickhouse.svg",
+  "color": "#FFCC01",
+  "image": "clickhouse/clickhouse-server",
+  "tags": ["25.8", "25.3", "24.8"],
+  "ports": [
+    { "name": "http", "containerPort": 8123, "role": "primary", "label": "HTTP arayüzü" },
+    { "name": "native", "containerPort": 9000, "role": "primary", "label": "Native (TCP)", "publishByDefault": false }
+  ],
+  "credentials": {
+    "username": "name",
+    "defaultUsername": "app",
+    "password": "standard",
+    "database": true,
+    "defaultDatabase": "app",
+    "reservedUsernames": ["default"]
+  },
+  "dataPath": "/var/lib/clickhouse",
+  "dataOwner": "101:101",
+  "environment": [
+    { "key": "CLICKHOUSE_USER", "value": "{{username}}" },
+    { "key": "CLICKHOUSE_PASSWORD", "value": "{{password}}", "secret": true },
+    { "key": "CLICKHOUSE_DB", "value": "{{database}}" },
+    { "key": "CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT", "value": "1" }
+  ],
+  "healthCommand": "wget -q -O /dev/null http://127.0.0.1:8123/ping",
+  "readinessCommand": "clickhouse-client --user \"$CLICKHOUSE_USER\" --password \"$CLICKHOUSE_PASSWORD\" --query 'SELECT 1' >/dev/null",
+  "consoleCommand": "exec clickhouse-client --user \"$CLICKHOUSE_USER\" --password \"$CLICKHOUSE_PASSWORD\" --database \"$CLICKHOUSE_DB\"",
+  "consoleLabel": "clickhouse-client",
+  "connectionString": "http://{{username:url}}:{{password:url}}@{{host}}:{{port}}/?database={{database:url}}",
+  "suggestedEnvironment": {
+    "CLICKHOUSE_URL": "http://{{host}}:{{port}}",
+    "CLICKHOUSE_HOST": "{{host}}",
+    "CLICKHOUSE_PORT": "{{port}}",
+    "CLICKHOUSE_NATIVE_PORT": "9000",
+    "CLICKHOUSE_USER": "{{username}}",
+    "CLICKHOUSE_PASSWORD": "{{password}}",
+    "CLICKHOUSE_DATABASE": "{{database}}"
+  },
+  "minMemoryMb": 1024,
+  "memoryHint": "ClickHouse en az 1 GB ister; sorgu yüküne göre 4 GB+ önerilir.",
+  "warnOnMajorUpgrade": true,
+  "notes": "HTTP (8123) bağlantı adresinde, native protokol (9000) yalnızca Docker ağında açıktır; gerekirse portu yayınlayın. Yükseltmeden önce LTS sürüm notlarını okuyun."
+}

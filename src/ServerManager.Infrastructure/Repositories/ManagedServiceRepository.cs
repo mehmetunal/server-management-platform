@@ -94,6 +94,35 @@ public class ManagedServiceRepository : IManagedServiceRepository
         return count;
     }
 
+    public async Task<bool> SetPendingAutoBackupAsync(Guid operationId, string? protectedOptions, CancellationToken cancellationToken = default) =>
+        await _context.ManagedServiceOperations
+            .Where(o => o.Id == operationId)
+            .ExecuteUpdateAsync(set => set.SetProperty(o => o.PendingAutoBackup, protectedOptions), cancellationToken) > 0;
+
+    public async Task<string?> ClaimPendingAutoBackupAsync(Guid operationId, CancellationToken cancellationToken = default)
+    {
+        var value = await _context.ManagedServiceOperations
+            .AsNoTracking()
+            .Where(o => o.Id == operationId)
+            .Select(o => o.PendingAutoBackup)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (value is null)
+            return null;
+
+        var claimed = await _context.ManagedServiceOperations
+            .Where(o => o.Id == operationId && o.PendingAutoBackup != null)
+            .ExecuteUpdateAsync(set => set.SetProperty(o => o.PendingAutoBackup, (string?)null), cancellationToken);
+        return claimed > 0 ? value : null;
+    }
+
+    public async Task<IReadOnlyList<ManagedServiceOperation>> ListPendingAutoBackupOperationsAsync(CancellationToken cancellationToken = default) =>
+        await _context.ManagedServiceOperations
+            .AsNoTracking()
+            .Where(o => o.PendingAutoBackup != null && o.Status != ManagedServiceOperationStatus.Running)
+            .OrderBy(o => o.StartedAt)
+            .Select(WithoutLog())
+            .ToListAsync(cancellationToken);
+
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
         _context.SaveChangesAsync(cancellationToken);
 

@@ -44,6 +44,9 @@ public static class AlertingDisplay
         AlertRuleKind.DeploymentFailed => "rocket",
         AlertRuleKind.BackupFailed => "archive",
         AlertRuleKind.SecurityFinding => "shield",
+        AlertRuleKind.ServiceDown => "cube",
+        AlertRuleKind.ContainerRestartLoop => "refresh",
+        AlertRuleKind.ReclaimableSpace => "trash",
         _ => "bell"
     };
 

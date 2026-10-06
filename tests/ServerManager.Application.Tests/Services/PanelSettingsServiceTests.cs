@@ -126,8 +126,9 @@ public class PanelSettingsServiceTests
     {
         var group = Assert.Single(Service().GetGroups(), g => g.Title == "Kayıt saklama");
 
-        Assert.Equal(6, group.Fields.Count);
-        Assert.All(group.Fields, f => Assert.Equal("90", f.Value));
+        Assert.Equal(9, group.Fields.Count);
+        Assert.All(group.Fields.Where(f => f.Cluster != "Kaynak geçmişi"), f => Assert.Equal("90", f.Value));
+        Assert.Equal(["7", "90", "7"], group.Fields.Where(f => f.Cluster == "Kaynak geçmişi").Select(f => f.Value));
     }
 
     [Fact]

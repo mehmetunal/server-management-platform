@@ -23,4 +23,15 @@ public interface IProjectWebhookService
 
     /// <summary>Deploy başlatma sonucunu son teslimat durumu olarak yazar.</summary>
     Task RecordDeliveryAsync(Guid projectId, bool succeeded, string message, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Süren deployment yüzünden bekleyen takip deploy'unu kalıcı kuyruğa yazar (proje başına tek kayıt; yeni push eskisini günceller).
+    /// Uygulama yeniden başlasa da kaybolmaz.
+    /// </summary>
+    Task<PendingWebhookDeploy?> QueueFollowUpAsync(Guid projectId, string? commit, string? ipAddress, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<PendingWebhookDeploy>> ListPendingFollowUpsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Kuyruktaki kaydı tüketir; kayıt bu arada daha yeni bir push ile güncellendiyse dokunmaz (false).</summary>
+    Task<bool> CompleteFollowUpAsync(PendingWebhookDeploy pending, CancellationToken cancellationToken = default);
 }

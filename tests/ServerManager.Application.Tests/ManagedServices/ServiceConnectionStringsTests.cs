@@ -54,20 +54,20 @@ public class ServiceConnectionStringsTests
     [Fact]
     public void Suggested_environment_uses_internal_address()
     {
-        var postgres = ServiceTemplates.Find(ServiceTemplates.Postgres)!;
+        var postgres = TestTemplates.Find(ServiceTemplates.Postgres)!;
         var env = postgres.SuggestedEnvironment(Internal, Credentials with { Password = "secret123456" });
 
         Assert.Equal("postgres://app:secret123456@sm-svc-db:5432/appdb", env["DATABASE_URL"]);
         Assert.Equal("sm-svc-db", env["PGHOST"]);
         Assert.Contains("Host=sm-svc-db", env["ConnectionStrings__Default"]);
 
-        var redis = ServiceTemplates.Find(ServiceTemplates.Redis)!.SuggestedEnvironment(new ServiceEndpoint("sm-svc-cache", 6379), Credentials with { Password = "secret123456" });
+        var redis = TestTemplates.Find(ServiceTemplates.Redis)!.SuggestedEnvironment(new ServiceEndpoint("sm-svc-cache", 6379), Credentials with { Password = "secret123456" });
         Assert.Equal("redis://:secret123456@sm-svc-cache:6379", redis["REDIS_URL"]);
 
-        var mongo = ServiceTemplates.Find(ServiceTemplates.MongoDb)!.SuggestedEnvironment(new ServiceEndpoint("sm-svc-mongo", 27017), Credentials with { Password = "secret123456" });
+        var mongo = TestTemplates.Find(ServiceTemplates.MongoDb)!.SuggestedEnvironment(new ServiceEndpoint("sm-svc-mongo", 27017), Credentials with { Password = "secret123456" });
         Assert.StartsWith("mongodb://", mongo["MONGODB_URI"]);
 
-        var mssql = ServiceTemplates.Find(ServiceTemplates.SqlServer)!.SuggestedEnvironment(new ServiceEndpoint("sm-svc-sql", 1433), new ServiceCredentials { Username = "sa", Password = "Passw0rd" });
+        var mssql = TestTemplates.Find(ServiceTemplates.SqlServer)!.SuggestedEnvironment(new ServiceEndpoint("sm-svc-sql", 1433), new ServiceCredentials { Username = "sa", Password = "Passw0rd" });
         Assert.StartsWith("Server=sm-svc-sql,1433;", mssql["ConnectionStrings__Default"]);
     }
 }

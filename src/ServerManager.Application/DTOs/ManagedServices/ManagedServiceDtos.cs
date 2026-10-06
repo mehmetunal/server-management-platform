@@ -19,10 +19,22 @@ public class ManagedServiceListItemDto
 
     public string TemplateKey { get; init; } = string.Empty;
 
-    /// <summary>Şablon katalogdan kaldırıldıysa null.</summary>
+    /// <summary>Şablon katalogdan kaldırıldıysa (eklenti silinmiş) null; eklentisi devre dışıysa gösterim için doludur.</summary>
     public ServiceTemplate? Template { get; init; }
 
     public string TemplateName => Template?.DisplayName ?? TemplateKey;
+
+    /// <summary>Şablonun durumu; kullanılamıyorsa yeniden oluşturma ve sürüm yükseltme engellenir.</summary>
+    public ServiceTemplateAvailability TemplateAvailability { get; init; }
+
+    /// <summary>Şablon kullanılamıyorsa listede gösterilen rozet ("Şablon eklentisi devre dışı").</summary>
+    public string? TemplateBadge { get; init; }
+
+    /// <summary>Şablon kullanılamıyorsa ayar/yükseltme yerine gösterilen açıklama.</summary>
+    public string? TemplateBlockedMessage { get; init; }
+
+    /// <summary>Ayar değiştirme (yeniden oluşturma) ve sürüm yükseltme yapılabilir mi.</summary>
+    public bool CanChangeTemplateSettings => TemplateAvailability == ServiceTemplateAvailability.Available;
 
     public string ImageTag { get; init; } = string.Empty;
 

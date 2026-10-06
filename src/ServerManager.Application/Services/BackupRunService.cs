@@ -271,56 +271,6 @@ public class BackupRunService : IBackupRunService
         }
     }
 
-    public async Task<ServiceResult<BackupDownload>> OpenDownloadAsync(Guid runId, bool decrypt, BackupActor actor, CancellationToken cancellationToken = default)
-    {
-        var run = await _repository.GetRunAsync(runId, cancellationToken);
-        if (run is null)
-            return ServiceResult<BackupDownload>.NotFound(RunNotFoundMessage);
-        if (!run.IsArtifactAvailable())
-            return ServiceResult<BackupDownload>.Failure(ArtifactUnavailableMessage);
-
-        var storage = await ResolveStorageAsync(run.StorageId, cancellationToken);
-        if (!storage.IsSuccess)
-            return ServiceResult<BackupDownload>.Failure(storage.Message ?? "Depolama hedefi kullanılamıyor.");
-
-        var decrypting = decrypt && run.IsEncrypted;
-        string? passphrase = null;
-        if (decrypting)
-        {
-            var unprotected = UnprotectPassphrase(run);
-            if (!unprotected.IsSuccess)
-                return ServiceResult<BackupDownload>.Failure(unprotected.Message!);
-            passphrase = unprotected.Data;
-        }
-
-        var target = storage.Data!;
-        var opened = await target.Provider.OpenReadAsync(target.Settings, run.ObjectKey!, cancellationToken);
-        if (!opened.IsSuccess)
-            return ServiceResult<BackupDownload>.Failure(opened.Message ?? "Yedek dosyası açılamadı.");
-
-        var fileName = run.FileName ?? Path.GetFileName(run.ObjectKey!);
-        BackupDownload download;
-        if (decrypting)
-        {
-            var raw = opened.Data!;
-            var expectedHash = run.Sha256;
-            var content = new ProducerReadStream(async (output, token) =>
-            {
-                await using var hashing = new HashingStream(raw);
-                await BackupEncryption.DecryptAsync(hashing, output, passphrase!, token);
-                EnsureHash(hashing, expectedHash);
-            });
-            download = new BackupDownload(content, BackupNames.DecryptedFileName(fileName), "application/gzip");
-        }
-        else
-        {
-            download = new BackupDownload(opened.Data!, fileName, run.IsEncrypted ? "application/octet-stream" : "application/gzip");
-        }
-
-        await AuditAsync(AuditActions.BackupDownload, run, decrypting ? "Şifresi çözülerek indirildi" : run.IsEncrypted ? "Şifreli dosya indirildi" : "İndirildi", true, actor, cancellationToken);
-        return ServiceResult<BackupDownload>.Success(download);
-    }
-
     public async Task<ServiceResult> DeleteArtifactAsync(Guid runId, BackupActor actor, CancellationToken cancellationToken = default)
     {
         var run = await _repository.GetRunAsync(runId, cancellationToken);

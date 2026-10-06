@@ -37,7 +37,10 @@ internal static class RetentionDeleter
             var protect = mapping.PartitionColumn is not null && mapping.Mode != RetentionMode.DeleteWithChildren;
             if (protect)
             {
-                await database.ExecuteSqlRawAsync(BuildKeepSql(mapping),
+                // Parametreli komutlar sp_executesql içinde çalışır ve orada açılan #tablo komut bitince düşer. Tablo bu yüzden
+                // parametresiz komutla oturum düzeyinde açılır, ardından parametreli komutla doldurulur.
+                await database.ExecuteSqlRawAsync(BuildKeepCreateSql(mapping), cancellationToken);
+                await database.ExecuteSqlRawAsync(BuildKeepFillSql(mapping),
                     [new SqlParameter("@keep", SqlDbType.Int) { Value = keep }], cancellationToken);
             }
 
@@ -64,13 +67,24 @@ internal static class RetentionDeleter
         }
     }
 
-    internal static string BuildKeepSql(RetentionMapping mapping) => $"""
+    /// <summary>
+    /// Geçici tabloyu kaynak tablonun Id tipiyle boş açar; parametre içermemeli (bkz. <see cref="DeleteExpiredAsync"/>).
+    /// UNION ALL, Id'nin IDENTITY özelliğinin kopyalanmasını önler; yoksa doldurma INSERT'ü reddedilir.
+    /// </summary>
+    internal static string BuildKeepCreateSql(RetentionMapping mapping) => $"""
         DROP TABLE IF EXISTS {KeepTable};
-        SELECT r.Id INTO {KeepTable} FROM (
+        SELECT TOP (0) Id INTO {KeepTable} FROM {mapping.Table}
+        UNION ALL
+        SELECT TOP (0) Id FROM {mapping.Table};
+        CREATE UNIQUE CLUSTERED INDEX IX_RetentionKeep_Id ON {KeepTable} (Id);
+        """;
+
+    internal static string BuildKeepFillSql(RetentionMapping mapping) => $"""
+        INSERT INTO {KeepTable} (Id)
+        SELECT r.Id FROM (
             SELECT Id, ROW_NUMBER() OVER (PARTITION BY {mapping.PartitionColumn} ORDER BY {mapping.TimeColumn} DESC) AS RowNumber
             FROM {mapping.Table}) r
         WHERE r.RowNumber <= @keep;
-        CREATE UNIQUE CLUSTERED INDEX IX_RetentionKeep_Id ON {KeepTable} (Id);
         """;
 
     internal static string BuildDeleteSql(RetentionMapping mapping, bool protect) => $"""

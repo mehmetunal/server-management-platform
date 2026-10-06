@@ -9,6 +9,7 @@ using ServerManager.Application.DTOs.Users;
 using ServerManager.Application.Interfaces;
 using ServerManager.Application.Interfaces.Security;
 using ServerManager.Application.Interfaces.Services;
+using ServerManager.Infrastructure.Persistence;
 
 namespace ServerManager.Infrastructure.Identity;
 
@@ -22,6 +23,7 @@ public class UserManagementService : IUserManagementService
     private readonly IValidator<CreateUserDto> _createValidator;
     private readonly IValidator<UpdateUserDto> _updateValidator;
     private readonly IUserSessionRevoker _sessionRevoker;
+    private readonly ApplicationDbContext _db;
 
     public UserManagementService(
         UserManager<ApplicationUser> userManager,
@@ -29,7 +31,8 @@ public class UserManagementService : IUserManagementService
         ICurrentUserService currentUser,
         IValidator<CreateUserDto> createValidator,
         IValidator<UpdateUserDto> updateValidator,
-        IUserSessionRevoker sessionRevoker)
+        IUserSessionRevoker sessionRevoker,
+        ApplicationDbContext db)
     {
         _userManager = userManager;
         _auditLogService = auditLogService;
@@ -37,6 +40,7 @@ public class UserManagementService : IUserManagementService
         _createValidator = createValidator;
         _updateValidator = updateValidator;
         _sessionRevoker = sessionRevoker;
+        _db = db;
     }
 
     public async Task<IReadOnlyList<UserListItemDto>> GetUsersAsync(CancellationToken cancellationToken = default)
@@ -80,7 +84,7 @@ public class UserManagementService : IUserManagementService
             Id = user.Id,
             Email = user.Email ?? string.Empty,
             FullName = user.FullName,
-            Role = roles.FirstOrDefault() ?? Roles.Viewer,
+            Roles = roles.ToList(),
             IsActive = user.IsActive
         });
     }
@@ -94,6 +98,13 @@ public class UserManagementService : IUserManagementService
         var email = dto.Email.Trim();
         if (await _userManager.FindByEmailAsync(email) is not null)
             return ServiceResult<Guid>.ValidationFailure(nameof(dto.Email), "Bu e-posta adresiyle kayıtlı bir kullanıcı zaten var.");
+
+        var roles = await ResolveRolesAsync(dto.Roles, cancellationToken);
+        if (roles.Error is not null)
+            return ServiceResult<Guid>.ValidationFailure(nameof(dto.Roles), roles.Error);
+
+        if (roles.Names.Contains(Roles.SuperAdmin) && !await CurrentUserIsSuperAdminAsync())
+            return ServiceResult<Guid>.ValidationFailure(nameof(dto.Roles), "SuperAdmin rolünü yalnızca bir SuperAdmin atayabilir.");
 
         var user = new ApplicationUser
         {
@@ -109,16 +120,16 @@ public class UserManagementService : IUserManagementService
         if (!createResult.Succeeded)
             return ServiceResult<Guid>.ValidationFailure(ToErrors(createResult, nameof(dto.Password)));
 
-        var roleResult = await _userManager.AddToRoleAsync(user, dto.Role);
+        var roleResult = await _userManager.AddToRolesAsync(user, roles.Names);
         if (!roleResult.Succeeded)
-            return ServiceResult<Guid>.ValidationFailure(ToErrors(roleResult, nameof(dto.Role)));
+            return ServiceResult<Guid>.ValidationFailure(ToErrors(roleResult, nameof(dto.Roles)));
 
         await _auditLogService.LogAsync(new AuditEntry(
             AuditActions.UserCreate,
             AuditEntityTypes.User,
             user.Id.ToString(),
             user.Email,
-            $"Rol: {dto.Role}"), cancellationToken);
+            $"Rol: {string.Join(", ", roles.Names)}"), cancellationToken);
 
         return ServiceResult<Guid>.Success(user.Id, "Kullanıcı oluşturuldu.");
     }
@@ -133,17 +144,38 @@ public class UserManagementService : IUserManagementService
         if (user is null)
             return ServiceResult.NotFound(NotFoundMessage);
 
+        var roles = await ResolveRolesAsync(dto.Roles, cancellationToken);
+        if (roles.Error is not null)
+            return ServiceResult.ValidationFailure(nameof(dto.Roles), roles.Error);
+
         var currentRoles = await _userManager.GetRolesAsync(user);
         var isSelf = IsCurrentUser(user);
-        var roleChanged = !currentRoles.SequenceEqual([dto.Role]);
+        var rolesToRemove = currentRoles.Where(r => !roles.Names.Contains(r, StringComparer.OrdinalIgnoreCase)).ToList();
+        var rolesToAdd = roles.Names.Where(r => !currentRoles.Contains(r, StringComparer.OrdinalIgnoreCase)).ToList();
+        var roleChanged = rolesToRemove.Count > 0 || rolesToAdd.Count > 0;
         var activeChanged = user.IsActive != dto.IsActive;
 
         if (isSelf && (roleChanged || !dto.IsActive))
-            return ServiceResult.ValidationFailure(nameof(dto.Role), "Kendi rolünüzü değiştiremez veya hesabınızı pasifleştiremezsiniz.");
+            return ServiceResult.ValidationFailure(nameof(dto.Roles), "Kendi rolünüzü değiştiremez veya hesabınızı pasifleştiremezsiniz.");
 
-        var losesSuperAdmin = currentRoles.Contains(Roles.SuperAdmin) && (dto.Role != Roles.SuperAdmin || !dto.IsActive);
+        var losesSuperAdmin = currentRoles.Contains(Roles.SuperAdmin) && (!roles.Names.Contains(Roles.SuperAdmin) || !dto.IsActive);
         if (losesSuperAdmin && await IsLastActiveSuperAdminAsync(user))
-            return ServiceResult.ValidationFailure(nameof(dto.Role), "Sistemde en az bir aktif SuperAdmin kalmalıdır.");
+            return ServiceResult.ValidationFailure(nameof(dto.Roles), "Sistemde en az bir aktif SuperAdmin kalmalıdır.");
+
+        if (rolesToAdd.Contains(Roles.SuperAdmin) && !await CurrentUserIsSuperAdminAsync())
+            return ServiceResult.ValidationFailure(nameof(dto.Roles), "SuperAdmin rolünü yalnızca bir SuperAdmin atayabilir.");
+
+        if (roleChanged || (activeChanged && !dto.IsActive))
+        {
+            var now = DateTimeOffset.UtcNow;
+            var snapshot = await RoleSnapshot.LoadAsync(_db, now, cancellationToken);
+            var isLocked = user.LockoutEnd.HasValue && user.LockoutEnd.Value > now;
+            var after = snapshot.WithUser(user.Id, roles.Names, dto.IsActive && !isLocked);
+            var lost = RoleLockoutGuard.LostPermissions(snapshot.Users, snapshot.RolePermissions, after, snapshot.RolePermissions);
+            if (lost.Count > 0)
+                return ServiceResult.ValidationFailure(nameof(dto.Roles),
+                    "Bu değişiklikten sonra hiçbir aktif kullanıcıda şu yetkiler kalmaz: " + string.Join(", ", lost.Select(p => Permissions.DisplayNames.GetValueOrDefault(p, p))));
+        }
 
         var email = dto.Email.Trim();
         var previousEmail = user.Email;
@@ -164,15 +196,18 @@ public class UserManagementService : IUserManagementService
         if (!updateResult.Succeeded)
             return ServiceResult.ValidationFailure(ToErrors(updateResult, nameof(dto.Email)));
 
-        if (roleChanged)
+        if (rolesToRemove.Count > 0)
         {
-            var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
+            var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
             if (!removeResult.Succeeded)
-                return ServiceResult.ValidationFailure(ToErrors(removeResult, nameof(dto.Role)));
+                return ServiceResult.ValidationFailure(ToErrors(removeResult, nameof(dto.Roles)));
+        }
 
-            var addResult = await _userManager.AddToRoleAsync(user, dto.Role);
+        if (rolesToAdd.Count > 0)
+        {
+            var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
             if (!addResult.Succeeded)
-                return ServiceResult.ValidationFailure(ToErrors(addResult, nameof(dto.Role)));
+                return ServiceResult.ValidationFailure(ToErrors(addResult, nameof(dto.Roles)));
         }
 
         var passwordChanged = false;
@@ -196,7 +231,7 @@ public class UserManagementService : IUserManagementService
         if (emailChanged)
             details.Add($"E-posta: {previousEmail} -> {email}");
         if (roleChanged)
-            details.Add($"Rol: {string.Join(", ", currentRoles)} -> {dto.Role}");
+            details.Add($"Rol: {string.Join(", ", currentRoles)} -> {string.Join(", ", roles.Names)}");
         if (activeChanged)
             details.Add(dto.IsActive ? "Hesap aktifleştirildi" : "Hesap pasifleştirildi");
         if (passwordChanged)
@@ -208,6 +243,16 @@ public class UserManagementService : IUserManagementService
             user.Id.ToString(),
             user.Email,
             details.Count > 0 ? string.Join("; ", details) : null), cancellationToken);
+
+        if (roleChanged)
+        {
+            await _auditLogService.LogAsync(new AuditEntry(
+                AuditActions.RoleAssign,
+                AuditEntityTypes.User,
+                user.Id.ToString(),
+                user.Email,
+                $"Rol: {string.Join(", ", currentRoles)} -> {string.Join(", ", roles.Names)}"), cancellationToken);
+        }
 
         return ServiceResult.Success("Kullanıcı güncellendi.");
     }
@@ -277,6 +322,37 @@ public class UserManagementService : IUserManagementService
         !isActive ? "Hesabınız pasifleştirildi; terminal oturumu kapatıldı."
         : roleChanged ? "Rolünüz değiştirildi; terminal oturumu kapatıldı."
         : "Parolanız yönetici tarafından sıfırlandı; terminal oturumu kapatıldı.";
+
+    private sealed record ResolvedRoles(IReadOnlyList<string> Names, string? Error);
+
+    /// <summary>Formdan gelen rol adlarını veritabanındaki adlarına eşler; bilinmeyen rol varsa hata döner.</summary>
+    private async Task<ResolvedRoles> ResolveRolesAsync(IEnumerable<string> requested, CancellationToken cancellationToken)
+    {
+        var wanted = requested.Where(r => !string.IsNullOrWhiteSpace(r)).Select(r => r.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (wanted.Count == 0)
+            return new ResolvedRoles([], "En az bir rol seçin.");
+
+        var existing = await _db.Roles.AsNoTracking().Select(r => r.Name!).ToListAsync(cancellationToken);
+        var names = new List<string>();
+        foreach (var name in wanted)
+        {
+            var match = existing.FirstOrDefault(r => string.Equals(r, name, StringComparison.OrdinalIgnoreCase));
+            if (match is null)
+                return new ResolvedRoles([], $"Rol bulunamadı: {name}");
+            names.Add(match);
+        }
+
+        return new ResolvedRoles(names, null);
+    }
+
+    private async Task<bool> CurrentUserIsSuperAdminAsync()
+    {
+        if (_currentUser.UserId is null)
+            return false;
+
+        var current = await _userManager.FindByIdAsync(_currentUser.UserId);
+        return current is not null && await _userManager.IsInRoleAsync(current, Roles.SuperAdmin);
+    }
 
     private bool IsCurrentUser(ApplicationUser user) =>
         string.Equals(_currentUser.UserId, user.Id.ToString(), StringComparison.OrdinalIgnoreCase);

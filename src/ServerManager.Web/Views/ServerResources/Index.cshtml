@@ -1,0 +1,60 @@
+@using ServerManager.Application.ResourceUsage
+@model ServerResourcesPageViewModel
+@{
+    var page = Model.Page;
+    var server = page.Server;
+    ViewData["Title"] = $"{server.Name} · Kaynak Kullanımı";
+    ViewData["Page"] = "server-resources";
+}
+
+<partial name="_ServerHeader" model="page" />
+
+<div class="system-toolbar">
+    <label class="check-inline" title="Panel 15 saniyede bir sunucudan yeniden okunur; sekme gizliyken durur">
+        <input type="checkbox" class="form-check" data-auto-refresh-toggle data-interval="15" />
+        Otomatik yenile (15 sn)
+    </label>
+    <div class="system-toolbar-actions">
+        <span class="text-xs text-slate-500" data-panel-updated></span>
+        <button type="button" class="btn-secondary" data-panel-refresh title="Bilgiyi sunucudan yeniden oku">
+            <span class="spinner" data-spinner hidden></span>
+            @Icons.Render("refresh", "h-4 w-4") Yenile
+        </button>
+    </div>
+</div>
+
+<div data-remote-panel data-url="@Model.PanelUrl">
+    <section class="panel">
+        <div class="empty-state">
+            <span class="spinner h-6 w-6"></span>
+            <p>Kaynak kullanımı sunucudan okunuyor… (CPU dağılımı için 1-2 saniyelik örnek alınır)</p>
+        </div>
+    </section>
+</div>
+
+<partial name="_History" model="Model" />
+
+<section class="panel mt-6" id="disk-scan">
+    <div class="panel-header">
+        <div>
+            <h2 class="panel-title">En büyük klasörler ve dosyalar</h2>
+            <p class="text-xs text-slate-500">
+                du -x -d 2 ve find -xdev -size +@(ResourceRules.LargeFileMegabytes) MB ile, düşük öncelikte (nice / ionice) ve her biri en fazla @ResourceRules.ScanTimeoutSeconds sn çalışır. Yalnızca seçilen yolun dosya sistemi taranır.
+            </p>
+        </div>
+        <form class="resource-disk-form" data-disk-form action="@Model.DiskUrl">
+            <input type="text" name="path" value="@ResourceRules.DefaultScanPath" class="form-control form-control-mono" aria-label="Taranacak klasör" placeholder="/var" maxlength="@ResourceRules.MaxPathLength" />
+            <button type="submit" class="btn-secondary" title="Klasörü tara">
+                <span class="spinner" data-spinner hidden></span>
+                @Icons.Render("search", "h-4 w-4") <span data-label>Tara</span>
+            </button>
+        </form>
+    </div>
+    <div data-disk-result>
+        <p class="panel-body text-sm text-slate-500">Disk taraması isteğe bağlıdır; büyük disklerde bir dakika kadar sürebilir. Bir klasör girip "Tara"ya basın.</p>
+    </div>
+</section>
+
+@section Scripts {
+    <script src="~/lib/chart.js/chart.umd.min.js"></script>
+}

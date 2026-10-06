@@ -29,6 +29,12 @@ public class ManagedServiceOperation
 
     public string? FailureReason { get; set; }
 
+    /// <summary>
+    /// Kurulum başarıyla bitince oluşturulacak otomatik yedek işinin ayarları (JSON, şifreli; parola içerir).
+    /// İşlenince (iş oluşturuldu veya kurulum başarısız) temizlenir; uygulama yeniden açılınca bekleyenler işlenir.
+    /// </summary>
+    public string? PendingAutoBackup { get; set; }
+
     public string Log { get; set; } = string.Empty;
 
     public string? UserId { get; set; }

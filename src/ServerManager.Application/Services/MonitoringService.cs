@@ -308,6 +308,9 @@ public class MonitoringService : IMonitoringService
         yield return (RetentionTarget.TerminalSessions, _retention.TerminalSessionDays, 1);
         yield return (RetentionTarget.AlertEvents, _retention.AlertEventDays, 1);
         yield return (RetentionTarget.ServiceOperationLogs, _retention.ServiceOperationLogDays, RetentionOptions.ProtectedServiceOperationLogsPerService);
+        yield return (RetentionTarget.ContainerMetrics, _retention.ContainerMetricDays, 1);
+        yield return (RetentionTarget.ContainerMetricsHourly, _retention.ContainerMetricHourlyDays, 1);
+        yield return (RetentionTarget.ProcessSnapshots, _retention.ProcessSnapshotDays, 1);
     }
 
     private TimeSpan FreshnessWindow => TimeSpan.FromSeconds(Math.Max(120, _options.IntervalSeconds * 4));

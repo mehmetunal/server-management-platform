@@ -28,6 +28,9 @@ public class ServerManagerWebFactory : WebApplicationFactory<Program>
 
     protected virtual bool TwoFactorRequired => false;
 
+    /// <summary>Yerel yedek depolamasının kökü (Backup:LocalRootPath); test sonunda log klasörüyle birlikte silinir.</summary>
+    public string BackupRootPath => Path.Combine(_logDirectory, "backups");
+
     /// <summary>Test çıktısını yönlendirmeyen, cookie taşıyan ve kendi istemci IP'si olan bir HTTPS istemcisi döner. SM_TEST_SQL yoksa testi atlar.</summary>
     public HttpClient CreateTestClient()
     {
@@ -106,6 +109,7 @@ public class ServerManagerWebFactory : WebApplicationFactory<Program>
         builder.UseSetting("Monitoring:Enabled", "false");
         builder.UseSetting("Alerting:Enabled", "false");
         builder.UseSetting("Backup:Enabled", "false");
+        builder.UseSetting("Backup:LocalRootPath", BackupRootPath);
         builder.UseSetting("Serilog:WriteTo:1:Args:path", Path.Combine(_logDirectory, "server-manager-.log"));
         builder.UseSetting("Serilog:MinimumLevel:Default", "Warning");
 
@@ -125,6 +129,9 @@ public class ServerManagerWebFactory : WebApplicationFactory<Program>
 
     protected override IHost CreateHost(IHostBuilder builder)
     {
+        // Testler host'a CreateTestClient dışında Services üzerinden de ulaşır (ör. veri hazırlarken);
+        // SM_TEST_SQL yoksa uygulama varsayılan bağlantıyla açılıp hata vermesin, test atlansın.
+        Assert.SkipUnless(TestDatabase.IsConfigured, TestDatabase.SkipReason);
         _hostCreated = true;
         return base.CreateHost(builder);
     }

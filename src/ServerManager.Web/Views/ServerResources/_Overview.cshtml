@@ -1,0 +1,350 @@
+@using ServerManager.Application.ResourceUsage
+@model ServerResourcesPanelModel
+@{
+    var overview = Model.Overview;
+    var snapshot = overview.Snapshot;
+    var memory = snapshot.Memory;
+    var cpu = snapshot.Cpu;
+    var processes = overview.Processes;
+    var hasCpu = processes?.HasCpuUsage == true;
+    var cleanupUrl = Model.CanCleanup ? Url.Action("Index", "ServerCleanup", new { id = Model.ServerId }) : null;
+}
+
+<section class="panel mb-6" id="resources-findings">
+    <div class="panel-header">
+        <div>
+            <h2 class="panel-title">Neden yavaş?<partial name="_HelpLink" model="GuideAnchors.ResourceUsage" /></h2>
+            <p class="text-xs text-slate-500">Basit eşiklerle üretilen bulgular; kesin teşhis değil, nereye bakılacağını gösterir.</p>
+        </div>
+        <span class="text-xs text-slate-500">@DateDisplay.Format(overview.CollectedAt, "HH:mm:ss")</span>
+    </div>
+    <ul class="resource-findings">
+        @foreach (var finding in overview.Findings)
+        {
+            var link = ResourceDisplay.SectionLink(finding.Action);
+            <li class="resource-finding">
+                <span class="@ResourceDisplay.SeverityBadge(finding.Severity)">@ResourceDisplay.SeverityText(finding.Severity)</span>
+                <div class="min-w-0 flex-1">
+                    <p class="font-medium text-slate-900 dark:text-slate-100">@finding.Title</p>
+                    <p class="text-sm text-slate-600 dark:text-slate-300">@finding.Detail</p>
+                    <p class="resource-finding-links">
+                        @if (link is { } target)
+                        {
+                            <a href="@target.Anchor" class="panel-link">@target.Label →</a>
+                        }
+                        @if (finding.Action == FindingAction.Cleanup && cleanupUrl is not null)
+                        {
+                            <a href="@cleanupUrl" class="panel-link">Temizlik sayfasını aç →</a>
+                        }
+                        @if (finding.Action == FindingAction.Cleanup)
+                        {
+                            <a href="#disk-scan" class="panel-link">En büyük klasörleri bul →</a>
+                        }
+                    </p>
+                </div>
+            </li>
+        }
+    </ul>
+</section>
+
+<div class="resource-stats" id="resources-cpu">
+    <div class="stat-card">
+        <span class="stat-label">Yük ortalaması (1 / 5 / 15 dk)</span>
+        <span class="stat-value tabular-nums">@ResourceDisplay.Number(snapshot.Load1) <span class="text-base font-normal text-slate-500">/ @ResourceDisplay.Number(snapshot.Load5) / @ResourceDisplay.Number(snapshot.Load15)</span></span>
+        <div class="usage-track h-1.5"><div class="usage-bar @ResourceDisplay.LoadBarClass(snapshot.Load1, snapshot.CpuCores)" style="width: @ResourceDisplay.BarWidth(snapshot.CpuCores is > 0 && snapshot.Load1 is { } load ? load * 100 / snapshot.CpuCores.Value : 0)"></div></div>
+        <span class="text-xs text-slate-500">@(snapshot.CpuCores is null ? "Çekirdek sayısı okunamadı" : $"{snapshot.CpuCores} çekirdek · yük çekirdek sayısını aşarsa işler sırada bekler")</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">CPU (1 sn örnek)</span>
+        @if (cpu is null)
+        {
+            <span class="stat-value">—</span>
+            <span class="text-xs text-slate-500">vmstat ve /proc/stat okunamadı.</span>
+        }
+        else
+        {
+            <span class="stat-value tabular-nums">@ResourceDisplay.Percent(cpu.Busy)</span>
+            <div class="resource-stack" title="Kullanıcı / sistem / G/Ç bekleme / steal / boşta">
+                <span class="bg-brand-500" style="width: @ResourceDisplay.BarWidth(cpu.User)"></span>
+                <span class="bg-violet-400" style="width: @ResourceDisplay.BarWidth(cpu.System)"></span>
+                <span class="bg-amber-500" style="width: @ResourceDisplay.BarWidth(cpu.IoWait)"></span>
+                <span class="bg-red-500" style="width: @ResourceDisplay.BarWidth(cpu.Steal)"></span>
+            </div>
+            <span class="text-xs text-slate-500" id="resources-io-wait">
+                kullanıcı @ResourceDisplay.Percent(cpu.User) · sistem @ResourceDisplay.Percent(cpu.System) ·
+                <span class="@(cpu.IoWait >= ResourceHeuristics.IoWaitWarningPercent ? "font-semibold text-amber-600 dark:text-amber-400" : "")">G/Ç bekleme @ResourceDisplay.Percent(cpu.IoWait)</span>
+                · steal @ResourceDisplay.Percent(cpu.Steal) · boşta @ResourceDisplay.Percent(cpu.Idle)
+            </span>
+        }
+    </div>
+    <div class="stat-card" id="resources-memory">
+        <span class="stat-label">Bellek</span>
+        @if (memory is null)
+        {
+            <span class="stat-value">—</span>
+        }
+        else
+        {
+            var usedShare = ResourceDisplay.Share(memory.UsedKilobytes, memory.TotalKilobytes);
+            var cacheShare = ResourceDisplay.Share(Math.Min(memory.CacheKilobytes, memory.AvailableKilobytes), memory.TotalKilobytes);
+            <span class="stat-value tabular-nums">@ServerSystemDisplay.Kilobytes(memory.UsedKilobytes) <span class="text-base font-normal text-slate-500">/ @ServerSystemDisplay.Kilobytes(memory.TotalKilobytes)</span></span>
+            <div class="resource-stack" title="Kullanılan / önbellek / boş">
+                <span class="@MetricDisplay.UsageBarClass(memory.UsedPercent, 80, 90)" style="width: @ResourceDisplay.BarWidth(usedShare)"></span>
+                <span class="bg-sky-300 dark:bg-sky-700" style="width: @ResourceDisplay.BarWidth(cacheShare)"></span>
+            </div>
+            <span class="text-xs text-slate-500">
+                kullanılabilir @ServerSystemDisplay.Kilobytes(memory.AvailableKilobytes) (@ResourceDisplay.Percent(memory.AvailablePercent)) ·
+                önbellek @ServerSystemDisplay.Kilobytes(memory.CacheKilobytes) · paylaşımlı @ServerSystemDisplay.Kilobytes(memory.SharedKilobytes)
+            </span>
+        }
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Swap</span>
+        @if (memory is null || memory.SwapTotalKilobytes == 0)
+        {
+            <span class="stat-value">Yok</span>
+            <span class="text-xs text-slate-500">Swap tanımlı değil; bellek dolarsa çekirdek process öldürür (OOM).</span>
+        }
+        else
+        {
+            <span class="stat-value tabular-nums">@ServerSystemDisplay.Kilobytes(memory.SwapUsedKilobytes) <span class="text-base font-normal text-slate-500">/ @ServerSystemDisplay.Kilobytes(memory.SwapTotalKilobytes)</span></span>
+            <div class="usage-track h-1.5"><div class="usage-bar @MetricDisplay.UsageBarClass(memory.SwapUsedPercent, ResourceHeuristics.SwapWarningPercent, ResourceHeuristics.SwapCriticalPercent)" style="width: @ResourceDisplay.BarWidth(memory.SwapUsedPercent ?? 0)"></div></div>
+            <span class="text-xs text-slate-500">@ResourceDisplay.Percent(memory.SwapUsedPercent) dolu · çalışma süresi @MetricDisplay.Uptime(snapshot.UptimeSeconds)</span>
+        }
+    </div>
+</div>
+
+@if (snapshot.OomEvents.Count > 0)
+{
+    <section class="panel mb-6">
+        <div class="panel-header">
+            <h2 class="panel-title">OOM kayıtları (@(snapshot.OomSource == "journal" ? "son 24 saat" : "dmesg"))</h2>
+        </div>
+        <pre class="resource-log">@string.Join("\n", snapshot.OomEvents)</pre>
+    </section>
+}
+
+<div class="resource-grid" id="resources-processes">
+    @await Html.PartialAsync("_TopProcesses", new ResourceProcessTableModel(Model.ServerId, "En çok CPU kullananlar",
+        hasCpu ? "ps %CPU: process başladığından beri ortalama (100 = bir çekirdek)" : "BusyBox ps CPU yüzdesi vermez",
+        hasCpu ? overview.TopCpu(ResourceRules.TopProcessCount) : [], hasCpu, Model.CanManageProcesses))
+    @await Html.PartialAsync("_TopProcesses", new ResourceProcessTableModel(Model.ServerId, "En çok RAM kullananlar",
+        "RSS: process'in fiziksel bellekte tuttuğu alan",
+        overview.TopMemory(ResourceRules.TopProcessCount), hasCpu, Model.CanManageProcesses))
+</div>
+
+<div class="resource-grid" id="resources-io">
+    <section class="panel">
+        <div class="panel-header">
+            <div>
+                <h3 class="panel-title">Disk G/Ç yapan process'ler</h3>
+                <p class="text-xs text-slate-500">pidstat -d 1 1 (1 saniyelik örnek)</p>
+            </div>
+        </div>
+        @if (!snapshot.IoToolAvailable)
+        {
+            <p class="panel-body text-sm text-slate-500">pidstat bulunamadı. Process bazında G/Ç görmek için sunucuya sysstat paketini kurun (ör. <code>apt install sysstat</code>).</p>
+        }
+        else if (snapshot.IoProcesses.Count == 0)
+        {
+            <p class="panel-body text-sm text-slate-500">Örnek süresince disk okuyan / yazan process olmadı.</p>
+        }
+        else
+        {
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead><tr><th class="text-right">PID</th><th>Komut</th><th class="text-right">Okuma</th><th class="text-right">Yazma</th></tr></thead>
+                    <tbody>
+                        @foreach (var io in snapshot.IoProcesses)
+                        {
+                            <tr>
+                                <td class="text-right font-mono text-xs tabular-nums">@io.Pid</td>
+                                <td class="resource-command" title="@io.Command">@io.Command</td>
+                                <td class="whitespace-nowrap text-right tabular-nums">@MetricDisplay.Rate(io.ReadKilobytesPerSecond * 1024)</td>
+                                <td class="whitespace-nowrap text-right tabular-nums">@MetricDisplay.Rate(io.WriteKilobytesPerSecond * 1024)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+    <section class="panel">
+        <div class="panel-header">
+            <div>
+                <h3 class="panel-title">Swap kullanan process'ler</h3>
+                <p class="text-xs text-slate-500">/proc/&lt;pid&gt;/status içindeki VmSwap</p>
+            </div>
+        </div>
+        @if (snapshot.SwapProcesses.Count == 0)
+        {
+            <p class="panel-body text-sm text-slate-500">Swap'ta bekleyen process yok.</p>
+        }
+        else
+        {
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead><tr><th class="text-right">PID</th><th>Ad</th><th class="text-right">Swap</th></tr></thead>
+                    <tbody>
+                        @foreach (var swap in snapshot.SwapProcesses)
+                        {
+                            <tr>
+                                <td class="text-right font-mono text-xs tabular-nums">@swap.Pid</td>
+                                <td class="text-sm">@swap.Name</td>
+                                <td class="text-right tabular-nums">@ServerSystemDisplay.Kilobytes(swap.SwapKilobytes)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>
+
+<section class="panel mb-6" id="resources-containers">
+    <div class="panel-header">
+        <div>
+            <h2 class="panel-title">Container'lar</h2>
+            <p class="text-xs text-slate-500">docker stats --no-stream · CPU 100 = bir çekirdek · ağ ve disk değerleri container başladığından beri toplamdır</p>
+        </div>
+        @if (overview.Containers is { Count: > 0 })
+        {
+            <select class="form-control w-auto" data-container-sort aria-label="Sıralama" title="Container'ları sırala">
+                <option value="cpu">CPU'ya göre</option>
+                <option value="memory">RAM'e göre</option>
+                <option value="net">Ağ trafiğine göre</option>
+                <option value="block">Disk G/Ç'ye göre</option>
+            </select>
+        }
+    </div>
+    @if (!overview.DockerIncluded)
+    {
+        <p class="panel-body text-sm text-slate-500">Container istatistikleri için Docker görüntüleme yetkisi gerekir.</p>
+    }
+    else if (overview.Containers is null)
+    {
+        <p class="panel-body text-sm text-slate-500">@(overview.DockerMessage ?? "Docker istatistikleri okunamadı.")</p>
+    }
+    else if (overview.Containers.Count == 0)
+    {
+        <p class="panel-body text-sm text-slate-500">Çalışan container yok.</p>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Container</th>
+                        <th>Ait olduğu</th>
+                        <th class="text-right">CPU</th>
+                        <th class="text-right">RAM</th>
+                        <th class="hidden text-right md:table-cell">Ağ (alınan / gönderilen)</th>
+                        <th class="hidden text-right md:table-cell">Disk (okunan / yazılan)</th>
+                        <th class="hidden text-right lg:table-cell">PID</th>
+                    </tr>
+                </thead>
+                <tbody data-container-rows>
+                    @foreach (var container in overview.Containers)
+                    {
+                        var stats = container.Stats;
+                        <tr data-cpu="@stats.CpuPercent.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-memory="@stats.MemoryUsageBytes"
+                            data-net="@(stats.NetworkRxBytes + stats.NetworkTxBytes)" data-block="@(stats.BlockReadBytes + stats.BlockWriteBytes)">
+                            <td>
+                                <a asp-controller="Docker" asp-action="Container" asp-route-id="@Model.ServerId" asp-route-name="@container.Name" class="font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400" title="Container ayrıntıları, logları ve terminali">@container.Name</a>
+                            </td>
+                            <td class="text-sm">
+                                @if (container.Owner is { } owner)
+                                {
+                                    var ownerUrl = owner.Id is { } ownerId
+                                        ? owner.Kind == PanelOwnerKind.Project ? Url.Action("Details", "Projects", new { id = ownerId })
+                                        : owner.Kind == PanelOwnerKind.Service ? Url.Action("Details", "ManagedServices", new { id = ownerId }) : null
+                                        : null;
+                                    <span class="badge-brand">@ResourceDisplay.OwnerKindText(owner)</span>
+                                    @if (ownerUrl is not null)
+                                    {
+                                        <a href="@ownerUrl" class="panel-link" title="Panel kaydını aç">@ResourceDisplay.OwnerText(owner)</a>
+                                    }
+                                    else
+                                    {
+                                        <span>@ResourceDisplay.OwnerText(owner)</span>
+                                    }
+                                }
+                                else if (container.ComposeProject is not null)
+                                {
+                                    <span class="badge-neutral">Compose</span> <span>@container.ComposeProject</span>
+                                }
+                                else
+                                {
+                                    <span class="text-slate-400">—</span>
+                                }
+                            </td>
+                            <td class="text-right tabular-nums">@ResourceDisplay.Percent(stats.CpuPercent)</td>
+                            <td class="whitespace-nowrap text-right tabular-nums">
+                                @MetricDisplay.Bytes(stats.MemoryUsageBytes)
+                                <span class="block text-xs text-slate-500">@ResourceDisplay.Percent(stats.MemoryPercent) / @MetricDisplay.Bytes(stats.MemoryLimitBytes)</span>
+                            </td>
+                            <td class="hidden whitespace-nowrap text-right text-sm tabular-nums md:table-cell">@MetricDisplay.Bytes(stats.NetworkRxBytes) / @MetricDisplay.Bytes(stats.NetworkTxBytes)</td>
+                            <td class="hidden whitespace-nowrap text-right text-sm tabular-nums md:table-cell">@MetricDisplay.Bytes(stats.BlockReadBytes) / @MetricDisplay.Bytes(stats.BlockWriteBytes)</td>
+                            <td class="hidden text-right tabular-nums lg:table-cell">@stats.Pids</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+<section class="panel" id="resources-disk">
+    <div class="panel-header">
+        <div>
+            <h2 class="panel-title">Dosya sistemleri</h2>
+            <p class="text-xs text-slate-500">Doluluk ve inode kullanımı (sanal dosya sistemleri gizlenir)</p>
+        </div>
+        @if (cleanupUrl is not null)
+        {
+            <a href="@cleanupUrl" class="btn-secondary btn-sm" title="Kullanılmayan Docker kaynaklarını ve eski logları temizle">@Icons.Render("trash", "h-4 w-4") Temizlik</a>
+        }
+    </div>
+    @if (overview.Storage is not { FileSystems.Count: > 0 } storage)
+    {
+        <p class="panel-body text-sm text-slate-500">Disk bilgisi okunamadı.</p>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Bağlama noktası</th>
+                        <th class="text-right">Boyut</th>
+                        <th class="text-right">Boş</th>
+                        <th class="w-48">Doluluk</th>
+                        <th class="text-right">Inode</th>
+                        <th><span class="sr-only">Tara</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var fs in storage.FileSystems)
+                    {
+                        <tr>
+                            <td class="font-mono text-sm" title="@fs.Device">@fs.MountPoint</td>
+                            <td class="text-right tabular-nums">@ServerSystemDisplay.Kilobytes(fs.SizeKilobytes)</td>
+                            <td class="text-right tabular-nums">@ServerSystemDisplay.Kilobytes(fs.AvailableKilobytes)</td>
+                            <td>
+                                <div class="system-usage">
+                                    <div class="usage-track h-1.5 flex-1"><div class="usage-bar @MetricDisplay.UsageBarClass(fs.UsePercent, ServerSystemDisplay.DiskWarningPercent, ServerSystemDisplay.DiskCriticalPercent)" style="width: @MetricDisplay.BarWidth(fs.UsePercent)"></div></div>
+                                    <span class="system-usage-value">%@fs.UsePercent</span>
+                                </div>
+                            </td>
+                            <td class="text-right text-sm tabular-nums">@(fs.InodeUsePercent is null ? "—" : $"%{fs.InodeUsePercent}")</td>
+                            <td class="text-right">
+                                <button type="button" class="btn-ghost btn-sm px-2" data-disk-scan-path="@fs.MountPoint" title="Bu dosya sistemindeki en büyük klasör ve dosyaları bul">@Icons.Render("search", "h-4 w-4")</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

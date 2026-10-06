@@ -27,11 +27,14 @@ COPY src/Plugins/ServerManager.Plugin.Git.GitHub/ServerManager.Plugin.Git.GitHub
 COPY src/Plugins/ServerManager.Plugin.Notifications.Discord/ServerManager.Plugin.Notifications.Discord.csproj src/Plugins/ServerManager.Plugin.Notifications.Discord/
 COPY src/Plugins/ServerManager.Plugin.Notifications.Email/ServerManager.Plugin.Notifications.Email.csproj src/Plugins/ServerManager.Plugin.Notifications.Email/
 COPY src/Plugins/ServerManager.Plugin.Notifications.Telegram/ServerManager.Plugin.Notifications.Telegram.csproj src/Plugins/ServerManager.Plugin.Notifications.Telegram/
+COPY src/Plugins/ServerManager.Plugin.Services.Extra/ServerManager.Plugin.Services.Extra.csproj src/Plugins/ServerManager.Plugin.Services.Extra/
 COPY src/Plugins/ServerManager.Plugin.Storage.AzureBlob/ServerManager.Plugin.Storage.AzureBlob.csproj src/Plugins/ServerManager.Plugin.Storage.AzureBlob/
 COPY src/Plugins/ServerManager.Plugin.Storage.S3/ServerManager.Plugin.Storage.S3.csproj src/Plugins/ServerManager.Plugin.Storage.S3/
 RUN dotnet restore src/ServerManager.Web/ServerManager.Web.csproj
 
 COPY src/ src/
+# Kullanım kılavuzu Web derlemesine gömülür (EmbeddedResource); kaynak Markdown dosyaları derlemede gerekir.
+COPY docs/ docs/
 
 # Web projesinin derlemesi eklentileri de derler (ProjectReference, ReferenceOutputAssembly=false);
 # eklentiler src/ServerManager.Web/Plugins/{SystemName}/ altına yazılır ve PublishPlugins hedefi

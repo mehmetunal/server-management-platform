@@ -24,8 +24,6 @@ public interface IBackupRunService
 
     Task<ServiceResult> RunRestoreAsync(Guid restoreRunId, BackupRestoreDto dto, BackupActor actor, BackupCancellation cancellation);
 
-    Task<ServiceResult<BackupDownload>> OpenDownloadAsync(Guid runId, bool decrypt, BackupActor actor, CancellationToken cancellationToken = default);
-
     Task<ServiceResult> DeleteArtifactAsync(Guid runId, BackupActor actor, CancellationToken cancellationToken = default);
 
     Task<int> InterruptRunningAsync(CancellationToken cancellationToken = default);

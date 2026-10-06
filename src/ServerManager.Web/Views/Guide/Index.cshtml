@@ -1,0 +1,69 @@
+@using Microsoft.AspNetCore.Html
+@using ServerManager.Web.Services
+@model GuideDocument
+@{
+    ViewData["Title"] = "Kullanım Kılavuzu";
+    ViewData["Page"] = "user-guide";
+    var imageBase = ViewData["GuideImageBase"] as string ?? "/Guide/Image/";
+}
+@functions {
+    private IHtmlContent Fragment(string html, string imageBase) =>
+        new HtmlString(html.Replace(UserGuideRenderer.ImagePathToken, imageBase, StringComparison.Ordinal));
+}
+
+<div class="page-header guide-header">
+    <div>
+        <h1 class="page-title">Kullanım Kılavuzu</h1>
+        <p class="page-lead">Paneldeki işlerin adım adım anlatımı. Soldaki içindekilerden bölüme gidin veya arayın; sayfa başlıklarındaki @Icons.Render("question", "inline h-4 w-4 align-text-bottom") simgesi bu sayfanın ilgili bölümünü açar.</p>
+    </div>
+    <button type="button" class="btn-secondary" data-guide-print title="Kılavuzu yazdır veya PDF olarak kaydet">@Icons.Render("document", "h-4 w-4") Yazdır</button>
+</div>
+
+<div class="guide-layout" data-guide>
+    <aside class="guide-sidebar" aria-label="İçindekiler">
+        <div class="guide-search">
+            <div class="search-field">
+                <span class="search-field-icon">@Icons.Render("search", "h-4 w-4")</span>
+                <input type="search" class="form-control" placeholder="Kılavuzda ara…" aria-label="Kılavuzda ara" autocomplete="off" data-guide-search />
+            </div>
+            <p class="guide-search-status" data-guide-search-status aria-live="polite" hidden></p>
+        </div>
+        <nav class="guide-toc" data-guide-toc>
+            @foreach (var chapter in Model.Chapters)
+            {
+                <p class="guide-toc-chapter"><a href="#@chapter.Id" data-toc-link="@chapter.Id">@chapter.Title</a></p>
+                <ul class="guide-toc-list">
+                    @foreach (var part in chapter.Sections)
+                    {
+                        <li data-toc-section="@part.Id">
+                            <a href="#@part.Id" class="guide-toc-link" data-toc-link="@part.Id">@part.Title</a>
+                            @if (part.Headings.Count > 0)
+                            {
+                                <ul class="guide-toc-sublist">
+                                    @foreach (var heading in part.Headings)
+                                    {
+                                        <li><a href="#@heading.Id" class="guide-toc-link guide-toc-link-sub" data-toc-link="@heading.Id">@heading.Title</a></li>
+                                    }
+                                </ul>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+        </nav>
+    </aside>
+
+    <article class="panel guide-content" data-guide-content>
+        @foreach (var chapter in Model.Chapters)
+        {
+            <div class="guide-chapter" data-guide-chapter>
+                <div class="guide-chapter-intro" data-guide-intro>@Fragment(chapter.IntroHtml, imageBase)</div>
+                @foreach (var part in chapter.Sections)
+                {
+                    <section class="guide-section" data-guide-section="@part.Id">@Fragment(part.Html, imageBase)</section>
+                }
+            </div>
+        }
+        <p class="guide-empty" data-guide-empty hidden>Aramanızla eşleşen bölüm yok. Başka bir kelime deneyin.</p>
+    </article>
+</div>

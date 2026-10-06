@@ -132,6 +132,7 @@
                             <th>Depolama</th>
                             <th>Son çalışma</th>
                             <th>Sonraki</th>
+                            <th class="text-right"><span class="sr-only">İşlem</span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -142,6 +143,13 @@
                                 <td class="text-sm">@job.StorageName</td>
                                 <td class="text-sm">@(job.LastRunAt is { } last ? DateDisplay.Relative(last) : "—")@(job.LastRunStatus is { } status ? $" · {BackupDisplay.StatusText(status)}" : "")</td>
                                 <td class="text-sm">@(job.NextRunAt is { } next ? DateDisplay.Format(next, "dd.MM.yyyy HH:mm") : "—")</td>
+                                <td class="text-right whitespace-nowrap">
+                                    @if (User.HasPermission(Permissions.BackupDownload))
+                                    {
+                                        <partial name="~/Views/BackupRuns/_DownloadButton.cshtml" model='BackupDownloadButtonModel.ForLatest(job, "Son yedek")' />
+                                    }
+                                    <a asp-controller="BackupJobs" asp-action="Details" asp-route-id="@job.Id" class="btn-ghost btn-sm" title="İşin yedek geçmişini aç">@Icons.Render("clock", "h-4 w-4") Geçmiş</a>
+                                </td>
                             </tr>
                         }
                     </tbody>

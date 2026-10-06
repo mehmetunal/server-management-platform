@@ -15,4 +15,7 @@ public interface IAlertService
     Task<AlertEvaluationResult> EvaluateAsync(CancellationToken cancellationToken = default);
 
     Task<int> RunMaintenanceAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Servis sayfası için: servise ait açık "Servis çalışmıyor" ve "yeniden başlama döngüsü" alarmları.</summary>
+    Task<IReadOnlyList<AlertEventDto>> GetOpenServiceAlertsAsync(Guid serviceId, Guid serverId, string containerName, CancellationToken cancellationToken = default);
 }

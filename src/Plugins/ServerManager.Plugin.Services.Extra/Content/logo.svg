@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Ek servis şablonları">
+  <rect x="4" y="4" width="18" height="18" rx="4" fill="#6366F1"/>
+  <rect x="26" y="4" width="18" height="18" rx="4" fill="#FF5CAA"/>
+  <rect x="4" y="26" width="18" height="18" rx="4" fill="#FFCC01"/>
+  <rect x="26" y="26" width="18" height="18" rx="4" fill="#4D9FD6"/>
+  <path d="M35 30v10M30 35h10" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+</svg>

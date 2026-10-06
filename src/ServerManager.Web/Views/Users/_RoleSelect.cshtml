@@ -1,7 +1,17 @@
-@model string
-<select id="Role" name="Role" class="form-control">
-    @foreach (var role in Roles.All)
+@model RoleSelectModel
+<div class="role-select" id="Roles">
+    @foreach (var role in Model.Options)
     {
-        <option value="@role" selected="@(role == Model)">@role — @Roles.Descriptions[role]</option>
+        var isSuperAdmin = Roles.IsSuperAdmin(role.Name);
+        var selected = Model.Selected.Contains(role.Name, StringComparer.OrdinalIgnoreCase);
+        var disabled = isSuperAdmin && !Model.CanAssignSuperAdmin && !selected;
+        <label class="check-card" title="@(disabled ? "SuperAdmin rolünü yalnızca bir SuperAdmin atayabilir" : role.Description)">
+            <input type="checkbox" name="Roles" value="@role.Name" class="form-check" checked="@selected" disabled="@disabled" />
+            <span>
+                <span class="check-card-title">@role.Name @if (!role.IsBuiltIn) { <span class="badge-neutral">Özel</span> }</span>
+                <span class="check-card-text">@(role.Description ?? (Roles.Descriptions.TryGetValue(role.Name, out var text) ? text : "—"))</span>
+            </span>
+        </label>
     }
-</select>
+</div>
+<p class="form-hint">Birden fazla rol seçilebilir; kullanıcının izinleri seçilen rollerin birleşimidir.</p>

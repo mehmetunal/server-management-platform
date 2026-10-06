@@ -25,7 +25,11 @@ src/ServerManager.Web/App_Data/
 .claude/
 .codegraph/
 docker/
-docs/
+# docs/ içinden yalnızca uygulamaya gömülen kullanım kılavuzu (ve resimleri) imaja girer.
+docs/*
+!docs/kullanim-kilavuzu.md
+!docs/son-kullanici.md
+!docs/images/
 tests/
 tools/
 *.md

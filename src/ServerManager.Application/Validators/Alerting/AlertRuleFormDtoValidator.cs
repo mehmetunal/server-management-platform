@@ -30,6 +30,18 @@ public sealed class AlertRuleFormDtoValidator : AbstractValidator<AlertRuleFormD
             .InclusiveBetween(1, AlertRuleKinds.MaxSslThresholdDays).WithMessage($"Gün sayısı 1 ile {AlertRuleKinds.MaxSslThresholdDays} arasında olmalıdır.")
             .When(x => x.Kind == AlertRuleKind.SslCertificateExpiry);
 
+        RuleFor(x => x.Threshold)
+            .InclusiveBetween(1, AlertRuleKinds.MaxRestartThreshold).WithMessage($"Yeniden başlama sayısı 1 ile {AlertRuleKinds.MaxRestartThreshold} arasında olmalıdır.")
+            .When(x => x.Kind == AlertRuleKind.ContainerRestartLoop);
+
+        RuleFor(x => x.Threshold)
+            .InclusiveBetween(1, AlertRuleKinds.MaxReclaimableGigabytes).WithMessage($"Eşik 1 ile {AlertRuleKinds.MaxReclaimableGigabytes} GB arasında olmalıdır.")
+            .When(x => x.Kind == AlertRuleKind.ReclaimableSpace);
+
+        RuleFor(x => x.DurationMinutes)
+            .InclusiveBetween(5, AlertRuleKinds.MaxDurationMinutes).WithMessage($"Pencere 5 ile {AlertRuleKinds.MaxDurationMinutes} dakika arasında olmalıdır.")
+            .When(x => x.Kind == AlertRuleKind.ContainerRestartLoop);
+
         RuleFor(x => x.DurationMinutes)
             .InclusiveBetween(0, AlertRuleKinds.MaxDurationMinutes).WithMessage($"Süre 0 ile {AlertRuleKinds.MaxDurationMinutes} dakika arasında olmalıdır.")
             .When(x => AlertRuleKinds.UsesDuration(x.Kind));

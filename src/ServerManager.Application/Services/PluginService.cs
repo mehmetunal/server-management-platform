@@ -8,6 +8,7 @@ using ServerManager.Application.DTOs.Plugins;
 using ServerManager.Application.Interfaces;
 using ServerManager.Application.Interfaces.Repositories;
 using ServerManager.Application.Interfaces.Services;
+using ServerManager.Application.ManagedServices;
 using ServerManager.Application.Plugins;
 using ServerManager.Domain.Entities;
 
@@ -27,6 +28,7 @@ public class PluginService : IPluginService
     private readonly PluginOptions _options;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<PluginService> _logger;
+    private readonly IServiceTemplateCatalog _serviceTemplates;
 
     public PluginService(
         IPluginCatalog catalog,
@@ -38,8 +40,10 @@ public class PluginService : IPluginService
         ICurrentUserService currentUser,
         IOptions<PluginOptions> options,
         TimeProvider timeProvider,
-        ILogger<PluginService> logger)
+        ILogger<PluginService> logger,
+        IServiceTemplateCatalog serviceTemplates)
     {
+        _serviceTemplates = serviceTemplates;
         _catalog = catalog;
         _pluginRepository = pluginRepository;
         _migrator = migrator;
@@ -72,6 +76,7 @@ public class PluginService : IPluginService
                     LogoFile = ResolveLogoFile(plugin),
                     IsLoaded = plugin.IsLoaded,
                     LoadError = plugin.LoadError,
+                    Warnings = plugin.IsLoaded ? _serviceTemplates.GetIssues(plugin.SystemName) : [],
                     IsInstalled = record is not null,
                     IsEnabled = record?.IsEnabled == true && plugin.IsLoaded,
                     InstalledVersion = record?.Version,

@@ -36,6 +36,8 @@ public static class BreadcrumbTrail
         ["BackupStorages"] = new("Yedekleme", "BackupJobs", "Index", "Yedek işlerine dön", Permissions.BackupView),
         ["Security"] = new("Güvenlik", "Security", "Index", "Güvenlik taramalarına dön", Permissions.SecurityView),
         ["Users"] = new("Kullanıcılar", "Users", "Index", "Kullanıcı listesine dön", Permissions.UserManage),
+        ["Roles"] = new("Roller", "Roles", "Index", "Rol listesine dön", Permissions.RolesManage),
+        ["ApiKeys"] = new("API anahtarları", "ApiKeys", "Index", "API anahtarlarına dön", null),
         ["AuditLogs"] = new("Audit Log", "AuditLogs", "Index", "Kayıt listesine dön", Permissions.AuditView),
         ["Plugins"] = new("Eklentiler", "Plugins", "Index", "Eklenti listesine dön", Permissions.PluginManage),
         ["Settings"] = new("Ayarlar", "Settings", "Index", "Ayarlara dön", Permissions.SettingsView),
@@ -45,7 +47,7 @@ public static class BreadcrumbTrail
     private static readonly HashSet<string> ServerControllers = new(StringComparer.OrdinalIgnoreCase)
     {
         "Docker", "Terminal", "Files", "ServerSystem", "ServerSecurity", "ServerBackups",
-        "ServerAlerts", "ServerActivity", "ServerDeployments", "Dokku", "Dokploy"
+        "ServerAlerts", "ServerActivity", "ServerDeployments", "ServerResources", "ServerCleanup", "Dokku", "Dokploy"
     };
 
     public static IReadOnlyList<BreadcrumbItem> Build(ViewContext viewContext, IUrlHelper url)

@@ -37,7 +37,7 @@ internal static class RetentionAllowList
     private static readonly Regex AllowedTablePattern = new(
         "^(ServerMetrics|ServerMetricsHourly|ServerHealthChecks|UptimeCheckResults|NotificationDeliveries|SecurityScans" +
         "|Deployments|BackupRuns|CommandRuns|CommandRunTargets|TerminalSessions|TerminalCommands|AlertEvents" +
-        "|ManagedServiceOperations)$",
+        "|ManagedServiceOperations|ContainerMetricSamples|ContainerMetricsHourly|ProcessSnapshots)$",
         RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     private static readonly Regex AllowedColumnPattern = new(
@@ -71,7 +71,10 @@ internal static class RetentionAllowList
                 ChildTable: "TerminalCommands", ChildForeignKey: "SessionId"),
             [RetentionTarget.AlertEvents] = new("AlertEvents", "ResolvedAt", null, Filter: $"t.Status = {(int)AlertEventStatus.Resolved}"),
             [RetentionTarget.ServiceOperationLogs] = new("ManagedServiceOperations", "StartedAt", "ServiceId", RetentionMode.TrimLog,
-                Filter: "t.FinishedAt IS NOT NULL", LogColumn: "Log")
+                Filter: "t.FinishedAt IS NOT NULL", LogColumn: "Log"),
+            [RetentionTarget.ContainerMetrics] = new("ContainerMetricSamples", "CollectedAt", "ServerId"),
+            [RetentionTarget.ContainerMetricsHourly] = new("ContainerMetricsHourly", "HourStart", "ServerId"),
+            [RetentionTarget.ProcessSnapshots] = new("ProcessSnapshots", "CollectedAt", "ServerId")
         };
 
     public static RetentionMapping Resolve(RetentionTarget target)

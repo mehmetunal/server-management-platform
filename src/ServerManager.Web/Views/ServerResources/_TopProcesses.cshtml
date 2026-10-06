@@ -1,0 +1,83 @@
+@model ResourceProcessTableModel
+
+<section class="panel">
+    <div class="panel-header">
+        <div>
+            <h3 class="panel-title">@Model.Title</h3>
+            <p class="text-xs text-slate-500">@Model.Note</p>
+        </div>
+    </div>
+    @if (Model.Processes.Count == 0)
+    {
+        <p class="panel-body text-sm text-slate-500">Process listesi okunamadı.</p>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th class="text-right">PID</th>
+                        <th>Kullanıcı</th>
+                        <th>Komut</th>
+                        @if (Model.HasCpuUsage)
+                        {
+                            <th class="text-right">CPU</th>
+                        }
+                        <th class="text-right">RAM</th>
+                        @if (Model.HasCpuUsage)
+                        {
+                            <th class="hidden text-right md:table-cell">Süre</th>
+                        }
+                        @if (Model.CanManage)
+                        {
+                            <th class="text-right"><span class="sr-only">İşlemler</span></th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var process in Model.Processes)
+                    {
+                        <tr>
+                            <td class="text-right font-mono text-xs tabular-nums">@process.Pid</td>
+                            <td class="text-sm">@process.User</td>
+                            <td class="resource-command" title="@process.Command"><span class="font-medium">@process.Name</span> <span class="text-slate-500">@process.Command</span></td>
+                            @if (Model.HasCpuUsage)
+                            {
+                                <td class="text-right tabular-nums">@ServerSystemDisplay.Percent(process.CpuPercent)</td>
+                            }
+                            <td class="whitespace-nowrap text-right tabular-nums">
+                                @ServerSystemDisplay.Kilobytes(process.ResidentKilobytes)
+                                @if (process.MemoryPercent is not null)
+                                {
+                                    <span class="block text-xs text-slate-500">@ServerSystemDisplay.Percent(process.MemoryPercent)</span>
+                                }
+                            </td>
+                            @if (Model.HasCpuUsage)
+                            {
+                                <td class="hidden whitespace-nowrap text-right text-sm tabular-nums md:table-cell">@MetricDisplay.Uptime(process.ElapsedSeconds)</td>
+                            }
+                            @if (Model.CanManage)
+                            {
+                                <td class="whitespace-nowrap text-right">
+                                    @if (process.Pid > 1)
+                                    {
+                                        <button type="button" class="btn-ghost-danger btn-sm px-2" title="Process'i sonlandır (SIGTERM; seçenekle SIGKILL)"
+                                                data-ajax-action data-url="@Url.Action("SignalProcess", "ServerSystem", new { id = Model.ServerId })"
+                                                data-field-pid="@process.Pid" data-field-name="@process.Name" data-field-signal="@((int)ProcessSignal.Terminate)"
+                                                data-confirm-title="Process sonlandırılsın mı?"
+                                                data-confirm-message="@process.Name (PID @process.Pid, kullanıcı @process.User) sonlandırılır. Kaydedilmemiş veriler kaybolabilir."
+                                                data-confirm-check="Zorla sonlandır (SIGKILL)" data-check-field="kill"
+                                                data-confirm-label="Sonlandır">
+                                            @Icons.Render("x", "h-4 w-4")
+                                        </button>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

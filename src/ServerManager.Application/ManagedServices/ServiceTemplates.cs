@@ -4,8 +4,9 @@ using ServerManager.Domain.Enums;
 namespace ServerManager.Application.ManagedServices;
 
 /// <summary>
-/// Tek tıkla kurulabilen servislerin sabit kataloğu. Komutlar container içinde çalışır ve gizli değerleri container'ın
+/// Yerleşik (çekirdekle gelen) servis şablonları. Komutlar container içinde çalışır ve gizli değerleri container'ın
 /// ortam değişkenlerinden (<c>$POSTGRES_PASSWORD</c> …) okur; panel parolayı hiçbir komut satırına yazmaz.
+/// Şablon aramaları eklenti şablonlarını da kapsayan <see cref="IServiceTemplateCatalog"/> üzerinden yapılır.
 /// </summary>
 public static class ServiceTemplates
 {
@@ -24,7 +25,7 @@ public static class ServiceTemplates
 
     private const string SqlCmd = "/opt/mssql-tools18/bin/sqlcmd";
 
-    public static readonly IReadOnlyList<ServiceTemplate> All =
+    public static readonly IReadOnlyList<ServiceTemplate> BuiltIn =
     [
         new ServiceTemplate
         {
@@ -32,7 +33,7 @@ public static class ServiceTemplates
             DisplayName = "PostgreSQL",
             Category = ManagedServiceCategory.Database,
             Description = "Güçlü, açık kaynak ilişkisel veritabanı.",
-            LogoText = "PG",
+            LogoFile = "postgres.svg",
             Color = "#336791",
             Image = "postgres",
             Tags = ["18", "17", "16", "15", "14"],
@@ -78,7 +79,7 @@ public static class ServiceTemplates
             DisplayName = "MySQL",
             Category = ManagedServiceCategory.Database,
             Description = "Yaygın kullanılan açık kaynak ilişkisel veritabanı.",
-            LogoText = "My",
+            LogoFile = "mysql.svg",
             Color = "#00758F",
             Image = "mysql",
             Tags = ["8.4", "lts", "innovation", "8.0"],
@@ -120,7 +121,7 @@ public static class ServiceTemplates
             DisplayName = "MariaDB",
             Category = ManagedServiceCategory.Database,
             Description = "MySQL uyumlu, topluluk tarafından geliştirilen veritabanı.",
-            LogoText = "Ma",
+            LogoFile = "mariadb.svg",
             Color = "#003545",
             Image = "mariadb",
             Tags = ["11.8", "11.4", "10.11", "lts"],
@@ -162,7 +163,7 @@ public static class ServiceTemplates
             DisplayName = "Redis",
             Category = ManagedServiceCategory.Database,
             Description = "Bellek içi anahtar-değer deposu; önbellek, kuyruk ve oturumlar için.",
-            LogoText = "Rd",
+            LogoFile = "redis.svg",
             Color = "#DC382D",
             Image = "redis",
             Tags = ["8", "7.4", "7.2"],
@@ -192,7 +193,7 @@ public static class ServiceTemplates
             DisplayName = "MongoDB",
             Category = ManagedServiceCategory.Database,
             Description = "Doküman tabanlı NoSQL veritabanı.",
-            LogoText = "Mg",
+            LogoFile = "mongodb.svg",
             Color = "#47A248",
             Image = "mongo",
             Tags = ["8.0", "7.0", "6.0"],
@@ -232,7 +233,7 @@ public static class ServiceTemplates
             DisplayName = "SQL Server",
             Category = ManagedServiceCategory.Database,
             Description = "Microsoft SQL Server (Linux container). Varsayılan sürüm Developer'dır.",
-            LogoText = "MS",
+            LogoFile = "mssql.svg",
             Color = "#CC2927",
             Image = "mcr.microsoft.com/mssql/server",
             Tags = ["2022-latest", "2025-latest"],
@@ -273,7 +274,7 @@ public static class ServiceTemplates
             DisplayName = "MinIO",
             Category = ManagedServiceCategory.Application,
             Description = "S3 uyumlu nesne depolama; API ve web konsolu.",
-            LogoText = "S3",
+            LogoFile = "minio.svg",
             Color = "#C72E49",
             Image = "minio/minio",
             Tags = ["latest", "RELEASE.2025-04-22T22-12-26Z"],
@@ -313,7 +314,7 @@ public static class ServiceTemplates
             DisplayName = "RabbitMQ",
             Category = ManagedServiceCategory.Application,
             Description = "Mesaj kuyruğu (AMQP) ve yönetim arayüzü.",
-            LogoText = "RQ",
+            LogoFile = "rabbitmq.svg",
             Color = "#FF6600",
             Image = "rabbitmq",
             Tags = ["4.1-management", "4.0-management", "3.13-management"],
@@ -348,7 +349,7 @@ public static class ServiceTemplates
             DisplayName = "Adminer",
             Category = ManagedServiceCategory.Application,
             Description = "Tek dosyalık veritabanı yönetim arayüzü (MySQL, PostgreSQL, SQLite …).",
-            LogoText = "Ad",
+            LogoFile = "adminer.svg",
             Color = "#34495E",
             Image = "adminer",
             Tags = ["latest", "5", "4"],
@@ -363,7 +364,7 @@ public static class ServiceTemplates
             DisplayName = "pgAdmin",
             Category = ManagedServiceCategory.Application,
             Description = "PostgreSQL için web tabanlı yönetim aracı.",
-            LogoText = "pA",
+            LogoFile = "pgadmin.png",
             Color = "#2F6792",
             Image = "dpage/pgadmin4",
             Tags = ["9", "8", "latest"],
@@ -390,7 +391,7 @@ public static class ServiceTemplates
             DisplayName = "Uptime Kuma",
             Category = ManagedServiceCategory.Application,
             Description = "Kendi sunucunuzda çalışan uptime izleme ve durum sayfası.",
-            LogoText = "UK",
+            LogoFile = "uptime-kuma.svg",
             Color = "#5CDD8B",
             Image = "louislam/uptime-kuma",
             Tags = ["2", "1"],
@@ -407,7 +408,7 @@ public static class ServiceTemplates
             DisplayName = "n8n",
             Category = ManagedServiceCategory.Application,
             Description = "Görsel iş akışı otomasyonu.",
-            LogoText = "n8",
+            LogoFile = "n8n.svg",
             Color = "#EA4B71",
             Image = "docker.n8n.io/n8nio/n8n",
             Tags = ["stable", "latest", "next"],
@@ -434,12 +435,6 @@ public static class ServiceTemplates
                     "HTTPS ile yayınlıyorsanız N8N_SECURE_COOKIE=true yapın."
         }
     ];
-
-    private static readonly Dictionary<string, ServiceTemplate> ByKey = All.ToDictionary(t => t.Key, StringComparer.Ordinal);
-
-    public static ServiceTemplate? Find(string? key) => key is not null && ByKey.TryGetValue(key, out var template) ? template : null;
-
-    public static IEnumerable<ServiceTemplate> ByCategory(ManagedServiceCategory category) => All.Where(t => t.Category == category);
 
     /// <summary>Etiketin ilk sayısal parçası (ör. "16.4" → 16, "2022-latest" → 2022); sayı yoksa null ("latest").</summary>
     public static int? MajorVersion(string? tag)

@@ -1,0 +1,11 @@
+.role-name {
+  @apply font-medium text-slate-900 dark:text-slate-100;
+}
+
+.role-description {
+  @apply text-xs text-slate-500;
+}
+
+.role-actions {
+  @apply flex justify-end gap-1;
+}

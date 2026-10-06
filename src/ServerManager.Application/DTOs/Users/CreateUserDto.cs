@@ -1,5 +1,3 @@
-using ServerManager.Application.Authorization;
-
 namespace ServerManager.Application.DTOs.Users;
 
 public sealed class CreateUserDto
@@ -12,5 +10,6 @@ public sealed class CreateUserDto
 
     public string ConfirmPassword { get; set; } = string.Empty;
 
-    public string Role { get; set; } = Roles.Viewer;
+    /// <summary>Kullanıcının rolleri (en az bir). İzinler rollerin birleşimidir.</summary>
+    public List<string> Roles { get; set; } = [];
 }

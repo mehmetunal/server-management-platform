@@ -1,0 +1,11 @@
+{
+  "SystemName": "Services.Extra",
+  "FriendlyName": "Ek Servis Şablonları",
+  "Group": "Servisler",
+  "Version": "1.0.0",
+  "Author": "Mag Server Manager",
+  "Description": "Servisler modülüne Meilisearch, ClickHouse ve Keycloak şablonlarını ekler. Hem JSON (kodsuz) hem C# şablon eklentisi için örnektir.",
+  "DisplayOrder": 10,
+  "AssemblyFileName": "ServerManager.Plugin.Services.Extra.dll",
+  "Logo": "logo.svg"
+}

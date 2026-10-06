@@ -62,6 +62,14 @@ public class ServerPickerController : Controller
     public Task<IActionResult> Logs([FromQuery] ServerFilterDto filter, CancellationToken cancellationToken) =>
         PickAsync(ServerPickerSections.Logs, filter, cancellationToken);
 
+    [HttpGet, HasPermission(Permissions.SystemView)]
+    public Task<IActionResult> Resources([FromQuery] ServerFilterDto filter, CancellationToken cancellationToken) =>
+        PickAsync(ServerPickerSections.Resources, filter, cancellationToken);
+
+    [HttpGet, HasPermission(Permissions.ServerCleanup)]
+    public Task<IActionResult> Cleanup([FromQuery] ServerFilterDto filter, CancellationToken cancellationToken) =>
+        PickAsync(ServerPickerSections.Cleanup, filter, cancellationToken);
+
     [HttpGet]
     public Task<IActionResult> Metrics([FromQuery] ServerFilterDto filter, CancellationToken cancellationToken) =>
         PickAsync(ServerPickerSections.Metrics, filter, cancellationToken);

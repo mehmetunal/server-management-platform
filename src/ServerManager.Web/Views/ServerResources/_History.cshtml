@@ -1,0 +1,145 @@
+@using ServerManager.Application.ResourceUsage
+@model ServerResourcesPageViewModel
+
+<section class="panel mt-6" id="resource-history" data-history
+         data-history-url="@Model.HistoryUrl"
+         data-snapshot-url="@Model.SnapshotUrl">
+    <div class="panel-header history-header">
+        <div>
+            <h2 class="panel-title">Geçmiş</h2>
+            <p class="text-xs text-slate-500" data-history-description>
+                Container ve process kullanımı her @Model.HistoryIntervalMinutes dakikada bir kaydedilir. "Dün gece ne yavaşlattı?" sorusu için aralığı seçin; grafikte bir noktaya tıklayınca o andaki process listesi açılır.
+            </p>
+        </div>
+        <div class="history-controls">
+            <div class="range-switch" role="group" aria-label="Zaman aralığı">
+                @foreach (var range in ResourceHistoryRules.Ranges)
+                {
+                    <button type="button" class="range-option @(range.Code == "24h" ? "is-active" : "")"
+                            data-history-range="@range.Code" title="@range.Label">@range.Label.Replace("Son ", string.Empty)</button>
+                }
+                <button type="button" class="range-option" data-history-range="custom" title="Başlangıç ve bitiş seçin">Özel</button>
+            </div>
+            <form class="history-custom" data-history-custom hidden>
+                <label class="sr-only" for="history-from">Başlangıç</label>
+                <input type="datetime-local" id="history-from" name="from" class="form-control" required />
+                <span class="text-slate-400">–</span>
+                <label class="sr-only" for="history-to">Bitiş</label>
+                <input type="datetime-local" id="history-to" name="to" class="form-control" />
+                <button type="submit" class="btn-secondary" title="Seçilen aralığı göster">Göster</button>
+            </form>
+        </div>
+    </div>
+
+    @if (!Model.HistoryEnabled)
+    {
+        <p class="panel-body text-sm text-amber-700 dark:text-amber-400">
+            Kaynak geçmişi toplama kapalı (Ayarlar → İzleme → Kaynak geçmişi aralığı = 0 veya otomatik toplama kapalı). Daha önce kaydedilen veriler gösterilir.
+        </p>
+    }
+
+    <div class="panel-body space-y-6">
+        <div class="history-charts">
+            <div>
+                <h3 class="history-subtitle">Container CPU (%) · en yüksek @ResourceHistoryRules.ChartContainerCount</h3>
+                <div class="chart-box">
+                    <canvas data-history-chart="cpu" aria-label="Container CPU grafiği" role="img"></canvas>
+                    <p class="chart-empty" data-chart-empty>Yükleniyor…</p>
+                </div>
+            </div>
+            <div>
+                <h3 class="history-subtitle">Container RAM · en yüksek @ResourceHistoryRules.ChartContainerCount</h3>
+                <div class="chart-box">
+                    <canvas data-history-chart="memory" aria-label="Container RAM grafiği" role="img"></canvas>
+                    <p class="chart-empty" data-chart-empty>Yükleniyor…</p>
+                </div>
+            </div>
+        </div>
+
+        <div data-history-snapshot hidden>
+            <div class="history-snapshot-header">
+                <h3 class="history-subtitle" data-snapshot-title>Process anlık görüntüsü</h3>
+                <button type="button" class="btn-secondary btn-sm" data-snapshot-close title="Anlık görüntüyü kapat">Kapat</button>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th class="text-right">PID</th>
+                            <th>Kullanıcı</th>
+                            <th>Komut</th>
+                            <th class="text-right">CPU</th>
+                            <th class="text-right">RAM</th>
+                        </tr>
+                    </thead>
+                    <tbody data-snapshot-rows></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div>
+            <h3 class="history-subtitle">Bu aralıkta en çok kaynak kullananlar · container'lar</h3>
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Container</th>
+                            <th class="text-right">CPU ort.</th>
+                            <th class="text-right">CPU en yüksek</th>
+                            <th class="text-right">RAM ort.</th>
+                            <th class="text-right">RAM en yüksek</th>
+                            <th class="hidden text-right md:table-cell">Ağ</th>
+                            <th class="hidden text-right md:table-cell">Disk G/Ç</th>
+                            <th class="text-right">Yeniden başlama</th>
+                        </tr>
+                    </thead>
+                    <tbody data-history-containers>
+                        <tr><td colspan="8" class="text-sm text-slate-500">Yükleniyor…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="history-process-tables">
+            <div>
+                <h3 class="history-subtitle">Process'ler · CPU'ya göre</h3>
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Komut</th>
+                                <th class="text-right">CPU ort.</th>
+                                <th class="text-right">En yüksek</th>
+                                <th class="text-right" title="Listede göründüğü anlık görüntü sayısı">Görülme</th>
+                            </tr>
+                        </thead>
+                        <tbody data-history-processes="cpu">
+                            <tr><td colspan="4" class="text-sm text-slate-500">Yükleniyor…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div>
+                <h3 class="history-subtitle">Process'ler · belleğe göre</h3>
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Komut</th>
+                                <th class="text-right">RAM en yüksek</th>
+                                <th class="text-right">CPU ort.</th>
+                                <th class="text-right" title="Listede göründüğü anlık görüntü sayısı">Görülme</th>
+                            </tr>
+                        </thead>
+                        <tbody data-history-processes="memory">
+                            <tr><td colspan="4" class="text-sm text-slate-500">Yükleniyor…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <p class="text-xs text-slate-500">
+            Process CPU'su iki /proc okuması arasındaki gerçek kullanımdır (çekirdek başına %, çok iş parçacıklı process'lerde 100'ü aşabilir). Aynı adlı process'ler toplanır. Ağ ve disk G/Ç, aralıktaki sayaç artışıdır (container yeniden oluşturulduysa eksik görünebilir).
+        </p>
+    </div>
+</section>

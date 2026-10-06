@@ -40,6 +40,14 @@ public static class ServerPickerSections
         "logs", "Loglar", "journald veya /var/log kayıtlarını okumak istediğiniz sunucuyu seçin.",
         "document", "ServerSystem", "Logs", "Logları aç");
 
+    public static readonly ServerPickerSection Resources = new(
+        "resources", "Kaynak Kullanımı", "Neyin yavaşlattığını incelemek istediğiniz sunucuyu seçin: yük, bellek, swap, disk ve en çok kaynak kullanan process / container'lar.",
+        "bolt", "ServerResources", "Index", "Kaynak kullanımını aç");
+
+    public static readonly ServerPickerSection Cleanup = new(
+        "cleanup", "Temizlik", "Kullanılmayan Docker kaynaklarını, eski logları ve önbellekleri temizlemek istediğiniz sunucuyu seçin.",
+        "trash", "ServerCleanup", "Index", "Temizliği aç");
+
     public static readonly ServerPickerSection Metrics = new(
         "metrics", "Metrikler", "CPU, RAM, disk ve ağ grafiklerini görmek istediğiniz sunucuyu seçin. Listede son ölçülen değerler görünür.",
         "chart", "Servers", "Metrics", "Grafikleri aç");

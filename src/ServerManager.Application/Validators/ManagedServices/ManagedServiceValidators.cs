@@ -10,8 +10,9 @@ public sealed class CreateManagedServiceDtoValidator : AbstractValidator<CreateM
 {
     public const int MaxNameLength = 64;
 
-    public CreateManagedServiceDtoValidator(IOptions<ManagedServiceOptions> options)
+    public CreateManagedServiceDtoValidator(IOptions<ManagedServiceOptions> options, IServiceTemplateCatalog templates)
     {
+        ArgumentNullException.ThrowIfNull(templates);
         var allowPrivileged = options.Value.AllowPrivilegedHostPorts;
 
         RuleFor(x => x.ServerId).NotEmpty().WithMessage("Sunucu seçin.");
@@ -21,7 +22,7 @@ public sealed class CreateManagedServiceDtoValidator : AbstractValidator<CreateM
             .MaximumLength(MaxNameLength).WithMessage($"Servis adı en fazla {MaxNameLength} karakter olabilir.");
 
         RuleFor(x => x.TemplateKey)
-            .Must(key => ServiceTemplates.Find(key) is not null).WithMessage("Geçerli bir servis türü seçin.");
+            .Must(key => templates.Find(key) is not null).WithMessage("Geçerli bir servis türü seçin.");
 
         RuleFor(x => x.ImageTag)
             .Must(ServiceValidation.IsValidTag)
@@ -39,7 +40,7 @@ public sealed class CreateManagedServiceDtoValidator : AbstractValidator<CreateM
 
         RuleFor(x => x).Custom((dto, context) =>
         {
-            var template = ServiceTemplates.Find(dto.TemplateKey);
+            var template = templates.Find(dto.TemplateKey);
             if (template is null)
                 return;
 

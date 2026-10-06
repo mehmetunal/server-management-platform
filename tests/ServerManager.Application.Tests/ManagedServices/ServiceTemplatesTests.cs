@@ -11,7 +11,7 @@ public class ServiceTemplatesTests
     public static TheoryData<string> TemplateKeys()
     {
         var data = new TheoryData<string>();
-        foreach (var template in ServiceTemplates.All)
+        foreach (var template in ServiceTemplates.BuiltIn)
             data.Add(template.Key);
         return data;
     }
@@ -27,23 +27,23 @@ public class ServiceTemplatesTests
     [Fact]
     public void Catalog_contains_requested_databases_and_applications()
     {
-        var databases = ServiceTemplates.ByCategory(ManagedServiceCategory.Database).Select(t => t.Key).ToList();
-        var applications = ServiceTemplates.ByCategory(ManagedServiceCategory.Application).Select(t => t.Key).ToList();
+        var databases = TestTemplates.ByCategory(ManagedServiceCategory.Database).Select(t => t.Key).ToList();
+        var applications = TestTemplates.ByCategory(ManagedServiceCategory.Application).Select(t => t.Key).ToList();
 
         Assert.Equal(["postgres", "mysql", "mariadb", "redis", "mongodb", "mssql"], databases);
         Assert.Equal(["minio", "rabbitmq", "adminer", "pgadmin", "uptime-kuma", "n8n"], applications);
-        Assert.Equal(ServiceTemplates.All.Count, ServiceTemplates.All.Select(t => t.Key).Distinct().Count());
+        Assert.Equal(ServiceTemplates.BuiltIn.Count, ServiceTemplates.BuiltIn.Select(t => t.Key).Distinct().Count());
     }
 
     [Theory]
     [MemberData(nameof(TemplateKeys))]
     public void Every_template_has_image_tags_ports_and_metadata(string key)
     {
-        var template = ServiceTemplates.Find(key)!;
+        var template = TestTemplates.Find(key)!;
 
         Assert.False(string.IsNullOrWhiteSpace(template.DisplayName));
         Assert.False(string.IsNullOrWhiteSpace(template.Description));
-        Assert.Matches("^[A-Za-z0-9]{1,3}$", template.LogoText);
+        Assert.Matches("^[a-z0-9-]+\\.(svg|png)$", template.LogoFile);
         Assert.Matches("^#[0-9A-Fa-f]{6}$", template.Color);
         Assert.NotEmpty(template.Tags);
         Assert.All(template.Tags, tag =>
@@ -64,7 +64,7 @@ public class ServiceTemplatesTests
     [MemberData(nameof(TemplateKeys))]
     public void Data_path_is_absolute_when_defined(string key)
     {
-        var template = ServiceTemplates.Find(key)!;
+        var template = TestTemplates.Find(key)!;
         foreach (var tag in template.Tags)
         {
             var path = template.DataPath(tag);
@@ -77,7 +77,7 @@ public class ServiceTemplatesTests
     [MemberData(nameof(TemplateKeys))]
     public void Secret_environment_values_are_flagged_and_commands_never_contain_secrets(string key)
     {
-        var template = ServiceTemplates.Find(key)!;
+        var template = TestTemplates.Find(key)!;
         var environment = template.Environment(Credentials);
 
         foreach (var item in environment.Where(e => e.Value == SamplePassword || e.Value == Credentials.EncryptionKey))
@@ -98,7 +98,7 @@ public class ServiceTemplatesTests
     [MemberData(nameof(TemplateKeys))]
     public void Databases_have_console_readiness_health_and_connection_strings(string key)
     {
-        var template = ServiceTemplates.Find(key)!;
+        var template = TestTemplates.Find(key)!;
         if (template.Category != ManagedServiceCategory.Database)
             return;
 
@@ -117,7 +117,7 @@ public class ServiceTemplatesTests
     [MemberData(nameof(TemplateKeys))]
     public void Applications_with_web_ui_expose_http_address(string key)
     {
-        var template = ServiceTemplates.Find(key)!;
+        var template = TestTemplates.Find(key)!;
         if (template.WebUiPort is not { } web)
             return;
 
@@ -132,7 +132,7 @@ public class ServiceTemplatesTests
     [Fact]
     public void Credential_environment_maps_to_documented_variables()
     {
-        string[] Keys(string key) => ServiceTemplates.Find(key)!.Environment(Credentials).Select(e => e.Key).ToArray();
+        string[] Keys(string key) => TestTemplates.Find(key)!.Environment(Credentials).Select(e => e.Key).ToArray();
 
         Assert.Equal(["POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_DB"], Keys(ServiceTemplates.Postgres));
         Assert.Equal(["MYSQL_ROOT_PASSWORD", "MYSQL_USER", "MYSQL_PASSWORD", "MYSQL_DATABASE"], Keys(ServiceTemplates.MySql));
@@ -143,13 +143,13 @@ public class ServiceTemplatesTests
         Assert.Equal(["RABBITMQ_DEFAULT_USER", "RABBITMQ_DEFAULT_PASS"], Keys(ServiceTemplates.RabbitMq));
         Assert.Equal(["PGADMIN_DEFAULT_EMAIL", "PGADMIN_DEFAULT_PASSWORD"], Keys(ServiceTemplates.PgAdmin));
         Assert.Equal(["N8N_ENCRYPTION_KEY"], Keys(ServiceTemplates.N8n));
-        Assert.Contains(ServiceTemplates.Find(ServiceTemplates.SqlServer)!.DefaultEnvironment, e => e.Key == "MSSQL_PID");
+        Assert.Contains(TestTemplates.Find(ServiceTemplates.SqlServer)!.DefaultEnvironment, e => e.Key == "MSSQL_PID");
     }
 
     [Fact]
     public void Redis_password_is_passed_through_container_environment_not_argv()
     {
-        var redis = ServiceTemplates.Find(ServiceTemplates.Redis)!;
+        var redis = TestTemplates.Find(ServiceTemplates.Redis)!;
 
         Assert.Contains("--requirepass \"$REDIS_PASSWORD\"", string.Join(' ', redis.Command));
         Assert.Equal("REDIS_PASSWORD", Assert.Single(redis.Environment(Credentials)).Key);
@@ -158,14 +158,14 @@ public class ServiceTemplatesTests
     [Fact]
     public void Sql_server_requires_x86_and_uses_mssql_tools18()
     {
-        var mssql = ServiceTemplates.Find(ServiceTemplates.SqlServer)!;
+        var mssql = TestTemplates.Find(ServiceTemplates.SqlServer)!;
 
         Assert.True(mssql.RequiresX86);
         Assert.Equal(ServicePasswordPolicy.MssqlComplex, mssql.Credentials.PasswordPolicy);
         Assert.Equal(ServiceUsernameKind.Fixed, mssql.Credentials.UsernameKind);
         Assert.Contains("/opt/mssql-tools18/bin/sqlcmd -C", mssql.ConsoleCommand);
         Assert.True(mssql.MinMemoryMb >= 2048);
-        Assert.All(ServiceTemplates.All.Where(t => t.Key != ServiceTemplates.SqlServer), t => Assert.False(t.RequiresX86));
+        Assert.All(ServiceTemplates.BuiltIn.Where(t => t.Key != ServiceTemplates.SqlServer), t => Assert.False(t.RequiresX86));
     }
 
     [Theory]
@@ -175,7 +175,7 @@ public class ServiceTemplatesTests
     [InlineData("16.4-alpine", "/var/lib/postgresql/data")]
     public void Postgres_data_path_follows_image_layout(string tag, string expected)
     {
-        Assert.Equal(expected, ServiceTemplates.Find(ServiceTemplates.Postgres)!.DataPath(tag));
+        Assert.Equal(expected, TestTemplates.Find(ServiceTemplates.Postgres)!.DataPath(tag));
     }
 
     [Theory]
@@ -194,14 +194,14 @@ public class ServiceTemplatesTests
     [Fact]
     public void Reserved_usernames_block_root_for_mysql_family()
     {
-        Assert.Contains("root", ServiceTemplates.Find(ServiceTemplates.MySql)!.Credentials.ReservedUsernames);
-        Assert.Contains("root", ServiceTemplates.Find(ServiceTemplates.MariaDb)!.Credentials.ReservedUsernames);
+        Assert.Contains("root", TestTemplates.Find(ServiceTemplates.MySql)!.Credentials.ReservedUsernames);
+        Assert.Contains("root", TestTemplates.Find(ServiceTemplates.MariaDb)!.Credentials.ReservedUsernames);
     }
 
     [Fact]
     public void Mysql_client_writes_password_to_temporary_option_file_inside_container()
     {
-        var mysql = ServiceTemplates.Find(ServiceTemplates.MySql)!;
+        var mysql = TestTemplates.Find(ServiceTemplates.MySql)!;
 
         Assert.Contains("--defaults-extra-file=\"$f\"", mysql.ConsoleCommand);
         Assert.Contains("\"$MYSQL_ROOT_PASSWORD\"", mysql.ConsoleCommand);

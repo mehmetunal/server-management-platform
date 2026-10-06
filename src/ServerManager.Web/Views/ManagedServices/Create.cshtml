@@ -30,12 +30,12 @@
 
 @if (template is null)
 {
-    foreach (var category in new[] { ManagedServiceCategory.Database, ManagedServiceCategory.Application })
+    foreach (var category in Model.Categories)
     {
-        <section class="mb-8">
-            <h2 class="form-section-title">@ManagedServiceDisplay.CategoryText(category)</h2>
+        <section class="mb-8" data-template-group="@category.Key">
+            <h2 class="form-section-title">@category.DisplayName</h2>
             <div class="service-template-grid">
-                @foreach (var item in ServiceTemplates.ByCategory(category))
+                @foreach (var item in Model.Templates.Where(t => t.GroupKey == category.Key))
                 {
                     <a asp-action="Create" asp-route-template="@item.Key" asp-route-serverId="@serverQuery" class="service-template-card" title="@item.DisplayName kurulum formunu aç">
                         <partial name="_ServiceLogo" model="item" />
@@ -47,6 +47,10 @@
                                 @if (item.RequiresX86)
                                 {
                                     <span class="badge-warning">Yalnızca x86_64</span>
+                                }
+                                @if (!item.IsBuiltIn)
+                                {
+                                    <span class="badge-neutral" title="@item.PluginSystemName eklentisinden">Eklenti</span>
                                 }
                             </span>
                         </span>
@@ -202,6 +206,10 @@ else
                     <dl class="panel-body detail-list">
                         <div><dt class="detail-term">Tür</dt><dd class="detail-value">@ManagedServiceDisplay.CategoryText(template.Category)</dd></div>
                         <div><dt class="detail-term">İmaj</dt><dd class="detail-value font-mono">@template.Image</dd></div>
+                        @if (!template.IsBuiltIn)
+                        {
+                            <div><dt class="detail-term">Kaynak</dt><dd class="detail-value">@template.PluginSystemName eklentisi</dd></div>
+                        }
                         <div><dt class="detail-term">Önerilen bellek</dt><dd class="detail-value">en az @template.MinMemoryMb MB</dd></div>
                         @if (template.ConsoleLabel is not null)
                         {

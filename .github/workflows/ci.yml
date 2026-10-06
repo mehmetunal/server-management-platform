@@ -1,0 +1,239 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:
+    inputs:
+      e2e:
+        description: "Uçtan uca (E2E) testleri de çalıştır"
+        type: boolean
+        default: true
+  schedule:
+    # Her gece 02:30 UTC: E2E dahil tam koşu.
+    - cron: "30 2 * * *"
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
+  NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+
+jobs:
+  build-test:
+    name: Build & test (.NET)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_PID: "Developer"
+          # Tek kullanımlık CI SQL Server'ı için koşuya özel üretilen parola (gizli değer değildir).
+          MSSQL_SA_PASSWORD: "Ci-Sql-${{ github.run_id }}-Aa1!"
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+          --health-start-period 30s
+    env:
+      SM_TEST_SQL: "Server=127.0.0.1,1433;User Id=sa;Password=Ci-Sql-${{ github.run_id }}-Aa1!;TrustServerCertificate=True"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj', 'global.json', 'nuget.config') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore ServerManager.slnx
+
+      - name: Build (uyarılar hata)
+        run: dotnet build ServerManager.slnx -c Release --no-restore
+
+      - name: Test
+        run: >-
+          dotnet test --solution ServerManager.slnx -c Release --no-build
+          --results-directory "${{ github.workspace }}/TestResults"
+          --report-xunit-trx
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/**/*.trx
+          if-no-files-found: warn
+
+      - name: Vulnerable NuGet packages
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet list ServerManager.slnx package --vulnerable --include-transitive 2>&1 | tee vulnerable.txt
+          if grep -qi "has the following vulnerable packages" vulnerable.txt; then
+            echo "::error::Güvenlik açığı bulunan NuGet paketleri var (yukarıdaki listeye bakın)."
+            exit 1
+          fi
+
+  frontend:
+    name: Frontend assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: src/ServerManager.Web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: src/ServerManager.Web/package-lock.json
+
+      - name: npm ci
+        run: npm ci --no-audit --no-fund
+
+      - name: Build vendor + CSS
+        run: |
+          npm run build:vendor
+          npm run build:css
+
+      - name: Committed assets are up to date
+        working-directory: ${{ github.workspace }}
+        run: |
+          git status --porcelain -- src/ServerManager.Web/wwwroot 'src/Plugins/*/Content'
+          git diff --exit-code --stat -- src/ServerManager.Web/wwwroot 'src/Plugins/*/Content' || {
+            echo "::error::Derlenmiş ön yüz varlıkları güncel değil. Yerelde 'npm run build' çalıştırıp çıktıyı commit edin."
+            exit 1
+          }
+          untracked=$(git ls-files --others --exclude-standard -- src/ServerManager.Web/wwwroot 'src/Plugins/*/Content')
+          if [ -n "$untracked" ]; then
+            echo "$untracked"
+            echo "::error::Derleme commit edilmemiş yeni dosyalar üretti."
+            exit 1
+          fi
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build (push yok)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          tags: mag-server-manager:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  e2e:
+    name: E2E (SSH + Docker-in-Docker)
+    # Yavaş ve privileged konteyner gerektirir: her PR'da değil; elle tetikleme, gece koşusu ve main push'larında.
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.e2e) ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_PID: "Developer"
+          # Tek kullanımlık CI SQL Server'ı için koşuya özel üretilen parola (gizli değer değildir).
+          MSSQL_SA_PASSWORD: "Ci-Sql-${{ github.run_id }}-Aa1!"
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+          --health-start-period 30s
+    env:
+      SM_TEST_SQL: "Server=127.0.0.1,1433;User Id=sa;Password=Ci-Sql-${{ github.run_id }}-Aa1!;TrustServerCertificate=True"
+      E2E_SSH_PASSWORD: "E2e-${{ github.run_id }}-Pass"
+      E2E_SSH_PORT: "2224"
+      SM_E2E_SSH_HOST: "127.0.0.1"
+      SM_E2E_SSH_PORT: "2224"
+      SM_E2E_SSH_USER: "smtest"
+      SM_E2E_SSH_PASSWORD: "E2e-${{ github.run_id }}-Pass"
+      SM_E2E_SSH_NOPASSWD_USER: "smnopw"
+      # docker-compose.yml diğer servisler için bu değişkenleri zorunlu tutar; e2e profilinde kullanılmazlar.
+      MSSQL_SA_PASSWORD: "unused"
+      SM_MASTER_KEY: "unused"
+      SSH_TEST_PASSWORD: "unused"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj', 'global.json', 'nuget.config') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Start E2E server container
+        run: |
+          docker compose -p sm-e2e --profile e2e up -d --build --wait --wait-timeout 300 sm-e2e-ubuntu
+          docker exec sm-e2e-ubuntu docker version
+
+      - name: Build
+        run: dotnet build tests/ServerManager.E2E.Tests/ServerManager.E2E.Tests.csproj -c Release
+
+      - name: E2E tests
+        run: >-
+          dotnet test --project tests/ServerManager.E2E.Tests/ServerManager.E2E.Tests.csproj -c Release --no-build
+          --results-directory "${{ github.workspace }}/TestResults"
+          --report-xunit-trx
+
+      - name: E2E server logs
+        if: failure()
+        run: |
+          docker logs sm-e2e-ubuntu || true
+          docker exec sm-e2e-ubuntu tail -n 200 /var/log/dockerd.log || true
+          docker exec sm-e2e-ubuntu docker ps -a || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: TestResults/**/*.trx
+          if-no-files-found: warn
+
+      - name: Stop E2E server container
+        if: always()
+        run: docker compose -p sm-e2e --profile e2e down -v

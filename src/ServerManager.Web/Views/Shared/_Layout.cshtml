@@ -2,7 +2,7 @@
     var title = ViewData["Title"] as string;
     var breadcrumbs = BreadcrumbTrail.Build(ViewContext, Url);
     var userName = User.Identity?.Name;
-    var roleName = Roles.All.FirstOrDefault(r => User.IsInRole(r));
+    var roleName = Roles.All.FirstOrDefault(r => User.IsInRole(r)) ?? User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
 }
 <!DOCTYPE html>
 <html lang="tr">
@@ -66,6 +66,7 @@
                     <div class="dropdown-menu" data-dropdown-menu hidden>
                         <div class="border-b border-slate-100 px-4 py-2 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:hidden">@userName</div>
                         <a asp-controller="Account" asp-action="Security" class="dropdown-item" title="Parola ve iki adımlı doğrulama ayarları">@Icons.Render("shield", "h-4 w-4") Hesabım ve güvenlik</a>
+                        <a asp-controller="ApiKeys" asp-action="Index" class="dropdown-item" title="Kişisel API anahtarları ve REST API belgesi">@Icons.Render("key", "h-4 w-4") API anahtarları</a>
                         <button type="button" class="dropdown-item text-red-600 dark:text-red-400" data-logout title="Oturumu kapatıp giriş sayfasına dön" data-url="@Url.Action("Logout", "Account")">@Icons.Render("logout", "h-4 w-4") Çıkış yap</button>
                     </div>
                 </div>

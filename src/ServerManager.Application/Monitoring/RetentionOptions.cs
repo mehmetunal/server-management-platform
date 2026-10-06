@@ -38,6 +38,15 @@ public sealed class RetentionOptions
     /// <summary>Biten servis işlemlerinin (Servisler: kurulum, yükseltme, kaldırma) log metni; kayıt korunur.</summary>
     public int ServiceOperationLogDays { get; set; } = 90;
 
+    /// <summary>Kaynak geçmişi: ham container örnekleri (5 dakikada bir). Grafik 48 saate kadar bunlardan çizilir.</summary>
+    public int ContainerMetricDays { get; set; } = 7;
+
+    /// <summary>Kaynak geçmişi: container saatlik özetleri (uzun aralıklar).</summary>
+    public int ContainerMetricHourlyDays { get; set; } = 90;
+
+    /// <summary>Kaynak geçmişi: en çok kaynak kullanan process anlık görüntüleri.</summary>
+    public int ProcessSnapshotDays { get; set; } = 7;
+
     /// <summary>Gün değerinden silme sınırını hesaplar; 0 veya negatif değer süresiz saklama demektir (null).</summary>
     public static DateTime? Cutoff(int days, DateTime nowUtc) => days <= 0 ? null : nowUtc.AddDays(-days);
 }

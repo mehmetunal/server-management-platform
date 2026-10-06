@@ -14,7 +14,7 @@ public class ManagedServiceConfiguration : IEntityTypeConfiguration<ManagedServi
 
         builder.Property(s => s.Name).HasMaxLength(64).IsRequired();
         builder.Property(s => s.Slug).HasMaxLength(48).IsRequired();
-        builder.Property(s => s.TemplateKey).HasMaxLength(32).IsRequired();
+        builder.Property(s => s.TemplateKey).HasMaxLength(96).IsRequired();
         builder.Property(s => s.ImageTag).HasMaxLength(128).IsRequired();
         builder.Property(s => s.ContainerName).HasMaxLength(64).IsRequired();
         builder.Property(s => s.EncryptedCredentials).IsRequired();
@@ -58,5 +58,12 @@ public class ManagedServiceOperationConfiguration : IEntityTypeConfiguration<Man
         builder.Property(o => o.UserId).HasMaxLength(64);
         builder.Property(o => o.UserName).HasMaxLength(256);
         builder.Property(o => o.IpAddress).HasMaxLength(45);
+
+        // Veritabanındaki FK_ManagedServiceOperations_ManagedServices modelde de tanımlı olmalı: aksi hâlde EF, aynı
+        // SaveChanges'te eklenen servis ve işlem kayıtlarını bağımlılık sırasına koymaz ve işlem önce yazılıp FK hatası verir.
+        builder.HasOne<ManagedService>()
+            .WithMany()
+            .HasForeignKey(o => o.ServiceId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -3,9 +3,10 @@
           Condition="Exists($([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildThisFileDirectory)../')))" />
 
   <ItemGroup>
-    <Content Remove="plugin.json;Content\**;Styles\**" />
-    <None Remove="plugin.json;Content\**" />
-    <None Include="plugin.json;Content\**" CopyToOutputDirectory="PreserveNewest" />
+    <!-- templates/*.json: kod gerektirmeyen servis şablonları (bkz. docs/plugin-gelistirme.md). -->
+    <Content Remove="plugin.json;Content\**;Styles\**;templates\**" />
+    <None Remove="plugin.json;Content\**;templates\**" />
+    <None Include="plugin.json;Content\**;templates\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- Çekirdek projeler ve onların paket içerikleri uygulamada zaten var; eklenti klasörüne kopyalanmaz. -->

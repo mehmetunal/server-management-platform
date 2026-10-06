@@ -1,0 +1,17 @@
+@model ApiKeysPageViewModel
+@{
+    ViewData["Title"] = "Tüm API anahtarları";
+    ViewData["Page"] = "api-keys";
+    ViewData["AdminView"] = true;
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">API anahtarları<partial name="_HelpLink" model="GuideAnchors.ApiKeys" /></h1>
+        <p class="page-lead">Tüm kullanıcıların anahtarları. Şüpheli veya artık kullanılmayan anahtarları buradan iptal edebilirsiniz.</p>
+    </div>
+</div>
+
+<partial name="_ApiTabs" />
+
+<partial name="_KeyList" model="Model" view-data="ViewData" />

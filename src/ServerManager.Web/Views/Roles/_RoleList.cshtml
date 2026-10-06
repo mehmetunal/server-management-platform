@@ -1,0 +1,68 @@
+@using ServerManager.Application.DTOs.Roles
+@model IReadOnlyList<RoleListItemDto>
+
+<section class="panel">
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Rol</th>
+                    <th>Tür</th>
+                    <th class="text-right">Kullanıcı</th>
+                    <th class="text-right">İzin</th>
+                    <th class="text-right">İşlem</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var role in Model)
+                {
+                    <tr>
+                        <td>
+                            <p class="role-name">@role.Name</p>
+                            <p class="role-description">@(role.Description ?? "—")</p>
+                        </td>
+                        <td>
+                            @if (role.IsSuperAdmin)
+                            {
+                                <span class="badge-brand" title="Her izne sahiptir; değiştirilemez">Değiştirilemez</span>
+                            }
+                            else if (role.IsBuiltIn)
+                            {
+                                <span class="badge-neutral" title="Panelle gelir; silinemez, varsayılana döndürülebilir">Yerleşik</span>
+                            }
+                            else
+                            {
+                                <span class="badge-success">Özel</span>
+                            }
+                        </td>
+                        <td class="text-right">@role.UserCount</td>
+                        <td class="text-right">@(role.IsSuperAdmin ? "Tümü" : role.PermissionCount.ToString())</td>
+                        <td>
+                            <div class="role-actions">
+                                <a asp-action="Edit" asp-route-id="@role.Id" class="btn-ghost btn-sm" title="@(role.IsSuperAdmin ? "İzinleri görüntüle" : "Rolü ve izinlerini düzenle")">@Icons.Render(role.IsSuperAdmin ? "eye" : "pencil", "h-4 w-4")</a>
+                                <a asp-action="Create" asp-route-cloneFrom="@role.Id" class="btn-ghost btn-sm" title="Bu rolün izinleriyle yeni rol oluştur (kopyala)">@Icons.Render("copy", "h-4 w-4")</a>
+                                @if (!role.IsBuiltIn)
+                                {
+                                    @if (role.UserCount == 0)
+                                    {
+                                        <button type="button" class="btn-ghost btn-sm" title="Rolü sil" data-ajax-action
+                                                data-url="@Url.Action("Delete", new { id = role.Id })"
+                                                data-confirm-title="Rolü sil"
+                                                data-confirm-message="@role.Name rolü silinecek. Bu işlem geri alınamaz."
+                                                data-confirm-label="Sil">
+                                            @Icons.Render("trash", "h-4 w-4")
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <a asp-action="Edit" asp-route-id="@role.Id" asp-fragment="rol-sil" class="btn-ghost btn-sm" title="Rolde kullanıcı var; silmek için kullanıcıları başka role taşıyın">@Icons.Render("trash", "h-4 w-4")</a>
+                                    }
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

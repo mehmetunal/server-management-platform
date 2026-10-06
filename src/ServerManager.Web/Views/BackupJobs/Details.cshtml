@@ -17,6 +17,10 @@
             : $"{BackupDisplay.SourceTypeText(job.SourceType)} yedeği: {job.ServerName} → {job.StorageName}. Son yedekler aşağıda; çalışan yedek varsa liste kendiliğinden yenilenir.")</p>
     </div>
     <div class="flex flex-wrap gap-2">
+        @if (User.HasPermission(Permissions.BackupDownload))
+        {
+            <partial name="~/Views/BackupRuns/_DownloadButton.cshtml" model='BackupDownloadButtonModel.ForLatest(job, "Son yedeği indir", compact: false)' />
+        }
         @if (canExecute && !job.IsDeleted)
         {
             <button type="button" class="btn-primary" title="Şimdi yedek al ve ilerlemeyi izle" data-ajax-action data-redirect data-url="@Url.Action("Run", new { id = job.Id })">

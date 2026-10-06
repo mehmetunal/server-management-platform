@@ -26,6 +26,7 @@ public class ProjectServiceLinkService : IProjectServiceLinkService
     private readonly ICurrentUserService _currentUser;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<ProjectServiceLinkService> _logger;
+    private readonly IServiceTemplateCatalog _templates;
 
     public ProjectServiceLinkService(
         IProjectServiceLinkRepository links,
@@ -35,8 +36,10 @@ public class ProjectServiceLinkService : IProjectServiceLinkService
         IAuditLogService auditLogService,
         ICurrentUserService currentUser,
         TimeProvider timeProvider,
-        ILogger<ProjectServiceLinkService> logger)
+        ILogger<ProjectServiceLinkService> logger,
+        IServiceTemplateCatalog templates)
     {
+        _templates = templates;
         _links = links;
         _projects = projects;
         _services = services;
@@ -202,9 +205,9 @@ public class ProjectServiceLinkService : IProjectServiceLinkService
     private static IReadOnlyList<string> SplitKeys(string? keys) =>
         (keys ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    private static ProjectServiceLinkDto ToDto(ProjectServiceLink link)
+    private ProjectServiceLinkDto ToDto(ProjectServiceLink link)
     {
-        var template = ServiceTemplates.Find(link.ManagedService?.TemplateKey);
+        var template = _templates.Resolve(link.ManagedService?.TemplateKey).Template;
         return new ProjectServiceLinkDto
         {
             Id = link.Id,

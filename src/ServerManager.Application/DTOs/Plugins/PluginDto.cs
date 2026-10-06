@@ -21,6 +21,9 @@ public sealed record PluginDto
 
     public string? LoadError { get; init; }
 
+    /// <summary>Eklentinin servis şablonlarıyla ilgili uyarılar (atlanan/geçersiz şablonlar, eksik logolar).</summary>
+    public IReadOnlyList<string> Warnings { get; init; } = [];
+
     public bool IsInstalled { get; init; }
 
     public bool IsEnabled { get; init; }

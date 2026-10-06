@@ -40,6 +40,9 @@ public sealed class BackupJobListItemDto
 
     public BackupRunStatus? LastRunStatus { get; init; }
 
+    /// <summary>Dosyası depolamada duran en yeni başarılı yedek; yoksa null (indirme düğmesi pasif gösterilir).</summary>
+    public BackupArtifactRef? LatestBackup { get; init; }
+
     public bool EncryptionEnabled { get; init; }
 
     public int KeepLast { get; init; }

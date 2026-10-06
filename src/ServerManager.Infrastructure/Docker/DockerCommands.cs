@@ -23,6 +23,12 @@ internal static class DockerCommands
     public const string ListVolumes = "docker volume ls " + JsonFormat;
     public const string ListNetworks = "docker network ls --no-trunc " + JsonFormat;
 
+    /// <summary>Hiçbir container'ın bağlı olmadığı ağlar; Docker'ın önceden tanımlı ağları (bridge, host, none) bu filtrede gelmez.</summary>
+    public const string ListUnusedNetworks = "docker network ls --no-trunc --filter dangling=true " + JsonFormat;
+
+    /// <summary>Kullanılmayan build cache'i siler (kullanımdaki katmanlara dokunmaz); onay sorulmaz.</summary>
+    public const string PruneBuildCache = "docker builder prune -f";
+
     private const string InteractiveShell = "if command -v bash >/dev/null 2>&1; then exec bash; else exec sh; fi";
 
     public static string InspectContainers(IEnumerable<string> containers) =>

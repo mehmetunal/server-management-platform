@@ -5,6 +5,7 @@ using ServerManager.Application.Interfaces.Services;
 using ServerManager.Web.Extensions;
 using ServerManager.Web.Framework.Authorization;
 using ServerManager.Web.Framework.Mvc;
+using ServerManager.Web.Models;
 
 namespace ServerManager.Web.Controllers;
 
@@ -12,10 +13,12 @@ namespace ServerManager.Web.Controllers;
 public class UsersController : Controller
 {
     private readonly IUserManagementService _userManagementService;
+    private readonly IRoleManagementService _roleManagementService;
 
-    public UsersController(IUserManagementService userManagementService)
+    public UsersController(IUserManagementService userManagementService, IRoleManagementService roleManagementService)
     {
         _userManagementService = userManagementService;
+        _roleManagementService = roleManagementService;
     }
 
     [HttpGet]
@@ -26,7 +29,12 @@ public class UsersController : Controller
     }
 
     [HttpGet]
-    public IActionResult Create() => View(new CreateUserDto());
+    public async Task<IActionResult> Create(CancellationToken cancellationToken)
+    {
+        var dto = new CreateUserDto { Roles = [Roles.Viewer] };
+        await SetRoleOptionsAsync(dto.Roles, cancellationToken);
+        return View(dto);
+    }
 
     [HttpPost]
     public async Task<IActionResult> Create(CreateUserDto dto, CancellationToken cancellationToken)
@@ -45,7 +53,11 @@ public class UsersController : Controller
     public async Task<IActionResult> Edit(Guid id, CancellationToken cancellationToken)
     {
         var result = await _userManagementService.GetForEditAsync(id, cancellationToken);
-        return result.IsSuccess ? View(result.Data) : NotFound();
+        if (!result.IsSuccess)
+            return NotFound();
+
+        await SetRoleOptionsAsync(result.Data!.Roles, cancellationToken);
+        return View(result.Data);
     }
 
     [HttpPost]
@@ -69,6 +81,12 @@ public class UsersController : Controller
         return result.IsSuccess
             ? this.ApiSuccess(result.Message)
             : this.ApiFailure(result, "Kullanıcının kilit durumu değiştirilemedi.");
+    }
+
+    private async Task SetRoleOptionsAsync(IReadOnlyCollection<string> selected, CancellationToken cancellationToken)
+    {
+        var options = await _roleManagementService.GetRoleOptionsAsync(cancellationToken);
+        ViewData[nameof(RoleSelectModel)] = new RoleSelectModel(options, selected, User.IsInRole(Roles.SuperAdmin));
     }
 
     [HttpPost]

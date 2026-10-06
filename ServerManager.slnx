@@ -20,6 +20,7 @@
     <Project Path="src/Plugins/ServerManager.Plugin.Cloud.Vultr/ServerManager.Plugin.Cloud.Vultr.csproj" />
     <Project Path="src/Plugins/ServerManager.Plugin.Cloud.Linode/ServerManager.Plugin.Cloud.Linode.csproj" />
     <Project Path="src/Plugins/ServerManager.Plugin.Cloud.Scaleway/ServerManager.Plugin.Cloud.Scaleway.csproj" />
+    <Project Path="src/Plugins/ServerManager.Plugin.Services.Extra/ServerManager.Plugin.Services.Extra.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ServerManager.Application.Tests/ServerManager.Application.Tests.csproj" />
@@ -31,5 +32,6 @@
     <Project Path="tests/ServerManager.Plugin.Storage.AzureBlob.Tests/ServerManager.Plugin.Storage.AzureBlob.Tests.csproj" />
     <Project Path="tests/ServerManager.Plugin.Cloud.Tests/ServerManager.Plugin.Cloud.Tests.csproj" />
     <Project Path="tests/ServerManager.Web.Tests/ServerManager.Web.Tests.csproj" />
+    <Project Path="tests/ServerManager.E2E.Tests/ServerManager.E2E.Tests.csproj" />
   </Folder>
 </Solution>

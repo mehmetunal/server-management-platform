@@ -12,6 +12,7 @@ using ServerManager.Application.Interfaces.Notifications;
 using ServerManager.Application.Notifications;
 using ServerManager.Application.Interfaces.Services;
 using ServerManager.Application.Interfaces.Ssh;
+using ServerManager.Application.ManagedServices;
 using ServerManager.Application.Services;
 using ServerManager.Application.Terminal;
 
@@ -59,13 +60,19 @@ public static class DependencyInjection
         services.AddScoped<IPanelSettingsService, PanelSettingsService>();
         services.AddScoped<IBackupJobService, BackupJobService>();
         services.AddScoped<IBackupRunService, BackupRunService>();
+        services.AddScoped<IBackupDownloadService, BackupDownloadService>();
         services.AddScoped<ISecurityService, SecurityService>();
         services.AddScoped<IServerSystemService, ServerSystemService>();
+        services.AddScoped<IServerCleanupService, ServerCleanupService>();
+        services.AddScoped<IResourceUsageService, ResourceUsageService>();
+        services.AddScoped<IResourceHistoryService, ResourceHistoryService>();
 
         // Servisler (tek tıkla Docker servisleri)
+        services.AddSingleton<IServiceTemplateCatalog, ServiceTemplateCatalog>();
         services.AddScoped<IManagedServiceService, ManagedServiceService>();
         services.AddScoped<IProjectServiceLinkService, ProjectServiceLinkService>();
         services.AddScoped<IManagedServiceBackupService, ManagedServiceBackupService>();
+        services.AddScoped<IServiceAutoBackupQueue, ServiceAutoBackupQueue>();
 
         services.AddSingleton<AuditActionCatalog>();
         services.AddSingleton<DangerousCommandDetector>();

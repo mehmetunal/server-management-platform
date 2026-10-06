@@ -15,7 +15,15 @@ public sealed class ProjectWebhookDto
     public bool? LastDeliverySucceeded { get; init; }
 
     public string? LastDeliveryMessage { get; init; }
+
+    /// <summary>Doluysa süren deployment bitince deploy edilecek bekleyen push var (kalıcı kuyruk).</summary>
+    public DateTime? PendingDeployAt { get; init; }
+
+    public string? PendingDeployCommit { get; init; }
 }
+
+/// <summary>Kalıcı webhook kuyruğundaki takip deploy'u (proje başına en fazla bir tane).</summary>
+public sealed record PendingWebhookDeploy(Guid ProjectId, DateTime QueuedAt, string? Commit, string? IpAddress);
 
 /// <summary>Yeni üretilen gizli anahtar; yalnızca bu cevapta görünür, sonra yalnızca yeniden üretilebilir.</summary>
 public sealed record ProjectWebhookSecretDto(string? Secret, string Message);

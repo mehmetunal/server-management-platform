@@ -112,11 +112,15 @@ public class RetentionAllowListTests
     {
         var mapping = RetentionAllowList.Resolve(RetentionTarget.RawMetrics);
 
-        var keep = RetentionDeleter.BuildKeepSql(mapping);
+        var create = RetentionDeleter.BuildKeepCreateSql(mapping);
+        var keep = RetentionDeleter.BuildKeepFillSql(mapping);
         var delete = RetentionDeleter.BuildDeleteSql(mapping, protect: true);
 
+        // Tablo parametresiz komutla açılmalı; sp_executesql içinde açılan #tablo komut bitince düşer.
+        Assert.DoesNotContain("@", create);
+        Assert.Contains("INTO #RetentionKeep", create);
         Assert.Contains("ROW_NUMBER()", keep);
-        Assert.Contains("#RetentionKeep", keep);
+        Assert.Contains("INSERT INTO #RetentionKeep", keep);
         Assert.DoesNotContain("ROW_NUMBER", delete);
         Assert.Contains("NOT EXISTS (SELECT 1 FROM #RetentionKeep k WHERE k.Id = t.Id)", delete);
     }

@@ -111,6 +111,16 @@ public static class AuditActions
     public const string UserUnlock = "user.unlock";
     public const string UserTwoFactorReset = "user.2fa_reset";
 
+    // Roller ve API anahtarları
+    public const string RoleCreate = "role.create";
+    public const string RoleUpdate = "role.update";
+    public const string RoleDelete = "role.delete";
+    public const string RolePermissionsChange = "role.permissions_change";
+    public const string RoleAssign = "role.assign";
+    public const string ApiKeyCreate = "api_key.create";
+    public const string ApiKeyRevoke = "api_key.revoke";
+    public const string ApiKeyUse = "api_key.use";
+
     public const string SecurityScan = "security.scan";
     public const string AuditExport = "audit.export";
     public const string AuditVerify = "audit.verify";
@@ -118,6 +128,7 @@ public static class AuditActions
 
     public const string SystemServiceControl = "system.service_control";
     public const string SystemProcessSignal = "system.process_signal";
+    public const string ServerCleanup = "server.cleanup";
 
     public const string ServerGroupCreate = "server_group.create";
     public const string ServerGroupUpdate = "server_group.update";
@@ -257,6 +268,7 @@ public static class AuditActions
         [AuditChainAnchorCreate] = "Audit zincir çapası oluşturuldu",
         [SystemServiceControl] = "Sunucu servisi başlatma / durdurma / yeniden başlatma",
         [SystemProcessSignal] = "Process sonlandırma",
+        [ServerCleanup] = "Sunucu temizliği",
         [ServerGroupCreate] = "Sunucu grubu ekleme",
         [ServerGroupUpdate] = "Sunucu grubu güncelleme",
         [ServerGroupDelete] = "Sunucu grubu silme",
@@ -284,6 +296,16 @@ public static class AuditActions
         [ManagedServiceConsoleOpen] = "Servis konsolu açıldı",
         [ManagedServiceConsoleClose] = "Servis konsolu kapandı",
         [ManagedServiceContainerAction] = "Servis başlatma / durdurma",
-        [ManagedServiceFirewallApply] = "Servis güvenlik duvarı kuralları"
+        [ManagedServiceFirewallApply] = "Servis güvenlik duvarı kuralları",
+
+        // Roller ve API anahtarları
+        [RoleCreate] = "Rol ekleme",
+        [RoleUpdate] = "Rol güncelleme",
+        [RoleDelete] = "Rol silme",
+        [RolePermissionsChange] = "Rol izinlerini değiştirme",
+        [RoleAssign] = "Kullanıcıya rol atama",
+        [ApiKeyCreate] = "API anahtarı oluşturma",
+        [ApiKeyRevoke] = "API anahtarı iptali",
+        [ApiKeyUse] = "API anahtarı kullanımı"
     };
 }

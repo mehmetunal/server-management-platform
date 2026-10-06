@@ -18,6 +18,8 @@ public sealed class ServerPageViewModel
     public const string LogsTab = "logs";
     public const string NetworkTab = "network";
     public const string StorageTab = "storage";
+    public const string ResourcesTab = "resources";
+    public const string CleanupTab = "cleanup";
     public const string BackupsTab = "backups";
     public const string AlertsTab = "alerts";
     public const string ActivityTab = "activity";

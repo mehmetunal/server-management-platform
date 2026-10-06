@@ -18,6 +18,9 @@ public sealed class AlertRuleFormDto
 
     public Guid? ServerId { get; set; }
 
+    /// <summary>"Servis çalışmıyor" ve "yeniden başlama döngüsü" kurallarında tek bir servise daraltır; boşsa kapsamdaki tüm servisler.</summary>
+    public Guid? ManagedServiceId { get; set; }
+
     public bool IsEnabled { get; set; } = true;
 
     public bool NotifyRecovery { get; set; } = true;
@@ -26,3 +29,6 @@ public sealed class AlertRuleFormDto
 
     public List<Guid> ChannelIds { get; set; } = [];
 }
+
+/// <summary>Kural formunda servis seçimi.</summary>
+public sealed record AlertServiceOptionDto(Guid Id, string Name, Guid ServerId, string ServerName);

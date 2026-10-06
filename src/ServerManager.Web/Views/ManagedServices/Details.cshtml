@@ -23,6 +23,10 @@
             <h1 class="page-title truncate">@service.Name</h1>
             <span class="@ManagedServiceDisplay.StatusBadgeClass(service.Status)"><span class="badge-dot"></span>@ManagedServiceDisplay.StatusText(service.Status)</span>
             <span class="tag">@service.TemplateName @service.ImageTag</span>
+            @if (service.TemplateBadge is not null)
+            {
+                <span class="badge-warning" data-template-unavailable><span class="badge-dot"></span>@service.TemplateBadge</span>
+            }
         </div>
         <p class="page-lead font-mono">@service.ContainerName · @service.ServerName (@service.ServerAddress)</p>
     </div>
@@ -42,6 +46,11 @@
         }
     </div>
 </div>
+
+@if (service.TemplateBlockedMessage is not null && service.Status != ManagedServiceStatus.Removed)
+{
+    <div class="alert-warning mb-6" data-template-blocked>@service.TemplateBlockedMessage</div>
+}
 
 @if (service.RunningOperationId is Guid runningId)
 {
@@ -80,6 +89,43 @@ else if (service.Status == ManagedServiceStatus.Failed && !string.IsNullOrEmpty(
             Portlar dışarıya açık ve IP kısıtlaması yok. Docker'ın yayınladığı portlar UFW kurallarını atlar; servis tüm internete açıktır.
             Güçlü parola kullanın ve Ayarlar sekmesinden izinli IP listesi tanımlayın.
         </div>
+    }
+
+    @if (Model.ActiveAlerts is { } activeAlerts)
+    {
+        <section class="panel mb-6" data-service-alerts>
+            <div class="panel-header">
+                <h2 class="panel-title">Aktif alarmlar</h2>
+                <div class="flex items-center gap-3">
+                    <a asp-controller="Alerts" asp-action="Index" class="text-sm font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400" title="Tüm alarmlar">Alarmlar</a>
+                    @if (Model.CanManageAlerts && service.Status != ManagedServiceStatus.Removed)
+                    {
+                        <a asp-controller="AlertRules" asp-action="Create" asp-route-kind="@AlertRuleKind.ServiceDown" asp-route-serviceId="@service.Id"
+                           class="btn-secondary btn-sm" title="Bu servis çalışmayınca bildirim gönderen kural ekle">@Icons.Render("bell", "h-4 w-4") Kural ekle</a>
+                    }
+                </div>
+            </div>
+            @if (activeAlerts.Count == 0)
+            {
+                <p class="panel-body text-sm text-slate-500">Bu servis için açık alarm yok.</p>
+            }
+            else
+            {
+                <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+                    @foreach (var alert in activeAlerts)
+                    {
+                        <li class="flex items-start gap-3 px-5 py-3">
+                            <span class="badge @AlertingDisplay.SeverityBadgeClass(alert.Severity)">@AlertingDisplay.SeverityText(alert.Severity)</span>
+                            <div class="min-w-0">
+                                <p class="text-sm font-medium text-slate-900 dark:text-white">@alert.RuleName · @AlertRuleKinds.DisplayName(alert.Kind)</p>
+                                <p class="text-sm text-slate-600 dark:text-slate-300">@alert.Message</p>
+                                <p class="text-xs text-slate-500">Başlangıç: @DateDisplay.Format(alert.StartedAt)@(alert.AcknowledgedBy is null ? "" : $" · üstlenen: {alert.AcknowledgedBy}")</p>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
     }
 
     <div class="service-detail-grid">

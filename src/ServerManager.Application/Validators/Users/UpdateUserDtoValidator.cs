@@ -1,5 +1,4 @@
 using FluentValidation;
-using ServerManager.Application.Authorization;
 using ServerManager.Application.DTOs.Users;
 
 namespace ServerManager.Application.Validators.Users;
@@ -14,8 +13,10 @@ public sealed class UpdateUserDtoValidator : AbstractValidator<UpdateUserDto>
         RuleFor(x => x.FullName)
             .MaximumLength(128).WithMessage("Ad soyad en fazla 128 karakter olabilir.");
 
-        RuleFor(x => x.Role)
-            .Must(r => Roles.All.Contains(r)).WithMessage("Geçerli bir rol seçin.");
+        // Rollerin var olup olmadığı serviste denetlenir (özel roller veritabanındadır).
+        RuleFor(x => x.Roles)
+            .NotEmpty().WithMessage("En az bir rol seçin.")
+            .Must(r => r.All(name => !string.IsNullOrWhiteSpace(name) && name.Length <= 256)).WithMessage("Geçerli bir rol seçin.");
 
         RuleFor(x => x.NewPassword)
             .MinimumLength(UserPasswordRules.MinimumLength).WithMessage($"Parola en az {UserPasswordRules.MinimumLength} karakter olmalıdır.")

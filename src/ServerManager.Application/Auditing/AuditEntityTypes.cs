@@ -21,6 +21,8 @@ public static class AuditEntityTypes
     public const string CloudAccount = "CloudAccount";
     public const string Settings = "Settings";
     public const string ManagedService = "ManagedService";
+    public const string Role = "Role";
+    public const string ApiKey = "ApiKey";
 
     public static IReadOnlyDictionary<string, string> DisplayNames { get; } = new Dictionary<string, string>(StringComparer.Ordinal)
     {
@@ -42,7 +44,9 @@ public static class AuditEntityTypes
         [ServerTemplate] = "Sunucu şablonu",
         [CloudAccount] = "Bulut hesabı",
         [Settings] = "Ayarlar",
-        [ManagedService] = "Servis"
+        [ManagedService] = "Servis",
+        [Role] = "Rol",
+        [ApiKey] = "API anahtarı"
     };
 
     public static string DisplayName(string? entityType) =>

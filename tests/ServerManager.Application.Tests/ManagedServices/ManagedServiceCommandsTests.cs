@@ -16,7 +16,7 @@ public class ManagedServiceCommandsTests
         string? hostPath = null,
         IReadOnlyList<string>? networks = null)
     {
-        var template = ServiceTemplates.Find(templateKey)!;
+        var template = TestTemplates.Find(templateKey)!;
         var credentials = new ServiceCredentials { Username = "app", Password = Password, Database = "app" };
         var bindings = template.Ports.Select(p => new ServicePortBinding(p.ContainerPort, p.ContainerPort + 10000)).ToList();
         return new ManagedServicePlan
@@ -46,7 +46,7 @@ public class ManagedServiceCommandsTests
     [Fact]
     public void Create_uses_env_file_and_never_puts_secrets_on_command_line()
     {
-        foreach (var template in ServiceTemplates.All)
+        foreach (var template in ServiceTemplates.BuiltIn)
         {
             var plan = Plan(template.Key, template.DefaultTag);
             var command = ManagedServiceCommands.Create(plan);
@@ -138,7 +138,7 @@ public class ManagedServiceCommandsTests
     [Fact]
     public void Console_uses_template_command_or_interactive_shell()
     {
-        var template = ServiceTemplates.Find(ServiceTemplates.Postgres)!;
+        var template = TestTemplates.Find(ServiceTemplates.Postgres)!;
         var console = ManagedServiceCommands.Console("sm-svc-db", template.ConsoleCommand);
         var shell = ManagedServiceCommands.Console("sm-svc-db", null);
 

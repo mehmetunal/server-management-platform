@@ -1,0 +1,60 @@
+@using ServerManager.Application.ResourceUsage
+@model DiskUsageReport
+@{
+    var largest = Model.Directories.FirstOrDefault()?.SizeKilobytes ?? 0;
+}
+
+@if (Model.DirectoriesTimedOut || Model.FilesTimedOut)
+{
+    <p class="alert-warning m-4">Tarama @Model.TimeoutSeconds saniyelik sınıra ulaştı; liste eksik olabilir. Daha dar bir klasör (ör. /var/lib) seçin.</p>
+}
+
+<div class="resource-grid p-4">
+    <div>
+        <h3 class="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">En büyük klasörler · @Model.Path</h3>
+        @if (Model.Directories.Count == 0)
+        {
+            <p class="text-sm text-slate-500">Klasör boyutu okunamadı (yetki yoksa sunucu ayarlarında sudo kullanımını açın).</p>
+        }
+        else
+        {
+            <ul class="resource-du">
+                @foreach (var directory in Model.Directories)
+                {
+                    <li class="resource-du-row" style="padding-left: @(directory.Depth * 0.75)rem">
+                        <button type="button" class="resource-du-path" data-disk-scan-path="@directory.Path" title="Bu klasörü tara">@directory.Path</button>
+                        <span class="resource-du-bar"><span class="usage-bar bg-brand-500" style="width: @ResourceDisplay.BarWidth(ResourceDisplay.Share(directory.SizeKilobytes, largest))"></span></span>
+                        <span class="resource-du-size">@ServerSystemDisplay.Kilobytes(directory.SizeKilobytes)</span>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+    <div>
+        <h3 class="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-200">@ResourceRules.LargeFileMegabytes MB'tan büyük dosyalar (ilk @ResourceRules.MaxFiles)</h3>
+        @if (Model.Files.Count == 0)
+        {
+            <p class="text-sm text-slate-500">Bu dosya sisteminde @ResourceRules.LargeFileMegabytes MB'tan büyük dosya bulunamadı.</p>
+        }
+        else
+        {
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead><tr><th>Dosya</th><th class="text-right">Boyut</th><th class="hidden md:table-cell">Sahip</th><th class="hidden text-right md:table-cell">Değişiklik</th></tr></thead>
+                    <tbody>
+                        @foreach (var file in Model.Files)
+                        {
+                            <tr>
+                                <td class="resource-command font-mono text-xs" title="@file.Path">@file.Path</td>
+                                <td class="whitespace-nowrap text-right tabular-nums">@MetricDisplay.Bytes(file.SizeBytes)</td>
+                                <td class="hidden text-sm md:table-cell">@(file.Owner ?? "—")</td>
+                                <td class="hidden whitespace-nowrap text-right text-sm md:table-cell">@(file.ModifiedAt is null ? "—" : DateDisplay.Format(file.ModifiedAt.Value, "dd.MM.yyyy"))</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+<p class="panel-note">Silmek için Dosyalar sekmesini veya Temizlik sayfasını kullanın; bu tarama hiçbir şeyi değiştirmez.</p>

@@ -45,6 +45,7 @@ public class ManagedServiceService : IManagedServiceService
     private readonly ManagedServiceOptions _options;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<ManagedServiceService> _logger;
+    private readonly IServiceTemplateCatalog _templates;
 
     public ManagedServiceService(
         IManagedServiceRepository repository,
@@ -59,8 +60,10 @@ public class ManagedServiceService : IManagedServiceService
         IValidator<UpgradeManagedServiceDto> upgradeValidator,
         IOptions<ManagedServiceOptions> options,
         TimeProvider timeProvider,
-        ILogger<ManagedServiceService> logger)
+        ILogger<ManagedServiceService> logger,
+        IServiceTemplateCatalog templates)
     {
+        _templates = templates;
         _repository = repository;
         _serverRepository = serverRepository;
         _connectionProvider = connectionProvider;
@@ -86,7 +89,7 @@ public class ManagedServiceService : IManagedServiceService
         if (service is null || service.Status == ManagedServiceStatus.Removed)
             return ServiceResult<ManagedServiceConnectionInfo>.NotFound(NotFoundMessage);
 
-        var template = ServiceTemplates.Find(service.TemplateKey);
+        var template = _templates.Resolve(service.TemplateKey).Template;
         if (template?.PrimaryPort is null)
             return ServiceResult<ManagedServiceConnectionInfo>.Failure("Servis şablonu bulunamadı.");
 
@@ -135,7 +138,7 @@ public class ManagedServiceService : IManagedServiceService
         if (service is null)
             return ServiceResult<ManagedServiceDetailsDto>.NotFound(NotFoundMessage);
 
-        var template = ServiceTemplates.Find(service.TemplateKey);
+        var template = _templates.Resolve(service.TemplateKey).Template;
         TryReadCredentials(service, out var credentials);
         var environment = TryReadEnvironment(service);
         var running = await _repository.GetRunningOperationAsync(id, cancellationToken);
@@ -167,6 +170,9 @@ public class ManagedServiceService : IManagedServiceService
             Slug = item.Slug,
             TemplateKey = item.TemplateKey,
             Template = item.Template,
+            TemplateAvailability = item.TemplateAvailability,
+            TemplateBadge = item.TemplateBadge,
+            TemplateBlockedMessage = item.TemplateBlockedMessage,
             ImageTag = item.ImageTag,
             ContainerName = item.ContainerName,
             Status = item.Status,
@@ -204,7 +210,7 @@ public class ManagedServiceService : IManagedServiceService
         if (service is null)
             return ServiceResult<UpdateManagedServiceDto>.NotFound(NotFoundMessage);
 
-        var template = ServiceTemplates.Find(service.TemplateKey);
+        var template = _templates.Resolve(service.TemplateKey).Template;
         if (template is null)
             return ServiceResult<UpdateManagedServiceDto>.Failure("Servis şablonu bulunamadı.");
 
@@ -247,7 +253,7 @@ public class ManagedServiceService : IManagedServiceService
         if (service is null)
             return ServiceResult<ManagedServiceSecretsDto>.NotFound(NotFoundMessage);
 
-        var template = ServiceTemplates.Find(service.TemplateKey);
+        var template = _templates.Resolve(service.TemplateKey).Template;
         if (!TryReadCredentials(service, out var credentials))
         {
             await AuditAsync(AuditActions.ManagedServiceRevealSecrets, service, "Kimlik bilgileri çözülemedi", false, null, cancellationToken);
@@ -351,7 +357,7 @@ public class ManagedServiceService : IManagedServiceService
         if (service is null)
             return ServiceResult.NotFound(NotFoundMessage);
 
-        var template = ServiceTemplates.Find(service.TemplateKey);
+        var template = _templates.Resolve(service.TemplateKey).Template;
         if (template is null)
             return ServiceResult.Failure("Servis şablonu bulunamadı.");
 
@@ -385,7 +391,7 @@ public class ManagedServiceService : IManagedServiceService
         if (service is null || service.Status == ManagedServiceStatus.Removed)
             return ServiceResult<TerminalHandle>.NotFound(NotFoundMessage);
 
-        var template = ServiceTemplates.Find(service.TemplateKey);
+        var template = _templates.Find(service.TemplateKey);
         var connection = await _connectionProvider.GetAsync(service.ServerId, cancellationToken);
         if (!connection.IsSuccess)
             return ServiceResult<TerminalHandle>.Failure(connection.Message ?? "Sunucuya bağlanılamadı.", connection.ErrorType);
@@ -427,7 +433,7 @@ public class ManagedServiceService : IManagedServiceService
         dto.ImageTag = dto.ImageTag?.Trim();
         dto.HostDataPath = TextHelper.NullIfEmpty(dto.HostDataPath);
 
-        var template = ServiceTemplates.Find(dto.TemplateKey);
+        var template = _templates.Find(dto.TemplateKey);
         if (template is not null)
         {
             if (template.Credentials.UsernameKind == ServiceUsernameKind.Fixed)
@@ -442,7 +448,20 @@ public class ManagedServiceService : IManagedServiceService
         if (!validation.IsValid)
             return ServiceResult<ServiceOperationStart>.ValidationFailure(validation);
 
-        template = ServiceTemplates.Find(dto.TemplateKey)!;
+        template = _templates.Find(dto.TemplateKey)!;
+        var hookErrors = ValidateWithHooks(template, new ServiceTemplateFormContext
+        {
+            TemplateKey = template.Key,
+            IsInstall = true,
+            Name = dto.Name,
+            ImageTag = dto.ImageTag,
+            Username = dto.Username,
+            Database = dto.Database,
+            Environment = EnvironmentDictionary(dto.Environment)
+        });
+        if (hookErrors.Count > 0)
+            return ServiceResult<ServiceOperationStart>.ValidationFailure(hookErrors);
+
         var server = await _serverRepository.FirstOrDefaultAsync(s => s.Id == dto.ServerId, cancellationToken);
         if (server is null)
             return ServiceResult<ServiceOperationStart>.ValidationFailure(nameof(dto.ServerId), "Sunucu bulunamadı.");
@@ -507,7 +526,21 @@ public class ManagedServiceService : IManagedServiceService
         if (!validation.IsValid)
             return ServiceResult<ServiceOperationStart>.ValidationFailure(validation);
 
-        var conflicts = await PortConflictsAsync(service!.ServerId, service.Id, dto.Ports, cancellationToken);
+        TryReadCredentials(service!, out var current);
+        var hookErrors = ValidateWithHooks(template!, new ServiceTemplateFormContext
+        {
+            TemplateKey = template!.Key,
+            IsInstall = false,
+            Name = service!.Name,
+            ImageTag = service.ImageTag,
+            Username = current.Username,
+            Database = current.Database,
+            Environment = EnvironmentDictionary(dto.Environment)
+        });
+        if (hookErrors.Count > 0)
+            return ServiceResult<ServiceOperationStart>.ValidationFailure(hookErrors);
+
+        var conflicts = await PortConflictsAsync(service.ServerId, service.Id, dto.Ports, cancellationToken);
         if (conflicts.Count > 0)
             return ServiceResult<ServiceOperationStart>.ValidationFailure(conflicts);
 
@@ -650,9 +683,10 @@ public class ManagedServiceService : IManagedServiceService
         ServiceOperationRecorder recorder,
         CancellationToken cancellationToken)
     {
-        var template = ServiceTemplates.Find(service.TemplateKey);
+        var resolution = _templates.Resolve(service.TemplateKey);
+        var template = resolution.IsAvailable ? resolution.Template : null;
         if (template is null)
-            return ServiceOperationResult.Failed($"\"{service.TemplateKey}\" şablonu bu sürümde bulunmuyor.");
+            return ServiceOperationResult.Failed(resolution.BlockedMessage ?? $"\"{service.TemplateKey}\" şablonu bu sürümde bulunmuyor.");
 
         if (string.IsNullOrEmpty(service.EncryptedCredentials) || !TryReadCredentials(service, out _))
             return ServiceOperationResult.Failed(DecryptFailedMessage);
@@ -660,13 +694,162 @@ public class ManagedServiceService : IManagedServiceService
         var tag = operation.ToTag ?? service.ImageTag;
         await recorder.InfoAsync($"{template.DisplayName} {tag} → {service.ContainerName} ({service.Server?.Name ?? service.ServerId.ToString()})", cancellationToken);
 
+        var hooks = _templates.GetHooks(template.Key);
+        if (!TryBuildExtraArguments(hooks, template, credentials, environment, tag, out var extraArguments, out var hookError))
+            return ServiceOperationResult.Failed(hookError!);
+
         var connection = await _connectionProvider.GetAsync(service.ServerId, cancellationToken);
         if (!connection.IsSuccess)
             return ServiceOperationResult.Failed(connection.Message ?? "Sunucuya bağlanılamadı.");
 
-        var plan = BuildPlan(service, template, credentials, environment, tag, operation.Kind != ManagedServiceOperationKind.Install);
+        var plan = BuildPlan(service, template, credentials, environment, tag, operation.Kind != ManagedServiceOperationKind.Install, extraArguments);
         var run = await _provider.DeployAsync(connection.Data!.Context, plan, recorder, cancellationToken);
-        return run.IsSuccess ? run.Data! : ServiceOperationResult.Failed(run.Message ?? "İşlem çalıştırılamadı.");
+        if (!run.IsSuccess)
+            return ServiceOperationResult.Failed(run.Message ?? "İşlem çalıştırılamadı.");
+
+        if (run.Data!.Succeeded && operation.Kind == ManagedServiceOperationKind.Install && hooks.Count > 0)
+            await RunAfterInstallHooksAsync(hooks, service, template, credentials, plan, recorder, cancellationToken);
+
+        return run.Data;
+    }
+
+    /// <summary>Etkin eklenti kancalarının ek container argümanları; geçersiz argüman veya kanca hatası işlemi durdurur.</summary>
+    private bool TryBuildExtraArguments(
+        IReadOnlyList<IServiceTemplateHooks> hooks,
+        ServiceTemplate template,
+        ServiceCredentials credentials,
+        string? environment,
+        string tag,
+        out IReadOnlyList<string> arguments,
+        out string? error)
+    {
+        var result = new List<string>();
+        arguments = result;
+        error = null;
+        if (hooks.Count == 0)
+            return true;
+
+        var context = new ServiceTemplateCommandContext
+        {
+            TemplateKey = template.Key,
+            ImageTag = tag,
+            Environment = EnvironmentDictionary(environment)
+        };
+        var secrets = credentials.Secrets().ToList();
+        foreach (var hook in hooks)
+        {
+            IReadOnlyList<string> extra;
+            try
+            {
+                extra = hook.BuildExtraArgs(context) ?? [];
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Şablon kancası argüman üretemedi. Template: {Template}, Hook: {Hook}", template.Key, hook.GetType().FullName);
+                error = "Şablon eklentisi container argümanlarını üretemedi; ayrıntılar uygulama logunda.";
+                return false;
+            }
+
+            if (ServiceTemplateValidator.ValidateExtraArguments(extra, secrets) is { } invalid)
+            {
+                error = invalid;
+                return false;
+            }
+
+            result.AddRange(extra);
+        }
+
+        if (result.Count + template.Command.Count > ServiceTemplateValidator.MaxCommandArguments * 2)
+        {
+            error = "Container argümanları çok uzun.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private async Task RunAfterInstallHooksAsync(
+        IReadOnlyList<IServiceTemplateHooks> hooks,
+        ManagedService service,
+        ServiceTemplate template,
+        ServiceCredentials credentials,
+        ManagedServicePlan plan,
+        ServiceOperationRecorder recorder,
+        CancellationToken cancellationToken)
+    {
+        var context = new ServiceTemplateInstallContext
+        {
+            ServiceId = service.Id,
+            ServerId = service.ServerId,
+            Name = service.Name,
+            TemplateKey = template.Key,
+            ImageTag = plan.Tag,
+            ContainerName = service.ContainerName,
+            InternalEndpoint = template.PrimaryPort is { } primary ? new ServiceEndpoint(service.ContainerName, primary.ContainerPort) : null,
+            PublishedPorts = plan.Ports,
+            Credentials = credentials
+        };
+        var log = new HookLog(recorder);
+        foreach (var hook in hooks)
+        {
+            try
+            {
+                await hook.AfterInstallAsync(context, log, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogWarning(ex, "Şablon kancası kurulum sonrası adımda hata verdi. Template: {Template}, Hook: {Hook}", template.Key, hook.GetType().FullName);
+                await recorder.OnOutputAsync(ServiceConsole.Warning("Şablon eklentisinin kurulum sonrası adımı başarısız oldu; servis çalışıyor. Ayrıntılar uygulama logunda."), cancellationToken);
+            }
+        }
+    }
+
+    /// <summary>Eklenti kancalarının form doğrulaması; hatalar form alanlarına yazılır.</summary>
+    private List<ServiceError> ValidateWithHooks(ServiceTemplate template, ServiceTemplateFormContext context)
+    {
+        var errors = new List<ServiceError>();
+        foreach (var hook in _templates.GetHooks(template.Key))
+        {
+            try
+            {
+                foreach (var error in hook.Validate(context) ?? [])
+                    errors.Add(new ServiceError(string.IsNullOrEmpty(error.Property) ? string.Empty : error.Property, error.Message));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Şablon kancası doğrulamada hata verdi. Template: {Template}, Hook: {Hook}", template.Key, hook.GetType().FullName);
+                errors.Add(new ServiceError(string.Empty, "Şablon eklentisi formu doğrulayamadı; ayrıntılar uygulama logunda."));
+            }
+        }
+
+        return errors;
+    }
+
+    private static Dictionary<string, string> EnvironmentDictionary(string? environment)
+    {
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var entry in ManagedServiceSettingsRules.FromEnvironmentText(environment))
+            result[entry.Key!] = entry.Value ?? string.Empty;
+        return result;
+    }
+
+    private static Dictionary<string, string> EnvironmentDictionary(IEnumerable<EnvironmentEntryDto> entries) =>
+        EnvironmentDictionary(ManagedServiceSettingsRules.ToEnvironmentText(entries));
+
+    private sealed class HookLog(ServiceOperationRecorder recorder) : IServiceTemplateHookLog
+    {
+        public Task InfoAsync(string message, CancellationToken cancellationToken) =>
+            recorder.OnOutputAsync(ServiceConsole.Info(Clean(message)), cancellationToken);
+
+        public Task WarningAsync(string message, CancellationToken cancellationToken) =>
+            recorder.OnOutputAsync(ServiceConsole.Warning(Clean(message)), cancellationToken);
+
+        /// <summary>Eklenti iletisinden kontrol karakterleri (ANSI kaçışları dahil) atılır; satırlar tek satıra indirilir.</summary>
+        private static string Clean(string? message)
+        {
+            var text = new string((message ?? string.Empty).Select(c => char.IsControl(c) ? ' ' : c).ToArray()).Trim();
+            return text.Length > 2000 ? text[..2000] : text;
+        }
     }
 
     private async Task<ServiceOperationResult> ExecuteRemoveAsync(
@@ -753,7 +936,14 @@ public class ManagedServiceService : IManagedServiceService
     // ---------------------------------------------------------------- Yardımcılar
 
     /// <summary>Kayıtlı ayarlardan sunucuda uygulanacak planı üretir.</summary>
-    public ManagedServicePlan BuildPlan(ManagedService service, ServiceTemplate template, ServiceCredentials credentials, string? environment, string tag, bool replaceExisting)
+    public ManagedServicePlan BuildPlan(
+        ManagedService service,
+        ServiceTemplate template,
+        ServiceCredentials credentials,
+        string? environment,
+        string tag,
+        bool replaceExisting,
+        IReadOnlyList<string>? extraArguments = null)
     {
         var published = ServicePortBindings.Published(template, ServicePortBindings.FromJson(service.PortBindings), service.ExposePublicly);
         ServiceValidation.TryParseNetworks(service.Networks, out var extraNetworks, out _);
@@ -783,7 +973,7 @@ public class ManagedServiceService : IManagedServiceService
             CpuLimit = service.CpuLimit,
             Networks = networks,
             ManagedNetworks = managedNetworks,
-            Command = template.Command,
+            Command = extraArguments is { Count: > 0 } ? [.. template.Command, .. extraArguments] : template.Command,
             HealthCommand = template.HealthCommand,
             ReadinessCommand = template.ReadinessCommand,
             Firewall = FirewallPlan(service, template),
@@ -839,9 +1029,12 @@ public class ManagedServiceService : IManagedServiceService
         if (service is null || service.Status == ManagedServiceStatus.Removed)
             return (null, null, ServiceResult<ServiceOperationStart>.NotFound(NotFoundMessage));
 
-        var template = ServiceTemplates.Find(service.TemplateKey);
-        if (template is null)
-            return (null, null, ServiceResult<ServiceOperationStart>.Failure("Servis şablonu bulunamadı."));
+        // Şablon eklentisi devre dışı/kaldırılmışsa yeniden oluşturma ve yükseltme engellenir; kayıtlı TemplateKey korunur.
+        var resolution = _templates.Resolve(service.TemplateKey);
+        if (!resolution.IsAvailable || resolution.Template is null)
+            return (null, null, ServiceResult<ServiceOperationStart>.Failure(resolution.BlockedMessage ?? "Servis şablonu bulunamadı.", ServiceErrorType.Conflict));
+
+        var template = resolution.Template;
 
         if (service.Status == ManagedServiceStatus.Removing || await _repository.GetRunningOperationAsync(id, cancellationToken) is not null)
             return (null, null, ServiceResult<ServiceOperationStart>.Failure(BusyMessage, ServiceErrorType.Conflict));
@@ -963,9 +1156,10 @@ public class ManagedServiceService : IManagedServiceService
         return networks;
     }
 
-    private static ManagedServiceListItemDto ToListItem(ManagedService service)
+    private ManagedServiceListItemDto ToListItem(ManagedService service)
     {
-        var template = ServiceTemplates.Find(service.TemplateKey);
+        var resolution = _templates.Resolve(service.TemplateKey);
+        var template = resolution.Template;
         var ports = template is null
             ? []
             : ServicePortBindings.Published(template, ServicePortBindings.FromJson(service.PortBindings), service.ExposePublicly);
@@ -984,6 +1178,9 @@ public class ManagedServiceService : IManagedServiceService
             Slug = service.Slug,
             TemplateKey = service.TemplateKey,
             Template = template,
+            TemplateAvailability = resolution.Availability,
+            TemplateBadge = resolution.Badge,
+            TemplateBlockedMessage = resolution.BlockedMessage,
             ImageTag = service.ImageTag,
             ContainerName = service.ContainerName,
             Status = service.Status,

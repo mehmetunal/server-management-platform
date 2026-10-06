@@ -80,6 +80,7 @@ public class AlertRuleService : IAlertRuleService
             Threshold = rule.Threshold,
             DurationMinutes = rule.DurationMinutes,
             ServerId = rule.ServerId,
+            ManagedServiceId = rule.ManagedServiceId,
             IsEnabled = rule.IsEnabled,
             NotifyRecovery = rule.NotifyRecovery,
             RepeatIntervalMinutes = rule.RepeatIntervalMinutes,
@@ -186,6 +187,16 @@ public class AlertRuleService : IAlertRuleService
             .ToList();
     }
 
+    public async Task<IReadOnlyList<AlertServiceOptionDto>> GetServiceOptionsAsync(CancellationToken cancellationToken = default)
+    {
+        var services = await _repository.GetManagedServiceSnapshotsAsync(cancellationToken);
+        return services
+            .OrderBy(s => s.ServerName, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Select(s => new AlertServiceOptionDto(s.ServiceId, s.Name, s.ServerId, s.ServerName))
+            .ToList();
+    }
+
     private async Task<ServiceResult?> ValidateAsync(AlertRuleFormDto dto, Guid? excludeId, CancellationToken cancellationToken)
     {
         var validation = await _validator.ValidateAsync(dto, cancellationToken);
@@ -197,6 +208,18 @@ public class AlertRuleService : IAlertRuleService
             return ServiceResult.ValidationFailure(nameof(dto.DurationMinutes),
                 $"Süre, ham metrik saklama süresini ({_monitoringOptions.EffectiveRawRetentionHours} saat) aşamaz; bu kural hiç tetiklenmez. " +
                 "Süreyi kısaltın veya Ayarlar'dan ham metrik saklama süresini artırın.");
+        }
+
+        if (dto.ManagedServiceId is { } serviceId)
+        {
+            var service = (await _repository.GetManagedServiceSnapshotsAsync(cancellationToken)).FirstOrDefault(s => s.ServiceId == serviceId);
+            if (service is null)
+                return ServiceResult.ValidationFailure(nameof(dto.ManagedServiceId), "Seçilen servis bulunamadı.");
+            if (dto.ServerId is { } scope && scope != service.ServerId)
+                return ServiceResult.ValidationFailure(nameof(dto.ManagedServiceId), "Seçilen servis, kapsamdaki sunucuda değil.");
+
+            // Servis seçilince kapsam servisin sunucusudur (sunucu filtresi ve alarm listeleri için).
+            dto.ServerId = service.ServerId;
         }
 
         if (dto.ServerId is { } serverId && !await _serverRepository.AnyAsync(s => s.Id == serverId, cancellationToken))
@@ -220,6 +243,8 @@ public class AlertRuleService : IAlertRuleService
             dto.Threshold = 0;
         if (!AlertRuleKinds.UsesDuration(dto.Kind))
             dto.DurationMinutes = 0;
+        if (!AlertRuleKinds.UsesService(dto.Kind))
+            dto.ManagedServiceId = null;
     }
 
     private static void Apply(AlertRule rule, AlertRuleFormDto dto)
@@ -230,6 +255,7 @@ public class AlertRuleService : IAlertRuleService
         rule.Threshold = dto.Threshold;
         rule.DurationMinutes = dto.DurationMinutes;
         rule.ServerId = dto.ServerId;
+        rule.ManagedServiceId = dto.ManagedServiceId;
         rule.IsEnabled = dto.IsEnabled;
         rule.NotifyRecovery = dto.NotifyRecovery;
         rule.RepeatIntervalMinutes = dto.RepeatIntervalMinutes;

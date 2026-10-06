@@ -35,6 +35,7 @@ public partial class ManagedServicesController : Controller
     private readonly IManagedServiceBackupService _backups;
     private readonly IBackupStorageService _storages;
     private readonly DeploymentManager _deployments;
+    private readonly IServiceTemplateCatalog _templates;
 
     public ManagedServicesController(
         IManagedServiceService services,
@@ -45,8 +46,10 @@ public partial class ManagedServicesController : Controller
         IProjectServiceLinkService links,
         IManagedServiceBackupService backups,
         IBackupStorageService storages,
-        DeploymentManager deployments)
+        DeploymentManager deployments,
+        IServiceTemplateCatalog templates)
     {
+        _templates = templates;
         _services = services;
         _serverService = serverService;
         _manager = manager;
@@ -76,12 +79,12 @@ public partial class ManagedServicesController : Controller
     [HasPermission(Permissions.ServicesManage)]
     public async Task<IActionResult> Create(Guid? serverId, string? template, CancellationToken cancellationToken)
     {
-        var selected = ServiceTemplates.Find(template);
+        var selected = _templates.Find(template);
         var form = new CreateManagedServiceDto { ServerId = serverId ?? Guid.Empty };
         if (selected is not null)
         {
             form.TemplateKey = selected.Key;
-            form.Name = selected.Key;
+            form.Name = selected.LocalKey;
             form.ImageTag = selected.DefaultTag;
             form.Username = selected.Credentials.DefaultUsername;
             form.Database = selected.Credentials.DefaultDatabase;
@@ -95,6 +98,8 @@ public partial class ManagedServicesController : Controller
         return View(new ManagedServiceCreateViewModel
         {
             Template = selected,
+            Templates = selected is null ? _templates.GetAvailable() : [],
+            Categories = selected is null ? _templates.GetCategories() : [],
             Form = form,
             Servers = await _serverService.GetOptionsAsync(cancellationToken),
             AllowPrivilegedPorts = _options.AllowPrivilegedHostPorts,
@@ -114,7 +119,7 @@ public partial class ManagedServicesController : Controller
         if (!ModelState.IsValid)
             return this.ApiInvalidModel();
 
-        Func<IServiceProvider, Guid, CancellationToken, Task<string?>>? afterInstall = null;
+        ServiceBackupOptionsDto? afterInstall = null;
         if (autoBackup is { Enabled: true })
         {
             if (!User.HasPermission(Permissions.BackupManage))
@@ -124,8 +129,7 @@ public partial class ManagedServicesController : Controller
             if (!check.IsSuccess)
                 return this.ApiFailure(check, "Otomatik yedek ayarları geçersiz.");
 
-            var options = autoBackup;
-            afterInstall = (provider, serviceId, ct) => CreateBackupAfterInstallAsync(provider, serviceId, options, ct);
+            afterInstall = autoBackup;
         }
 
         var actor = Actor;
@@ -136,14 +140,15 @@ public partial class ManagedServicesController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Details(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Details(Guid id, [FromServices] IAlertService alerts, CancellationToken cancellationToken)
     {
         var service = await _services.GetAsync(id, cancellationToken);
         if (!service.IsSuccess)
             return NotFound();
 
+        // Şablon eklentisi devre dışıysa Ayarlar ve Sürüm sekmeleri gösterilmez (yeniden oluşturma/yükseltme engellidir).
         UpdateManagedServiceDto? settings = null;
-        if (User.HasPermission(Permissions.ServicesManage))
+        if (User.HasPermission(Permissions.ServicesManage) && service.Data!.CanChangeTemplateSettings)
             settings = (await _services.GetSettingsAsync(id, cancellationToken)).Data;
 
         var details = service.Data!;
@@ -159,7 +164,11 @@ public partial class ManagedServicesController : Controller
             CanLink = CanLink && details.Status != ManagedServiceStatus.Removed && details.Template?.PrimaryPort is not null,
             CanBackup = canBackup,
             BackupJobs = canBackup ? await _backups.ListJobsAsync(id, cancellationToken) : [],
-            BackupStorages = canBackup ? await _storages.GetOptionsAsync(cancellationToken) : []
+            BackupStorages = canBackup ? await _storages.GetOptionsAsync(cancellationToken) : [],
+            ActiveAlerts = User.HasPermission(Permissions.AlertView)
+                ? await alerts.GetOpenServiceAlertsAsync(details.Id, details.ServerId, details.ContainerName, cancellationToken)
+                : null,
+            CanManageAlerts = User.HasPermission(Permissions.AlertManage)
         });
     }
 
@@ -340,16 +349,6 @@ public partial class ManagedServicesController : Controller
         return result.IsSuccess
             ? this.ApiSuccess(result.Message ?? "Yedekleme işi oluşturuldu.", Url.Action("Details", "BackupJobs", new { id = result.Data }))
             : this.ApiFailure(result, "Yedekleme işi oluşturulamadı.");
-    }
-
-    private static async Task<string?> CreateBackupAfterInstallAsync(IServiceProvider provider, Guid serviceId, ServiceBackupOptionsDto options, CancellationToken cancellationToken)
-    {
-        var result = await provider.GetRequiredService<IManagedServiceBackupService>().CreateJobAsync(serviceId, options, cancellationToken);
-        if (result.IsSuccess)
-            return ServiceConsole.Success("Otomatik yedekleme işi oluşturuldu (Yedekleme → İşler).");
-
-        var reason = result.Errors.FirstOrDefault()?.Message ?? result.Message ?? "bilinmeyen hata";
-        return ServiceConsole.Warning($"Otomatik yedekleme işi oluşturulamadı: {reason} Servis sayfasındaki \"Yedek işi oluştur\" ile yeniden deneyin.");
     }
 
     private IActionResult DataResult<T>(ServiceResult<T> result, string fallback)

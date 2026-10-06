@@ -1,0 +1,94 @@
+@model ApiKeysPageViewModel
+@{
+    ViewData["Title"] = "API anahtarları";
+    ViewData["Page"] = "api-keys";
+    var defaultLifetime = ApiKeysPageViewModel.DefaultLifetime(Model.LifetimeOptions);
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">API anahtarları<partial name="_HelpLink" model="GuideAnchors.ApiKeys" /></h1>
+        <p class="page-lead">Betik ve CI araçlarının REST API'yi (<code>@Model.BaseUrl</code>) sizin adınıza kullanması için kişisel anahtarlar.</p>
+    </div>
+</div>
+
+<partial name="_ApiTabs" />
+
+@if (!Model.Enabled)
+{
+    <p class="alert-error api-section">API anahtarları bu kurulumda kapalı (<code>ApiKeys:Enabled = false</code>).</p>
+}
+else
+{
+    <section class="panel api-section" data-api-key-result hidden>
+        <div class="panel-header">
+            <h2 class="panel-title">Yeni anahtarınız</h2>
+        </div>
+        <div class="panel-body api-token-body">
+            <p class="form-hint">Anahtarı şimdi kopyalayıp güvenli bir yere kaydedin. Bu sayfadan ayrıldıktan sonra bir daha gösterilmez.</p>
+            <div class="api-token-row">
+                <input type="text" class="form-control api-token" readonly data-api-key-token aria-label="Yeni API anahtarı" />
+                <button type="button" class="btn-secondary" data-api-key-copy title="Anahtarı panoya kopyala">@Icons.Render("copy", "h-4 w-4") Kopyala</button>
+            </div>
+            <div>
+                <a asp-action="Index" class="btn-primary" title="Listeyi yenile">Tamam, kaydettim</a>
+            </div>
+        </div>
+    </section>
+
+    <form asp-action="Create" method="post" class="panel api-section" data-api-key-form novalidate autocomplete="off">
+        <div class="panel-header">
+            <h2 class="panel-title">Yeni anahtar</h2>
+        </div>
+        <div class="panel-body api-form-grid">
+            <p class="alert-error sm:col-span-2" data-form-error hidden></p>
+            <div>
+                <label for="Name" class="form-label">Ad *</label>
+                <input id="Name" name="Name" class="form-control" maxlength="100" placeholder="ör. GitHub Actions deploy" />
+                <span data-valmsg-for="Name" class="field-validation-error"></span>
+            </div>
+            <div>
+                <label for="LifetimeDays" class="form-label">Geçerlilik süresi</label>
+                <select id="LifetimeDays" name="LifetimeDays" class="form-control">
+                    @foreach (var days in Model.LifetimeOptions)
+                    {
+                        <option value="@(days?.ToString() ?? "")" selected="@(days == defaultLifetime)">@ApiKeysPageViewModel.LifetimeLabel(days)</option>
+                    }
+                </select>
+                <span data-valmsg-for="LifetimeDays" class="field-validation-error"></span>
+            </div>
+            <div class="sm:col-span-2">
+                <label for="AllowedIps" class="form-label">İzin verilen IP adresleri (isteğe bağlı)</label>
+                <textarea id="AllowedIps" name="AllowedIps" class="form-control" rows="2" placeholder="203.0.113.10, 10.0.0.0/8"></textarea>
+                <p class="form-hint">Virgül veya satır sonuyla ayırın; tek IP veya CIDR. Boşsa her adresten kullanılabilir.</p>
+                <span data-valmsg-for="AllowedIps" class="field-validation-error"></span>
+            </div>
+            <div class="sm:col-span-2">
+                <p class="form-label">Kapsam (izinler) *</p>
+                <p class="form-hint">Yalnızca kendi izinlerinizden seçebilirsiniz. İstek anında etkin izinler, seçtikleriniz ile hesabınızın o anki izinlerinin kesişimidir: rolünüzden kaldırılan izin anahtarla da kullanılamaz.</p>
+                <span data-valmsg-for="Scopes" class="field-validation-error"></span>
+                <div class="api-scope-groups">
+                    @foreach (var group in Model.GrantableScopes.GroupBy(p => p.Group))
+                    {
+                        <fieldset class="api-scope-group">
+                            <legend class="api-scope-title">@group.Key</legend>
+                            @foreach (var permission in group)
+                            {
+                                <label class="api-scope-item" title="@permission.Name">
+                                    <input type="checkbox" name="Scopes" value="@permission.Name" class="form-check" />
+                                    <span>@permission.DisplayName <span class="api-key-code">@permission.Name</span></span>
+                                </label>
+                            }
+                        </fieldset>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-primary" title="Anahtarı oluştur"><span class="spinner" data-spinner hidden></span> Anahtar oluştur</button>
+        </div>
+    </form>
+}
+
+<h2 class="api-subtitle">Anahtarlarım</h2>
+<partial name="_KeyList" model="Model" />

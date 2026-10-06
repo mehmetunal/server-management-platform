@@ -11,7 +11,8 @@ public sealed class TwoFactorEnforcementMiddleware
 {
     private const string SetupPath = "/Account/Security";
 
-    private static readonly string[] AllowedPrefixes = ["/Account", "/Error", HealthEndpoints.LivenessPath];
+    // /api/v1 yalnızca API anahtarıyla çalışır; anahtar kendi kimlik bilgisidir (oturum açma ve 2FA kurulumu gerekmez).
+    private static readonly string[] AllowedPrefixes = ["/Account", "/Error", HealthEndpoints.LivenessPath, "/api/v1"];
 
     private readonly RequestDelegate _next;
     private readonly IOptionsMonitor<TwoFactorOptions> _options;

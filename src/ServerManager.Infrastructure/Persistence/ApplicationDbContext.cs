@@ -91,6 +91,20 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
 
     public DbSet<ProjectServiceLink> ProjectServiceLinks => Set<ProjectServiceLink>();
 
+    // Roller ve API anahtarları
+    public DbSet<RoleKnownPermission> RoleKnownPermissions => Set<RoleKnownPermission>();
+
+    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+
+    // Kaynak geçmişi
+    public DbSet<ContainerMetricSample> ContainerMetricSamples => Set<ContainerMetricSample>();
+
+    public DbSet<ContainerMetricHourly> ContainerMetricsHourly => Set<ContainerMetricHourly>();
+
+    public DbSet<ProcessSnapshot> ProcessSnapshots => Set<ProcessSnapshot>();
+
+    public DbSet<ServerReclaimableSpace> ServerReclaimableSpace => Set<ServerReclaimableSpace>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

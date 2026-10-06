@@ -1,0 +1,63 @@
+.role-form {
+  @apply flex max-w-5xl flex-col gap-6;
+}
+
+.role-form-grid {
+  @apply grid grid-cols-1 gap-5 sm:grid-cols-2;
+}
+
+.role-permission-count {
+  @apply text-xs text-slate-500;
+}
+
+.permission-groups {
+  @apply grid grid-cols-1 gap-4 lg:grid-cols-2;
+}
+
+.permission-group {
+  @apply flex flex-col gap-2 rounded-xl border border-slate-200 p-4 dark:border-slate-700;
+}
+
+.permission-group-title {
+  @apply flex w-full items-center gap-2 px-1 text-sm font-semibold text-slate-800 dark:text-slate-100;
+
+  button {
+    @apply ml-auto;
+  }
+}
+
+.permission-item {
+  @apply flex cursor-pointer items-start gap-3 rounded-lg px-1 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/60;
+
+  .form-check {
+    @apply mt-0.5 shrink-0;
+  }
+
+  &:has(input:disabled) {
+    @apply cursor-not-allowed opacity-60;
+  }
+}
+
+.permission-name {
+  @apply block text-sm text-slate-800 dark:text-slate-200;
+}
+
+.permission-code {
+  @apply block font-mono text-[11px] text-slate-500;
+}
+
+.permission-default {
+  @apply ml-1 rounded bg-slate-100 px-1 font-sans text-[10px] text-slate-500 dark:bg-slate-800;
+}
+
+.role-form-actions {
+  @apply flex flex-wrap items-center gap-3;
+}
+
+.role-delete {
+  @apply mt-6 max-w-5xl;
+}
+
+.role-delete-body {
+  @apply flex flex-col gap-4 sm:max-w-md;
+}

@@ -23,6 +23,9 @@ public sealed class AlertEvaluationData
     private IReadOnlyList<AlertDeploymentSnapshot>? _deployments;
     private IReadOnlyList<AlertBackupSnapshot>? _backups;
     private IReadOnlyList<AlertSecuritySnapshot>? _security;
+    private IReadOnlyList<AlertContainerSample>? _containerSamples;
+    private IReadOnlyList<AlertManagedServiceSnapshot>? _services;
+    private IReadOnlyList<AlertReclaimableSnapshot>? _reclaimable;
 
     public AlertEvaluationData(IAlertRepository repository, IReadOnlyList<AlertRule> rules, DateTime now, TimeSpan freshness, CancellationToken cancellationToken)
     {
@@ -85,6 +88,33 @@ public sealed class AlertEvaluationData
 
     public async Task<IReadOnlyList<AlertSecuritySnapshot>> SecurityAsync() =>
         _security ??= await _repository.GetLatestSecurityScansAsync(_cancellationToken);
+
+    /// <summary>
+    /// Servis kurallarının en uzun penceresi kadar (ve tazelik payı) container örneği; kurallar belirli sunuculara bağlıysa yalnızca onlar.
+    /// </summary>
+    public async Task<IReadOnlyList<AlertContainerSample>> ContainerSamplesAsync(TimeSpan containerFreshness)
+    {
+        if (_containerSamples is not null)
+            return _containerSamples;
+
+        var rules = _rules.Where(r => AlertRuleKinds.UsesContainerSamples(r.Kind)).ToList();
+        var maxMinutes = rules.Select(r => r.DurationMinutes).DefaultIfEmpty(0).Max();
+        var since = _now - TimeSpan.FromMinutes(maxMinutes) - containerFreshness * 2;
+        IReadOnlyCollection<Guid>? filter = rules.Count == 0 || rules.Any(r => r.ServerId is null && r.ManagedServiceId is null)
+            ? null
+            : rules.Where(r => r.ServerId is not null).Select(r => r.ServerId!.Value)
+                .Concat((await ServicesAsync()).Where(s => rules.Any(r => r.ManagedServiceId == s.ServiceId)).Select(s => s.ServerId))
+                .Distinct()
+                .ToList();
+        _containerSamples = await _repository.GetContainerSamplesAsync(since, filter, _cancellationToken);
+        return _containerSamples;
+    }
+
+    public async Task<IReadOnlyList<AlertManagedServiceSnapshot>> ServicesAsync() =>
+        _services ??= await _repository.GetManagedServiceSnapshotsAsync(_cancellationToken);
+
+    public async Task<IReadOnlyList<AlertReclaimableSnapshot>> ReclaimableAsync() =>
+        _reclaimable ??= await _repository.GetReclaimableSnapshotsAsync(_cancellationToken);
 
     private IEnumerable<AlertRule> MetricRules() => _rules.Where(r => AlertRuleKinds.IsMetric(r.Kind));
 

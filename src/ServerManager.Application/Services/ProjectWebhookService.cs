@@ -56,7 +56,9 @@ public class ProjectWebhookService : IProjectWebhookService
             Branch = project.Branch,
             LastDeliveryAt = project.WebhookLastDeliveryAt,
             LastDeliverySucceeded = project.WebhookLastDeliverySucceeded,
-            LastDeliveryMessage = project.WebhookLastDeliveryMessage
+            LastDeliveryMessage = project.WebhookLastDeliveryMessage,
+            PendingDeployAt = project.PendingWebhookDeployAt,
+            PendingDeployCommit = project.PendingWebhookCommit
         });
     }
 
@@ -160,6 +162,27 @@ public class ProjectWebhookService : IProjectWebhookService
         var project = await _repository.GetProjectAsync(projectId, cancellationToken);
         if (project is not null)
             await RecordAsync(project, succeeded, message, cancellationToken);
+    }
+
+    public async Task<PendingWebhookDeploy?> QueueFollowUpAsync(Guid projectId, string? commit, string? ipAddress, CancellationToken cancellationToken = default)
+    {
+        var queuedAt = UtcNow;
+        var normalizedCommit = string.IsNullOrWhiteSpace(commit) ? null : TextHelper.Truncate(commit.Trim(), 64);
+        var normalizedIp = string.IsNullOrWhiteSpace(ipAddress) ? null : TextHelper.Truncate(ipAddress.Trim(), 64);
+        if (!await _repository.SetPendingWebhookDeployAsync(projectId, queuedAt, normalizedCommit, normalizedIp, cancellationToken))
+            return null;
+
+        _logger.LogInformation("Webhook takip deploy'u kuyruğa alındı. ProjectId: {ProjectId}, Commit: {Commit}", projectId, normalizedCommit);
+        return new PendingWebhookDeploy(projectId, queuedAt, normalizedCommit, normalizedIp);
+    }
+
+    public Task<IReadOnlyList<PendingWebhookDeploy>> ListPendingFollowUpsAsync(CancellationToken cancellationToken = default) =>
+        _repository.ListPendingWebhookDeploysAsync(cancellationToken);
+
+    public Task<bool> CompleteFollowUpAsync(PendingWebhookDeploy pending, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        return _repository.ClearPendingWebhookDeployAsync(pending.ProjectId, pending.QueuedAt, cancellationToken);
     }
 
     private async Task RecordAsync(DeploymentProject project, bool succeeded, string message, CancellationToken cancellationToken)

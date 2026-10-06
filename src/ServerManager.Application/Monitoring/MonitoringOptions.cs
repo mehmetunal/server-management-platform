@@ -36,4 +36,10 @@ public sealed class MonitoringOptions
     public int HealthCheckRetentionDays { get; set; } = 30;
 
     public int MaintenanceIntervalMinutes { get; set; } = 10;
+
+    /// <summary>Container ve process kaynak geçmişinin örnekleme aralığı (dakika); 0 kapatır. Ana metrik toplayıcıdan ayrı çalışır.</summary>
+    public int ResourceHistoryIntervalMinutes { get; set; } = 5;
+
+    /// <summary>"Temizlenebilir alan" alarmı için temizlik taramasının (silme yok) aralığı (saat); 0 kapatır.</summary>
+    public int ReclaimableScanIntervalHours { get; set; } = 6;
 }

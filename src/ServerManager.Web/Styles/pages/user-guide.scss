@@ -1,0 +1,229 @@
+// Kullanım kılavuzu: solda içindekiler ve arama, sağda Markdown'dan üretilen metin.
+
+.guide-layout {
+  @apply grid grid-cols-1 gap-6 lg:grid-cols-[17rem_minmax(0,1fr)] xl:grid-cols-[19rem_minmax(0,1fr)];
+}
+
+.guide-sidebar {
+  @apply flex flex-col gap-3 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:self-start;
+}
+
+.guide-search-status {
+  @apply mt-2 text-xs text-slate-500 dark:text-slate-400;
+}
+
+.guide-toc {
+  @apply max-h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-3 text-sm shadow-sm lg:max-h-none lg:flex-1 dark:border-slate-800 dark:bg-slate-900;
+}
+
+.guide-toc-chapter {
+  @apply mt-3 mb-1 px-2 text-xs font-semibold tracking-wide text-slate-500 uppercase first:mt-0 dark:text-slate-400;
+
+  a:hover {
+    @apply text-brand-600 dark:text-brand-400;
+  }
+}
+
+.guide-toc-list,
+.guide-toc-sublist {
+  @apply flex flex-col gap-0.5;
+}
+
+.guide-toc-sublist {
+  @apply mt-0.5 mb-1 ml-3 border-l border-slate-200 pl-2 dark:border-slate-800;
+}
+
+.guide-toc-link {
+  @apply block truncate rounded-lg px-2 py-1 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white;
+
+  &.is-active {
+    @apply bg-brand-50 font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-300;
+  }
+}
+
+.guide-toc-link-sub {
+  @apply text-xs;
+}
+
+.guide-content {
+  @apply p-5 text-sm leading-relaxed text-slate-700 sm:p-8 dark:text-slate-300;
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply scroll-mt-24 font-semibold text-slate-900 dark:text-white;
+  }
+
+  h1 {
+    @apply mb-4 text-2xl;
+  }
+
+  h2 {
+    @apply mt-10 mb-3 border-b border-slate-200 pb-2 text-lg dark:border-slate-800;
+  }
+
+  h3 {
+    @apply mt-6 mb-2 text-base;
+  }
+
+  h4 {
+    @apply mt-4 mb-2 text-sm;
+  }
+
+  p,
+  ul,
+  ol,
+  table,
+  blockquote,
+  pre {
+    @apply my-3;
+  }
+
+  ul {
+    @apply list-disc pl-6;
+  }
+
+  ol {
+    @apply list-decimal pl-6;
+  }
+
+  li {
+    @apply my-1;
+  }
+
+  li > ul,
+  li > ol {
+    @apply my-1;
+  }
+
+  ul.contains-task-list {
+    @apply list-none pl-1;
+  }
+
+  .task-list-item input {
+    @apply mr-2 align-middle;
+  }
+
+  a {
+    @apply font-medium text-brand-600 underline-offset-2 hover:underline dark:text-brand-400;
+  }
+
+  strong {
+    @apply font-semibold text-slate-900 dark:text-slate-100;
+  }
+
+  code {
+    @apply rounded bg-slate-100 px-1 py-0.5 font-mono text-[0.8125rem] text-slate-800 dark:bg-slate-800 dark:text-slate-200;
+  }
+
+  pre {
+    @apply overflow-x-auto rounded-xl bg-slate-950 p-4 text-slate-100;
+
+    code {
+      @apply bg-transparent p-0 text-slate-100;
+    }
+  }
+
+  blockquote {
+    @apply border-l-4 border-brand-300 bg-brand-50/50 px-4 py-2 text-slate-600 dark:border-brand-700 dark:bg-brand-500/10 dark:text-slate-300;
+  }
+
+  table {
+    @apply block w-full overflow-x-auto border-collapse text-left text-sm;
+  }
+
+  th {
+    @apply border-b border-slate-200 bg-slate-50 px-3 py-2 font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-200;
+  }
+
+  td {
+    @apply border-b border-slate-100 px-3 py-2 align-top dark:border-slate-800;
+  }
+
+  img {
+    @apply my-3 h-auto max-w-full rounded-xl border border-slate-200 dark:border-slate-800;
+  }
+
+  hr {
+    @apply my-8 border-slate-200 dark:border-slate-800;
+  }
+}
+
+.guide-chapter + .guide-chapter {
+  @apply mt-14 border-t-4 border-double border-slate-200 pt-8 dark:border-slate-800;
+}
+
+.guide-section > h2:first-child {
+  @apply mt-8;
+}
+
+.guide-empty {
+  @apply py-10 text-center text-sm text-slate-500;
+}
+
+.guide-content mark {
+  @apply rounded bg-amber-200 px-0.5 text-slate-900 dark:bg-amber-500/40 dark:text-white;
+}
+
+@media print {
+  .app-sidebar,
+  .app-topbar,
+  .app-overlay,
+  .guide-sidebar,
+  .guide-header button {
+    display: none !important;
+  }
+
+  .app-main {
+    padding-left: 0 !important;
+  }
+
+  .app-content {
+    padding: 0 !important;
+  }
+
+  .guide-layout {
+    display: block;
+  }
+
+  .guide-content {
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    color: #000;
+    background: #fff;
+
+    a {
+      color: inherit;
+      text-decoration: underline;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      background: #f1f5f9;
+      color: #000;
+    }
+
+    h2,
+    h3 {
+      break-after: avoid;
+    }
+
+    table,
+    pre,
+    blockquote {
+      break-inside: avoid;
+    }
+  }
+
+  // Arama süzgeci açıkken yazdırılsa bile bütün kılavuz çıkar.
+  .guide-section[hidden],
+  .guide-chapter-intro[hidden] {
+    display: block !important;
+  }
+
+  .guide-empty {
+    display: none !important;
+  }
+}

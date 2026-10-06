@@ -92,6 +92,10 @@ else
                         {
                             <p class="plugin-error">@plugin.LoadError</p>
                         }
+                        @foreach (var warning in plugin.Warnings)
+                        {
+                            <p class="plugin-warning" data-plugin-warning>@warning</p>
+                        }
 
                         <div class="plugin-card-foot">
                             <p class="plugin-meta">

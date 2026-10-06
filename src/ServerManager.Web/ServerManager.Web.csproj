@@ -16,6 +16,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Markdig" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
     <PackageReference Include="QRCoder" />
     <PackageReference Include="Serilog.AspNetCore" />
@@ -25,6 +27,13 @@
     <Content Remove="package.json;package-lock.json;Plugins\**" />
     <None Remove="Plugins\**" />
     <None Include="package.json;package-lock.json" />
+  </ItemGroup>
+
+  <!-- Kullanım kılavuzu depodaki docs/ klasöründen derlemeye gömülür; uygulama /Guide sayfasında bu kaynakları okur. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\docs\kullanim-kilavuzu.md" LogicalName="ServerManager.Web.Guide.kullanim-kilavuzu.md" />
+    <EmbeddedResource Include="..\..\docs\son-kullanici.md" LogicalName="ServerManager.Web.Guide.son-kullanici.md" />
+    <EmbeddedResource Include="..\..\docs\images\**\*.png;..\..\docs\images\**\*.jpg;..\..\docs\images\**\*.svg;..\..\docs\images\**\*.webp;..\..\docs\images\**\*.gif" LogicalName="ServerManager.Web.Guide.images.%(Filename)%(Extension)" />
   </ItemGroup>
 
   <Target Name="PublishPlugins" AfterTargets="Publish">

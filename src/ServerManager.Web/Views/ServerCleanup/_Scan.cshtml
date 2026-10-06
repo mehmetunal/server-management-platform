@@ -1,0 +1,139 @@
+@using ServerManager.Application.Cleanup
+@model ServerCleanupPanelModel
+@{
+    var scan = Model.Scan;
+    var deletable = scan.Items.Where(i => i.CanDelete).ToList();
+}
+
+<div class="cleanup-summary">
+    <div class="stat-card">
+        <span class="stat-label">Tahmini kazanılabilir alan</span>
+        <span class="stat-value tabular-nums">@MetricDisplay.Bytes(scan.ReclaimableBytes)</span>
+        <span class="text-xs text-slate-500">@deletable.Count öğe</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Güvenle silinebilir</span>
+        <span class="stat-value tabular-nums text-emerald-600 dark:text-emerald-400">@MetricDisplay.Bytes(scan.SafeReclaimableBytes)</span>
+        <span class="text-xs text-slate-500">@deletable.Count(i => i.Safety == CleanupSafety.Safe) öğe</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Seçili</span>
+        <span class="stat-value tabular-nums" data-cleanup-selected-size>—</span>
+        <span class="text-xs text-slate-500" data-cleanup-selected-count></span>
+    </div>
+</div>
+
+@if (!scan.DockerAvailable && scan.DockerMessage is not null)
+{
+    <p class="alert-info mb-4">Docker kaynakları listelenmedi: @scan.DockerMessage</p>
+}
+@if (!scan.UsesSudo)
+{
+    <p class="alert-warning mb-4">Bu sunucuda sudo kullanımı kapalı. Komutlar bağlantı kullanıcısıyla çalışır; /var/log, journal, paket önbelleği ve snap için genelde root yetkisi gerekir.</p>
+}
+
+<form data-cleanup-form>
+    @foreach (var group in scan.Groups)
+    {
+        var groupKey = group.Category.ToString().ToLowerInvariant();
+        var selectable = group.Items.Where(i => i.CanDelete).ToList();
+        <section class="panel mb-4" data-cleanup-group="@groupKey">
+            <div class="panel-header">
+                <div class="min-w-0">
+                    <h2 class="panel-title">
+                        @if (selectable.Count > 0)
+                        {
+                            <input type="checkbox" class="form-check mr-2 align-middle" data-cleanup-group-toggle aria-label="@group.Title: tümünü seç" title="Bu gruptaki tüm öğeleri seç / bırak" />
+                        }
+                        @group.Title
+                        <span class="text-sm font-normal text-slate-500">· @group.Items.Count öğe</span>
+                    </h2>
+                    <p class="text-xs text-slate-500">@group.Description</p>
+                </div>
+                <span class="whitespace-nowrap text-sm font-semibold tabular-nums">@(group.TotalBytes > 0 ? MetricDisplay.Bytes(group.TotalBytes) : "")</span>
+            </div>
+            @if (group.Notice is not null)
+            {
+                <p class="panel-note">@group.Notice</p>
+            }
+            @if (group.Items.Count == 0)
+            {
+                <p class="panel-body text-sm text-slate-500">Temizlenecek bir şey bulunamadı.</p>
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th class="w-10"><span class="sr-only">Seç</span></th>
+                                <th>Öğe</th>
+                                <th class="text-right">Boyut</th>
+                                <th>Durum</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in group.Items)
+                            {
+                                var caution = item.Safety == CleanupSafety.Caution;
+                                <tr>
+                                    <td>
+                                        @if (item.CanDelete)
+                                        {
+                                            <input type="checkbox" class="form-check" name="keys" value="@item.Key" checked="@item.Preselected"
+                                                   data-cleanup-item data-size="@(item.SizeBytes ?? 0)" data-caution="@(caution ? "true" : "false")" data-name="@item.Name"
+                                                   aria-label="@item.Name seç" />
+                                        }
+                                    </td>
+                                    <td class="min-w-0">
+                                        <span class="cleanup-item-name" title="@item.Name">@item.Name</span>
+                                        @if (item.Detail is not null)
+                                        {
+                                            <span class="cleanup-item-detail" title="@item.Detail">@item.Detail</span>
+                                        }
+                                    </td>
+                                    <td class="whitespace-nowrap text-right tabular-nums">@(item.SizeBytes is null ? "—" : MetricDisplay.Bytes(item.SizeBytes))</td>
+                                    <td class="cleanup-safety">
+                                        @if (caution)
+                                        {
+                                            <span class="badge-warning">Dikkat</span>
+                                            <span class="cleanup-reason">@item.Reason</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge-success">Güvenle silinebilir</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            @if (group.Category is CleanupCategory.RotatedLogs or CleanupCategory.TempFiles)
+            {
+                <p class="panel-note">Silme, listedeki ölçütlerle sunucuda yeniden çalıştırılan find komutuyla yapılır; önizleme silinecek dosyaları gösterir.</p>
+            }
+        </section>
+    }
+
+    @if (deletable.Count > 0)
+    {
+        <div class="cleanup-actions">
+            <p class="text-sm text-slate-600 dark:text-slate-300">
+                <span data-cleanup-selected-text>Seçim yok</span>
+                <span class="text-xs text-slate-500"> · "Dikkat" öğeleri yalnızca siz seçerseniz silinir.</span>
+            </p>
+            <div class="flex flex-wrap gap-2">
+                <button type="button" class="btn-secondary" data-cleanup-run-button data-dry-run="true" title="Hiçbir şey silmeden ne yapılacağını göster">
+                    <span class="spinner" data-spinner hidden></span>
+                    @Icons.Render("eye", "h-4 w-4") <span data-label>Önizle</span>
+                </button>
+                <button type="button" class="btn-danger" data-cleanup-run-button data-dry-run="false" title="Seçilen öğeleri sunucudan sil">
+                    <span class="spinner" data-spinner hidden></span>
+                    @Icons.Render("trash", "h-4 w-4") <span data-label>Seçilenleri temizle</span>
+                </button>
+            </div>
+        </div>
+    }
+</form>

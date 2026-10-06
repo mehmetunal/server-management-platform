@@ -18,6 +18,7 @@
     var canViewAlerts = User.HasPermission(Permissions.AlertView);
     var canViewActivity = User.HasPermission(Permissions.AuditView);
     var canViewManagedServices = User.HasPermission(Permissions.ServicesView);
+    var canCleanup = User.HasPermission(Permissions.ServerCleanup);
     var systemTabs = new (string Key, string Action, string Title, string Tooltip)[]
     {
         (ServerPageViewModel.ServicesTab, "Services", "Sistem Servisleri", "Sistem servisleri (systemd / OpenRC)"),
@@ -40,6 +41,8 @@
         ServerPageViewModel.LogsTab => "systemd journal veya /var/log altındaki dosyalardan son satırları okuyun ve filtreleyin.",
         ServerPageViewModel.NetworkTab => "Ağ arayüzleri, IP adresleri, rotalar, DNS sunucuları ve dinlenen portlar.",
         ServerPageViewModel.StorageTab => "Bağlı dosya sistemlerinin doluluk ve inode kullanımı ile blok aygıtları.",
+        ServerPageViewModel.ResourcesTab => "Sunucuyu neyin yavaşlattığını görün: yük, bellek, swap, G/Ç beklemesi, en çok kaynak kullanan process ve container'lar, en büyük klasör ve dosyalar.",
+        ServerPageViewModel.CleanupTab => "Kullanılmayan Docker kaynakları, paket önbelleği, eski loglar ve geçici dosyalar. Seçtiklerinizi önizleyip silebilirsiniz; \"Dikkat\" işaretli öğeler hiçbir zaman önceden seçilmez.",
         ServerPageViewModel.BackupsTab => "Bu sunucunun yedekleme işleri ve yedek geçmişi.",
         ServerPageViewModel.AlertsTab => "Bu sunucu için tetiklenen alarmlar; onaylayabilir veya sessize alabilirsiniz.",
         ServerPageViewModel.ActivityTab => "Bu sunucu üzerinde yapılan işlemlerin audit kayıtları.",
@@ -165,6 +168,11 @@
             {
                 <a asp-controller="ServerSystem" asp-action="@tab.Action" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == tab.Key ? "is-active" : "")" title="@tab.Tooltip">@tab.Title</a>
             }
+            <a asp-controller="ServerResources" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.ResourcesTab ? "is-active" : "")" title="Kaynak kullanımı ve &quot;Neden yavaş?&quot; analizi">Kaynak Kullanımı</a>
+        }
+        @if (canCleanup)
+        {
+            <a asp-controller="ServerCleanup" asp-action="Index" asp-route-id="@server.Id" class="tab @(Model.ActiveTab == ServerPageViewModel.CleanupTab ? "is-active" : "")" title="Kullanılmayan Docker kaynakları, eski loglar ve önbellekleri temizle">Temizlik</a>
         }
         @if (canViewBackups)
         {

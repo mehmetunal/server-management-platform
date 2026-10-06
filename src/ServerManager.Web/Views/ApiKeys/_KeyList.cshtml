@@ -1,0 +1,74 @@
+@model ApiKeysPageViewModel
+@{
+    var adminView = ViewData["AdminView"] is true;
+}
+<section class="panel">
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Anahtar</th>
+                    @if (adminView)
+                    {
+                        <th>Kullanıcı</th>
+                    }
+                    <th>Kapsam</th>
+                    <th>Durum</th>
+                    <th>Son kullanım</th>
+                    <th>Bitiş</th>
+                    <th class="text-right">İşlem</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Keys.Count == 0)
+                {
+                    <tr><td colspan="7" class="api-empty">Henüz API anahtarı yok.</td></tr>
+                }
+                @foreach (var key in Model.Keys)
+                {
+                    <tr>
+                        <td>
+                            <p class="api-key-name">@key.Name</p>
+                            <p class="api-key-code">@key.DisplayKey</p>
+                        </td>
+                        @if (adminView)
+                        {
+                            <td class="api-key-meta">@key.UserEmail</td>
+                        }
+                        <td class="api-key-meta" title="@string.Join(", ", key.Scopes)">@key.Scopes.Count izin@(key.AllowedIps is null ? "" : " · IP sınırlı")</td>
+                        <td>
+                            @if (key.RevokedAt is not null)
+                            {
+                                <span class="badge-neutral" title="@key.RevokedBy · @DateDisplay.Format(key.RevokedAt)">İptal</span>
+                            }
+                            else if (key.IsExpired)
+                            {
+                                <span class="badge-danger">Süresi doldu</span>
+                            }
+                            else
+                            {
+                                <span class="badge-success">Etkin</span>
+                            }
+                        </td>
+                        <td class="api-key-meta" title="@DateDisplay.Format(key.LastUsedAt)">@DateDisplay.Relative(key.LastUsedAt)@(key.LastUsedIp is null ? "" : $" · {key.LastUsedIp}")</td>
+                        <td class="api-key-meta">@(key.ExpiresAt is null ? "Süresiz" : DateDisplay.Format(key.ExpiresAt))</td>
+                        <td>
+                            <div class="api-key-actions">
+                                @if (key.IsActive)
+                                {
+                                    <button type="button" class="btn-ghost btn-sm" title="Anahtarı iptal et" data-ajax-action
+                                            data-url="@Url.Action(adminView ? "RevokeAny" : "Revoke", new { id = key.Id })"
+                                            data-confirm-title="Anahtarı iptal et"
+                                            data-confirm-message="@key.Name anahtarıyla yapılan istekler hemen reddedilir. Bu işlem geri alınamaz."
+                                            data-confirm-label="İptal et">
+                                        @Icons.Render("trash", "h-4 w-4")
+                                    </button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

@@ -61,6 +61,28 @@ services:
     volumes:
       - sm-dind-data:/var/lib/docker
 
+  # Yalnızca uçtan uca testler (tests/ServerManager.E2E.Tests): Ubuntu 24.04 + sshd + sudo + Docker-in-Docker.
+  #   docker compose -p sm-e2e --profile e2e up -d --build sm-e2e-ubuntu
+  #   docker compose -p sm-e2e --profile e2e down -v      (yalnızca sm-e2e projesini siler; db'ye dokunmaz)
+  sm-e2e-ubuntu:
+    build: ./docker/e2e-ubuntu
+    image: sm-e2e-ubuntu:local
+    container_name: sm-e2e-ubuntu
+    hostname: sm-e2e-ubuntu
+    privileged: true
+    profiles: ["e2e"]
+    environment:
+      E2E_SSH_PASSWORD: "${E2E_SSH_PASSWORD:?E2E_SSH_PASSWORD .env dosyasinda tanimlanmali}"
+      E2E_IPTABLES_LEGACY: "${E2E_IPTABLES_LEGACY:-0}"
+    ports:
+      - "127.0.0.1:${E2E_SSH_PORT:-2224}:22"
+    healthcheck:
+      test: ["CMD-SHELL", "docker info >/dev/null 2>&1 && pgrep -x sshd >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
 volumes:
   server-manager-db-data:
   server-manager-app-data:

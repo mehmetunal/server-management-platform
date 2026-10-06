@@ -71,5 +71,17 @@ public interface IAlertRepository
     /// <summary>Silinmemiş her sunucunun son tamamlanan güvenlik taraması.</summary>
     Task<IReadOnlyList<AlertSecuritySnapshot>> GetLatestSecurityScansAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Verilen andan bu yana container durum örnekleri (kaynak geçmişi); <paramref name="serverIds"/> null ise tüm sunucular.</summary>
+    Task<IReadOnlyList<AlertContainerSample>> GetContainerSamplesAsync(DateTime since, IReadOnlyCollection<Guid>? serverIds, CancellationToken cancellationToken = default);
+
+    /// <summary>Kaldırılmamış (silinmemiş) yönetilen servisler.</summary>
+    Task<IReadOnlyList<AlertManagedServiceSnapshot>> GetManagedServiceSnapshotsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Silinmemiş sunucular ve son temizlenebilir alan taraması.</summary>
+    Task<IReadOnlyList<AlertReclaimableSnapshot>> GetReclaimableSnapshotsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Servise ait açık alarmlar: "Servis çalışmıyor" (hedef = servis) ve container'ının yeniden başlama döngüsü.</summary>
+    Task<IReadOnlyList<AlertEvent>> GetOpenServiceEventsAsync(Guid serviceId, string restartLoopTargetKey, CancellationToken cancellationToken = default);
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

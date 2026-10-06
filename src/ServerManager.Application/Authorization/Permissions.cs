@@ -47,9 +47,15 @@ public static class Permissions
     public const string BackupManage = "backup.manage";
     public const string BackupRestore = "backup.restore";
 
+    /// <summary>Başarılı yedeğin dosyasını indirme; şifreli yedekte parola girilirse çözülmüş indirme.</summary>
+    public const string BackupDownload = "backup.download";
+
     public const string PluginManage = "plugin.manage";
 
     public const string UserManage = "user.manage";
+
+    /// <summary>Rol oluşturma, düzenleme, silme ve rol izinlerini değiştirme.</summary>
+    public const string RolesManage = "roles.manage";
 
     public const string AuditView = "audit.view";
     public const string AuditExport = "audit.export";
@@ -59,6 +65,9 @@ public static class Permissions
 
     public const string SystemView = "system.view";
     public const string SystemManage = "system.manage";
+
+    /// <summary>Temizlik sayfası: kullanılmayan Docker kaynaklarını, paket önbelleğini, eski logları ve geçici dosyaları silme.</summary>
+    public const string ServerCleanup = "server.cleanup";
 
     public const string CommandView = "command.view";
     public const string CommandRun = "command.run";
@@ -112,14 +121,17 @@ public static class Permissions
         BackupExecute,
         BackupManage,
         BackupRestore,
+        BackupDownload,
         PluginManage,
         UserManage,
+        RolesManage,
         AuditView,
         AuditExport,
         SecurityView,
         SecurityScan,
         SystemView,
         SystemManage,
+        ServerCleanup,
         CommandView,
         CommandRun,
         TemplateManage,
@@ -168,15 +180,18 @@ public static class Permissions
         [BackupView] = "Yedekleme işleri, depolama hedefleri ve yedek geçmişini görüntüleme",
         [BackupExecute] = "Yedeklemeyi elle başlatma ve süren yedeklemeyi iptal etme",
         [BackupManage] = "Yedekleme işi ve depolama hedefi ekleme, düzenleme, silme (veritabanı parolası ve şifreleme parolası dahil); yedek dosyası silme",
-        [BackupRestore] = "Yedeği geri yükleme ve şifresi çözülmüş yedeği indirme",
+        [BackupRestore] = "Yedeği bir sunucuya geri yükleme",
+        [BackupDownload] = "Yedek dosyasını indirme (şifreli yedekte parola girilerek çözülmüş indirme dahil)",
         [PluginManage] = "Eklenti kurma, etkinleştirme ve devre dışı bırakma",
         [UserManage] = "Kullanıcı yönetimi",
+        [RolesManage] = "Rol yönetimi (rol oluşturma, izinlerini değiştirme, silme)",
         [AuditView] = "Audit log görüntüleme",
         [AuditExport] = "Audit log'u CSV olarak dışa aktarma ve bütünlüğünü doğrulama",
         [SecurityView] = "Güvenlik merkezi ve sunucu güvenlik taramalarını görüntüleme",
         [SecurityScan] = "Sunucuda güvenlik taraması başlatma (yalnızca okuma yapar)",
         [SystemView] = "Sunucu servisleri, process'ler, loglar, ağ ve disk bilgisini görüntüleme",
         [SystemManage] = "Sunucu servisini başlatma, durdurma, yeniden başlatma ve process sonlandırma",
+        [ServerCleanup] = "Sunucu temizliği (kullanılmayan Docker kaynakları, paket önbelleği, eski loglar ve geçici dosyaları silme)",
         [CommandView] = "Toplu komut geçmişini ve sunucu şablonlarını görüntüleme",
         [CommandRun] = "Birden fazla sunucuda aynı anda komut çalıştırma",
         [TemplateManage] = "Sunucu şablonlarını (betik / cloud-init) ekleme, düzenleme ve silme",

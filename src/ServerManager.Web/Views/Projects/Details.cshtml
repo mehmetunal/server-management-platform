@@ -13,7 +13,7 @@
 <div class="page-header">
     <div>
         <a asp-action="Index" class="back-link" title="Proje listesine dön">@Icons.Render("chevron-left", "h-4 w-4") Projeler</a>
-        <h1 class="page-title">@project.Name</h1>
+        <h1 class="page-title">@project.Name<partial name="_HelpLink" model="GuideAnchors.Projects" /></h1>
         <p class="page-lead">@(project.Description ?? $"{project.ServerName} sunucusuna {DeploymentDisplay.BuildTypeText(project.BuildType)} ile dağıtılan proje.")</p>
     </div>
     <div class="flex flex-wrap gap-2">

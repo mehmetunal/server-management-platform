@@ -58,7 +58,8 @@ public class BackupJobService : IBackupJobService
     public async Task<IReadOnlyList<BackupJobListItemDto>> GetJobsAsync(Guid? serverId = null, CancellationToken cancellationToken = default)
     {
         var jobs = await _repository.GetJobsAsync(serverId, cancellationToken);
-        return jobs.Select(ToListItem).ToList();
+        var latest = await _repository.GetLatestAvailableBackupsAsync(jobs.Select(j => j.Id).ToList(), cancellationToken);
+        return jobs.Select(job => ToListItem(job, latest.GetValueOrDefault(job.Id))).ToList();
     }
 
     public async Task<ServiceResult<BackupJobDetailsDto>> GetDetailsAsync(Guid id, CancellationToken cancellationToken = default)
@@ -67,9 +68,10 @@ public class BackupJobService : IBackupJobService
         if (job is null)
             return ServiceResult<BackupJobDetailsDto>.NotFound(NotFoundMessage);
 
+        var latest = await _repository.GetLatestAvailableBackupsAsync([job.Id], cancellationToken);
         return ServiceResult<BackupJobDetailsDto>.Success(new BackupJobDetailsDto
         {
-            Job = ToListItem(job),
+            Job = ToListItem(job, latest.GetValueOrDefault(job.Id)),
             Paths = BackupPaths.SplitLines(job.Paths),
             Excludes = BackupPaths.SplitLines(job.Excludes),
             VolumeName = job.VolumeName,
@@ -316,8 +318,9 @@ public class BackupJobService : IBackupJobService
         return changes;
     }
 
-    private static BackupJobListItemDto ToListItem(BackupJob job) => new()
+    private static BackupJobListItemDto ToListItem(BackupJob job, BackupArtifactRef? latestBackup) => new()
     {
+        LatestBackup = latestBackup,
         Id = job.Id,
         Name = job.Name,
         ServerId = job.ServerId,

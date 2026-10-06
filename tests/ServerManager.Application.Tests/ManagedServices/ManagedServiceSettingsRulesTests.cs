@@ -8,7 +8,7 @@ namespace ServerManager.Application.Tests.ManagedServices;
 
 public class ManagedServiceSettingsRulesTests
 {
-    private static readonly ServiceTemplate Postgres = ServiceTemplates.Find(ServiceTemplates.Postgres)!;
+    private static readonly ServiceTemplate Postgres = TestTemplates.Find(ServiceTemplates.Postgres)!;
 
     private static CreateManagedServiceDto ValidDto() => new()
     {
@@ -23,7 +23,7 @@ public class ManagedServiceSettingsRulesTests
     };
 
     private static CreateManagedServiceDtoValidator Validator(bool allowPrivileged = false) =>
-        new(Options.Create(new ManagedServiceOptions { AllowPrivilegedHostPorts = allowPrivileged }));
+        new(Options.Create(new ManagedServiceOptions { AllowPrivilegedHostPorts = allowPrivileged }), TestTemplates.Catalog);
 
     private static List<string> Errors(CreateManagedServiceDto dto, bool allowPrivileged = false) =>
         Validator(allowPrivileged).Validate(dto).Errors.Select(e => e.PropertyName).ToList();
@@ -148,7 +148,7 @@ public class ManagedServiceSettingsRulesTests
     [Fact]
     public void Environment_file_combines_defaults_extras_and_credentials()
     {
-        var mssql = ServiceTemplates.Find(ServiceTemplates.SqlServer)!;
+        var mssql = TestTemplates.Find(ServiceTemplates.SqlServer)!;
         var credentials = new ServiceCredentials { Username = "sa", Password = "Passw0rd!" };
 
         var file = ManagedServiceSettingsRules.BuildEnvironmentFile(mssql, credentials, "MSSQL_PID=Express\nMSSQL_SA_PASSWORD=hijack\nTZ=UTC\n");
@@ -190,7 +190,7 @@ public class ManagedServiceSettingsRulesTests
     [Fact]
     public void Published_ports_follow_template_order_and_bind_address()
     {
-        var minio = ServiceTemplates.Find(ServiceTemplates.MinIo)!;
+        var minio = TestTemplates.Find(ServiceTemplates.MinIo)!;
         var bindings = new[] { new ServicePortBinding(9001, 19001), new ServicePortBinding(9000, 19000), new ServicePortBinding(1234, 1234) };
 
         var local = ServicePortBindings.Published(minio, bindings, exposePublicly: false);

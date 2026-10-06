@@ -1,3 +1,4 @@
+using ServerManager.Application.DTOs.Alerting;
 using ServerManager.Application.DTOs.Backups;
 using ServerManager.Application.DTOs.ManagedServices;
 using ServerManager.Application.DTOs.Servers;
@@ -24,6 +25,12 @@ public sealed class ManagedServiceCreateViewModel
 {
     /// <summary>Seçilen şablon; null ise şablon kartları gösterilir.</summary>
     public ServiceTemplate? Template { get; init; }
+
+    /// <summary>Şablon seçilmemişse kartları gösterilecek kullanılabilir şablonlar (yerleşik + etkin eklentiler).</summary>
+    public IReadOnlyList<ServiceTemplate> Templates { get; init; } = [];
+
+    /// <summary>Kart grupları; sırasıyla.</summary>
+    public IReadOnlyList<ServiceTemplateCategory> Categories { get; init; } = [];
 
     public required CreateManagedServiceDto Form { get; init; }
 
@@ -60,6 +67,11 @@ public sealed class ManagedServiceDetailsViewModel
     public IReadOnlyList<BackupJobListItemDto> BackupJobs { get; init; } = [];
 
     public IReadOnlyList<BackupStorageOptionDto> BackupStorages { get; init; } = [];
+
+    /// <summary>Servise ait açık alarmlar ("Servis çalışmıyor", yeniden başlama döngüsü); alert.view yoksa null.</summary>
+    public IReadOnlyList<AlertEventDto>? ActiveAlerts { get; init; }
+
+    public bool CanManageAlerts { get; init; }
 }
 
 /// <summary>Kurulum sihirbazı ve servis sayfasındaki yedek formunun ortak alanları (_BackupFields).</summary>

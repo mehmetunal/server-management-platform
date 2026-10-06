@@ -1,0 +1,80 @@
+.system-toolbar-actions {
+  @apply ml-auto flex items-center gap-3;
+}
+
+.cleanup-toolbar {
+  @apply mb-4 flex flex-wrap items-start justify-between gap-3;
+}
+
+.cleanup-options {
+  @apply flex flex-1 flex-wrap items-center gap-2;
+}
+
+.cleanup-option {
+  @apply flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300;
+
+  .form-control {
+    @apply w-24;
+  }
+}
+
+.cleanup-summary {
+  @apply mb-6 grid gap-4 sm:grid-cols-3;
+}
+
+.cleanup-item-name {
+  @apply block max-w-xl truncate font-mono text-sm;
+}
+
+.cleanup-item-detail {
+  @apply block max-w-xl truncate text-xs text-slate-500;
+}
+
+.cleanup-safety {
+  @apply min-w-[12rem];
+
+  .badge-warning,
+  .badge-success {
+    @apply whitespace-nowrap;
+  }
+}
+
+.cleanup-reason {
+  @apply mt-1 block max-w-md text-xs text-amber-700 dark:text-amber-300;
+}
+
+.cleanup-actions {
+  @apply sticky bottom-0 z-10 mt-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/95;
+}
+
+.cleanup-log {
+  @apply max-h-[28rem] space-y-1 overflow-auto bg-slate-950 p-4 font-mono text-xs leading-relaxed text-slate-200;
+}
+
+.cleanup-log-line {
+  @apply flex flex-wrap gap-x-3;
+}
+
+.cleanup-log-time {
+  @apply shrink-0 text-slate-500;
+}
+
+.cleanup-log-message {
+  @apply min-w-0 flex-1 break-words;
+}
+
+.cleanup-log-output {
+  @apply mt-1 w-full whitespace-pre-wrap break-words border-l-2 border-slate-700 pl-3 text-slate-400;
+}
+
+.cleanup-log-success .cleanup-log-message {
+  @apply text-emerald-400;
+}
+
+.cleanup-log-warning .cleanup-log-message {
+  @apply text-amber-300;
+}
+
+.cleanup-log-error .cleanup-log-message {
+  @apply text-red-400;
+}

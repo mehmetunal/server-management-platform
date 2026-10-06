@@ -188,6 +188,32 @@ public class DeploymentRepository : IDeploymentRepository
                 .SetProperty(d => d.CompletedAt, completedAt)
                 .SetProperty(d => d.FailureReason, reason), cancellationToken);
 
+    public async Task<bool> SetPendingWebhookDeployAsync(
+        Guid projectId, DateTime queuedAt, string? commit, string? ipAddress, CancellationToken cancellationToken = default) =>
+        await _context.DeploymentProjects
+            .Where(p => p.Id == projectId)
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(p => p.PendingWebhookDeployAt, queuedAt)
+                .SetProperty(p => p.PendingWebhookCommit, commit)
+                .SetProperty(p => p.PendingWebhookIpAddress, ipAddress), cancellationToken) > 0;
+
+    public async Task<IReadOnlyList<PendingWebhookDeploy>> ListPendingWebhookDeploysAsync(CancellationToken cancellationToken = default) =>
+        await _context.DeploymentProjects
+            .AsNoTracking()
+            .Where(p => p.PendingWebhookDeployAt != null)
+            .OrderBy(p => p.PendingWebhookDeployAt)
+            .Select(p => new PendingWebhookDeploy(p.Id, p.PendingWebhookDeployAt!.Value, p.PendingWebhookCommit, p.PendingWebhookIpAddress))
+            .ToListAsync(cancellationToken);
+
+    public async Task<bool> ClearPendingWebhookDeployAsync(Guid projectId, DateTime queuedUpTo, CancellationToken cancellationToken = default) =>
+        await _context.DeploymentProjects
+            .IgnoreQueryFilters()
+            .Where(p => p.Id == projectId && p.PendingWebhookDeployAt != null && p.PendingWebhookDeployAt <= queuedUpTo)
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(p => p.PendingWebhookDeployAt, (DateTime?)null)
+                .SetProperty(p => p.PendingWebhookCommit, (string?)null)
+                .SetProperty(p => p.PendingWebhookIpAddress, (string?)null), cancellationToken) > 0;
+
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
         _context.SaveChangesAsync(cancellationToken);
 

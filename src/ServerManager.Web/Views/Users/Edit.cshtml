@@ -26,9 +26,9 @@
             <span asp-validation-for="FullName" class="field-validation-error"></span>
         </div>
         <div class="sm:col-span-2">
-            <label for="Role" class="form-label">Rol *</label>
-            <partial name="_RoleSelect" model="Model.Role" />
-            <span asp-validation-for="Role" class="field-validation-error"></span>
+            <p class="form-label">Roller *</p>
+            <partial name="_RoleSelect" model="ViewData[nameof(RoleSelectModel)]" />
+            <span data-valmsg-for="Roles" class="field-validation-error"></span>
         </div>
         <label class="check-card sm:col-span-2">
             <input asp-for="IsActive" type="checkbox" class="form-check" />

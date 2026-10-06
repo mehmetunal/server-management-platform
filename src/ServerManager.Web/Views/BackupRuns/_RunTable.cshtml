@@ -2,6 +2,7 @@
 @{
     var showJob = ViewData["ShowJob"] as bool? ?? true;
     var canRestore = User.HasPermission(Permissions.BackupRestore);
+    var canDownload = User.HasPermission(Permissions.BackupDownload);
 }
 
 <div class="table-scroll" data-backup-rows data-running="@Model.Any(r => r.IsRunning).ToString().ToLowerInvariant()">
@@ -59,6 +60,10 @@
                     <td class="whitespace-nowrap text-sm tabular-nums">@BackupDisplay.Size(run.SizeBytes)</td>
                     <td class="whitespace-nowrap text-sm tabular-nums">@(run.IsRunning ? "Sürüyor" : DeploymentDisplay.Duration(run.StartedAt, run.CompletedAt))</td>
                     <td class="text-right whitespace-nowrap">
+                        @if (canDownload && run.Operation == BackupOperation.Backup)
+                        {
+                            <partial name="~/Views/BackupRuns/_DownloadButton.cshtml" model="BackupDownloadButtonModel.For(run)" />
+                        }
                         @if (canRestore && run.IsArtifactAvailable)
                         {
                             <a asp-controller="BackupRuns" asp-action="Restore" asp-route-id="@run.Id" class="btn-ghost btn-sm" title="Bu yedeği bir sunucuya geri yükle">@Icons.Render("upload", "h-4 w-4")</a>

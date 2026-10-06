@@ -2,8 +2,7 @@
 @{
     var servers = ViewData[ServerManager.Web.Controllers.AlertRulesController.ServerOptionsKey] as IReadOnlyList<ServerOptionDto> ?? [];
     var channels = ViewData[ServerManager.Web.Controllers.AlertRulesController.ChannelOptionsKey] as IReadOnlyList<ChannelOptionDto> ?? [];
-    string ThresholdUnit(AlertRuleKind kind) =>
-        AlertRuleKinds.IsMetric(kind) ? "percent" : kind == AlertRuleKind.SslCertificateExpiry ? "days" : "none";
+    var services = ViewData[ServerManager.Web.Controllers.AlertRulesController.ServiceOptionsKey] as IReadOnlyList<AlertServiceOptionDto> ?? [];
 }
 
 <p class="alert-error mb-6" data-form-error hidden></p>
@@ -22,9 +21,14 @@
                 <select asp-for="Kind" class="form-control" data-rule-kind>
                     @foreach (var kind in Enum.GetValues<AlertRuleKind>())
                     {
+                        var defaults = AlertRuleKinds.Defaults(kind);
                         <option value="@((int)kind)" selected="@(kind == Model.Kind)"
-                                data-threshold="@ThresholdUnit(kind)"
-                                data-duration="@AlertRuleKinds.UsesDuration(kind).ToString().ToLowerInvariant()">@AlertRuleKinds.DisplayName(kind)</option>
+                                data-threshold="@AlertRuleKinds.ThresholdUnit(kind)"
+                                data-duration="@AlertRuleKinds.UsesDuration(kind).ToString().ToLowerInvariant()"
+                                data-service="@AlertRuleKinds.UsesService(kind).ToString().ToLowerInvariant()"
+                                data-kind-hint="@((int)kind)"
+                                data-default-threshold="@defaults.Threshold.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                data-default-duration="@defaults.DurationMinutes">@AlertRuleKinds.DisplayName(kind)</option>
                     }
                 </select>
                 <span asp-validation-for="Kind" class="field-validation-error"></span>
@@ -42,15 +46,20 @@
             <div data-rule-threshold>
                 <label asp-for="Threshold" class="form-label" data-threshold-label="percent">Eşik (%) *</label>
                 <label asp-for="Threshold" class="form-label" data-threshold-label="days" hidden>Kalan gün eşiği *</label>
+                <label asp-for="Threshold" class="form-label" data-threshold-label="count" hidden>Yeniden başlama sayısı *</label>
+                <label asp-for="Threshold" class="form-label" data-threshold-label="gb" hidden>Temizlenebilir alan eşiği (GB) *</label>
                 <input asp-for="Threshold" type="number" step="any" min="0" class="form-control" />
                 <p class="form-hint" data-threshold-hint="percent">Değer bu yüzdenin üzerine çıkınca alarm açılır.</p>
                 <p class="form-hint" data-threshold-hint="days" hidden>Sertifikanın bitmesine bu kadar günden az kalınca alarm açılır; 30/15/7/3/1 gün kala hatırlatılır.</p>
+                <p class="form-hint" data-threshold-hint="count" hidden>Container, süre (pencere) içinde en az bu kadar yeniden başlarsa alarm açılır (docker RestartCount).</p>
+                <p class="form-hint" data-threshold-hint="gb" hidden>Otomatik temizlik taramasında silinebilir öğelerin toplamı bu değere ulaşınca alarm açılır (tarama hiçbir şey silmez).</p>
                 <span asp-validation-for="Threshold" class="field-validation-error"></span>
             </div>
             <div data-rule-duration>
                 <label asp-for="DurationMinutes" class="form-label">Süre (dakika)</label>
                 <input asp-for="DurationMinutes" type="number" min="0" max="@AlertRuleKinds.MaxDurationMinutes" class="form-control" />
-                <p class="form-hint">Durum bu süre boyunca kesintisiz sürerse alarm açılır; 0 = hemen.</p>
+                <p class="form-hint" data-duration-hint="default">Durum bu süre boyunca kesintisiz sürerse alarm açılır; 0 = hemen.</p>
+                <p class="form-hint" data-duration-hint="@((int)AlertRuleKind.ContainerRestartLoop)" hidden>Yeniden başlamaların sayıldığı pencere (en az 5 dakika).</p>
                 <span asp-validation-for="DurationMinutes" class="field-validation-error"></span>
             </div>
             <div class="sm:col-span-2">
@@ -64,6 +73,21 @@
                 </select>
                 <p class="form-hint">Uptime, SSL ve deployment kurallarında yalnızca bu sunucuya bağlı kontroller değerlendirilir.</p>
                 <span asp-validation-for="ServerId" class="field-validation-error"></span>
+            </div>
+            <div class="sm:col-span-2" data-rule-service hidden>
+                <label asp-for="ManagedServiceId" class="form-label">Servis</label>
+                <select asp-for="ManagedServiceId" class="form-control">
+                    <option value="">Kapsamdaki tüm servisler</option>
+                    @foreach (var service in services)
+                    {
+                        <option value="@service.Id" data-server="@service.ServerId" selected="@(service.Id == Model.ManagedServiceId)">@service.Name (@service.ServerName)</option>
+                    }
+                </select>
+                <p class="form-hint">
+                    Servis kuralları kaynak geçmişi toplayıcısının container örneklerine dayanır (Ayarlar → İzleme → Kaynak geçmişi aralığı; varsayılan 5 dk).
+                    "Yeniden başlama döngüsü" boş bırakılırsa sunucudaki tüm container'lara uygulanır.
+                </p>
+                <span asp-validation-for="ManagedServiceId" class="field-validation-error"></span>
             </div>
         </div>
     </section>

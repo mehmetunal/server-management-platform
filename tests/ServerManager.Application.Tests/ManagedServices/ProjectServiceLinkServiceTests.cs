@@ -71,7 +71,8 @@ public class ProjectServiceLinkServiceTests
             _auditLog,
             _currentUser,
             new FixedTimeProvider(new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero)),
-            NullLogger<ProjectServiceLinkService>.Instance);
+            NullLogger<ProjectServiceLinkService>.Instance,
+            TestTemplates.Catalog);
     }
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;

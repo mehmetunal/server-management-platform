@@ -1,4 +1,3 @@
-using ServerManager.Application.Authorization;
 using ServerManager.Application.DTOs.Users;
 using ServerManager.Application.Validators.Users;
 
@@ -14,7 +13,7 @@ public class CreateUserDtoValidatorTests
         FullName = "Test Operator",
         Password = "Str0ngPassword",
         ConfirmPassword = "Str0ngPassword",
-        Role = Roles.Operator
+        Roles = [ServerManager.Application.Authorization.Roles.Operator]
     };
 
     [Fact]
@@ -46,14 +45,14 @@ public class CreateUserDtoValidatorTests
     }
 
     [Fact]
-    public void Unknown_role_fails()
+    public void Missing_role_fails()
     {
         var dto = ValidDto();
-        dto.Role = "Hacker";
+        dto.Roles = [];
 
         var result = _validator.Validate(dto);
 
-        Assert.Contains(result.Errors, e => e.PropertyName == nameof(CreateUserDto.Role));
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(CreateUserDto.Roles));
     }
 
     [Fact]

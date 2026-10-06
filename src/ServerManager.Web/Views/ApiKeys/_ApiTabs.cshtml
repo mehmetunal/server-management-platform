@@ -1,0 +1,12 @@
+@{
+    var action = ViewContext.RouteData.Values["action"] as string;
+    string Active(string name) => string.Equals(action, name, StringComparison.OrdinalIgnoreCase) ? "is-active" : string.Empty;
+}
+<nav class="tab-list api-tabs" aria-label="API sayfaları">
+    <a asp-action="Index" class="tab @Active("Index")" title="Kendi API anahtarlarınız">Anahtarlarım</a>
+    <a asp-action="Docs" class="tab @Active("Docs")" title="REST API adresi, kimlik doğrulama ve örnekler">API belgesi</a>
+    @if (User.HasPermission(Permissions.UserManage))
+    {
+        <a asp-action="All" class="tab @Active("All")" title="Tüm kullanıcıların anahtarları (yönetici)">Tüm anahtarlar</a>
+    }
+</nav>

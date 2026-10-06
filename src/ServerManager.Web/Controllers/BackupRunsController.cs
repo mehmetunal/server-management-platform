@@ -22,9 +22,16 @@ public class BackupRunsController : Controller
     private readonly IBackupJobService _jobService;
     private readonly BackupManager _backupManager;
     private readonly ICurrentUserService _currentUser;
+    private readonly IBackupDownloadService _downloadService;
 
-    public BackupRunsController(IBackupRunService runService, IBackupJobService jobService, BackupManager backupManager, ICurrentUserService currentUser)
+    public BackupRunsController(
+        IBackupRunService runService,
+        IBackupJobService jobService,
+        BackupManager backupManager,
+        ICurrentUserService currentUser,
+        IBackupDownloadService downloadService)
     {
+        _downloadService = downloadService;
         _runService = runService;
         _jobService = jobService;
         _backupManager = backupManager;
@@ -98,21 +105,27 @@ public class BackupRunsController : Controller
         return this.ApiSuccess(result.Message, Url.Action(nameof(Details), new { id = result.Data }));
     }
 
-    /// <param name="decrypt">Şifreli yedeği panelde çözerek .tar.gz / .sql.gz olarak indirir.</param>
+    /// <summary>Yedek dosyasını olduğu gibi (şifreliyse .smbk) indirir; dosya depolamadan akış hâlinde aktarılır.</summary>
     [HttpGet]
-    [HasPermission(Permissions.BackupRestore)]
+    [HasPermission(Permissions.BackupDownload)]
     [EnableRateLimiting(RateLimitPolicies.BackupAction)]
-    public async Task<IActionResult> Download(Guid id, bool decrypt, CancellationToken cancellationToken)
+    public Task<IActionResult> Download(Guid id, CancellationToken cancellationToken) =>
+        DownloadCoreAsync(id, null, cancellationToken);
+
+    /// <summary>Şifreli yedeği kullanıcının girdiği parolayla panelde çözerek .tar.gz / .sql.gz … olarak indirir.</summary>
+    [HttpPost]
+    [ActionName(nameof(Download))]
+    [HasPermission(Permissions.BackupDownload)]
+    [EnableRateLimiting(RateLimitPolicies.BackupAction)]
+    public Task<IActionResult> DownloadDecrypted(Guid id, [FromForm] string? passphrase, CancellationToken cancellationToken)
     {
-        var result = await _runService.OpenDownloadAsync(id, decrypt, Actor, cancellationToken);
-        if (!result.IsSuccess)
+        if (string.IsNullOrEmpty(passphrase))
         {
-            TempData[DownloadErrorKey] = result.Message;
-            return RedirectToAction(nameof(Details), new { id });
+            TempData[DownloadErrorKey] = "Çözülmüş indirmek için yedeğin şifreleme parolasını girin.";
+            return Task.FromResult<IActionResult>(RedirectToAction(nameof(Details), new { id }));
         }
 
-        var download = result.Data!;
-        return File(download.Content, download.ContentType, download.FileName, enableRangeProcessing: false);
+        return DownloadCoreAsync(id, passphrase, cancellationToken);
     }
 
     [HttpPost]
@@ -124,5 +137,26 @@ public class BackupRunsController : Controller
             return this.ApiFailure(result, "Yedek dosyası silinemedi.");
 
         return this.ApiSuccess(result.Message);
+    }
+
+    private async Task<IActionResult> DownloadCoreAsync(Guid id, string? passphrase, CancellationToken cancellationToken)
+    {
+        var result = await _downloadService.OpenAsync(id, passphrase, Actor, cancellationToken);
+        if (!result.IsSuccess)
+        {
+            if (result.ErrorType == ServiceErrorType.NotFound)
+                return NotFound();
+
+            TempData[DownloadErrorKey] = result.Message;
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        var download = result.Data!;
+        Response.Headers.CacheControl = "no-store";
+        if (download.Length is { } length)
+            Response.ContentLength = length;
+
+        // FileStreamResult akışı parça parça yazar ve sonunda kapatır; dosya belleğe alınmaz.
+        return File(download.Content, download.ContentType, download.FileName, enableRangeProcessing: false);
     }
 }

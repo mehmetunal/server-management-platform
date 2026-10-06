@@ -25,5 +25,14 @@ public enum RetentionTarget
     AlertEvents = 11,
 
     /// <summary>Biten servis işlemlerinin (kurulum, yükseltme, kaldırma) log metni temizlenir; kayıt silinmez.</summary>
-    ServiceOperationLogs = 20
+    ServiceOperationLogs = 20,
+
+    /// <summary>Kaynak geçmişi: ham container örnekleri (sunucu başına en yeni satır korunur).</summary>
+    ContainerMetrics = 21,
+
+    /// <summary>Kaynak geçmişi: container saatlik özetleri.</summary>
+    ContainerMetricsHourly = 22,
+
+    /// <summary>Kaynak geçmişi: process anlık görüntüleri.</summary>
+    ProcessSnapshots = 23
 }

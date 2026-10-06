@@ -1,5 +1,3 @@
-using ServerManager.Application.Authorization;
-
 namespace ServerManager.Application.DTOs.Users;
 
 public sealed class UpdateUserDto
@@ -10,7 +8,8 @@ public sealed class UpdateUserDto
 
     public string? FullName { get; set; }
 
-    public string Role { get; set; } = Roles.Viewer;
+    /// <summary>Kullanıcının rolleri (en az bir). İzinler rollerin birleşimidir.</summary>
+    public List<string> Roles { get; set; } = [];
 
     public bool IsActive { get; set; } = true;
 

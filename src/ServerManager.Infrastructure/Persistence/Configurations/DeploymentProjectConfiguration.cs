@@ -30,6 +30,8 @@ public class DeploymentProjectConfiguration : IEntityTypeConfiguration<Deploymen
         builder.Property(p => p.BuildCommand).HasMaxLength(4000);
         builder.Property(p => p.DeployCommand).HasMaxLength(4000);
         builder.Property(p => p.WebhookLastDeliveryMessage).HasMaxLength(500);
+        builder.Property(p => p.PendingWebhookCommit).HasMaxLength(64);
+        builder.Property(p => p.PendingWebhookIpAddress).HasMaxLength(64);
         builder.Property(p => p.DeletedBy).HasMaxLength(256);
         builder.Property(p => p.CreatedBy).HasMaxLength(256);
         builder.Property(p => p.UpdatedBy).HasMaxLength(256);

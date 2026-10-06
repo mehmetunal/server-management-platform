@@ -4,7 +4,8 @@ using ServerManager.Web.ManagedServices;
 namespace ServerManager.Web.BackgroundJobs;
 
 /// <summary>
-/// Açılışta önceki çalışmadan yarım kalan servis işlemlerini "kesildi" olarak işaretler; kapanışta süren işlemleri durdurur.
+/// Açılışta önceki çalışmadan yarım kalan servis işlemlerini "kesildi" olarak işaretler ve bekleyen kurulum sonrası yedek
+/// isteklerini işler; kapanışta süren işlemleri durdurur.
 /// </summary>
 public sealed class ManagedServiceLifecycleWorker : BackgroundService
 {
@@ -31,6 +32,18 @@ public sealed class ManagedServiceLifecycleWorker : BackgroundService
         catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
         {
             _logger.LogError(ex, "Yarım kalan servis işlemleri işaretlenemedi.");
+        }
+
+        // Kurulum bittiği halde (uygulama kapandığı için) oluşturulamayan otomatik yedek işleri; kesilen kurulumların istekleri düşürülür.
+        try
+        {
+            var processed = await _manager.ProcessPendingAutoBackupsAsync(stoppingToken);
+            if (processed > 0)
+                _logger.LogInformation("Bekleyen {Count} otomatik yedek isteği işlendi.", processed);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !stoppingToken.IsCancellationRequested)
+        {
+            _logger.LogError(ex, "Bekleyen otomatik yedek istekleri işlenemedi.");
         }
     }
 

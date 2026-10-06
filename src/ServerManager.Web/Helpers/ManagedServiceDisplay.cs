@@ -64,9 +64,6 @@ public static class ManagedServiceDisplay
     public static string PortText(PublishedPort port) =>
         string.Create(CultureInfo.InvariantCulture, $"{port.BindAddress}:{port.HostPort} → {port.ContainerPort}");
 
-    public static string LogoStyle(ServiceTemplate? template) =>
-        $"--service-color: {template?.Color ?? "#64748b"}";
-
     public static string Duration(DateTime started, DateTime? finished)
     {
         if (finished is null)

@@ -1,8 +1,10 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ServerManager.Application.Authorization;
+using ServerManager.Infrastructure.Persistence;
 
 namespace ServerManager.Infrastructure.Identity;
 
@@ -11,16 +13,19 @@ public class IdentitySeeder : IPermissionSeeder
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SeedOptions _seedOptions;
+    private readonly ApplicationDbContext _dbContext;
     private readonly ILogger<IdentitySeeder> _logger;
 
     public IdentitySeeder(
         RoleManager<ApplicationRole> roleManager,
         UserManager<ApplicationUser> userManager,
+        ApplicationDbContext dbContext,
         IOptions<SeedOptions> seedOptions,
         ILogger<IdentitySeeder> logger)
     {
         _roleManager = roleManager;
         _userManager = userManager;
+        _dbContext = dbContext;
         _seedOptions = seedOptions.Value;
         _logger = logger;
     }
@@ -32,6 +37,11 @@ public class IdentitySeeder : IPermissionSeeder
         await SeedAdminAsync();
     }
 
+    /// <summary>
+    /// Rollere varsayılan izinleri ekler. Her rol için daha önce önerilen ("bilinen") izinler <c>RoleKnownPermissions</c>
+    /// tablosunda tutulur: yalnızca hiç önerilmemiş yeni izinler eklenir, yöneticinin kaldırdığı izinler geri eklenmez.
+    /// SuperAdmin değişmez; eksik her izni alır. Var olan izinler hiçbir zaman kaldırılmaz.
+    /// </summary>
     public async Task SeedAsync(IReadOnlyDictionary<string, IReadOnlyList<string>> rolePermissions, CancellationToken cancellationToken = default)
     {
         foreach (var (roleName, permissions) in rolePermissions)
@@ -49,12 +59,26 @@ public class IdentitySeeder : IPermissionSeeder
                 .Select(c => c.Value)
                 .ToHashSet(StringComparer.Ordinal);
 
-            foreach (var permission in permissions.Where(p => !existingPermissions.Contains(p)))
+            var knownPermissions = (await _dbContext.RoleKnownPermissions
+                    .Where(k => k.RoleId == role.Id)
+                    .Select(k => k.Permission)
+                    .ToListAsync(cancellationToken))
+                .ToHashSet(StringComparer.Ordinal);
+
+            var plan = PermissionSeedPlanner.For(role.Name ?? roleName, permissions, existingPermissions, knownPermissions);
+
+            foreach (var permission in plan.ToGrant)
             {
                 EnsureSucceeded(
                     await _roleManager.AddClaimAsync(role, new Claim(Permissions.ClaimType, permission)),
                     $"Yetki eklenemedi: {roleName} / {permission}");
                 _logger.LogInformation("Yetki eklendi: {Role} -> {Permission}", roleName, permission);
+            }
+
+            if (plan.ToMarkKnown.Count > 0)
+            {
+                _dbContext.RoleKnownPermissions.AddRange(plan.ToMarkKnown.Select(p => new RoleKnownPermission { RoleId = role.Id, Permission = p }));
+                await _dbContext.SaveChangesAsync(cancellationToken);
             }
         }
     }

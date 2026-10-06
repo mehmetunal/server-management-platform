@@ -16,6 +16,7 @@
     var canCloud = User.HasPermission(Permissions.CloudView);
     var canSettings = User.HasPermission(Permissions.SettingsView);
     var canManagedServices = canServers && User.HasPermission(Permissions.ServicesView);
+    var canCleanup = canServers && User.HasPermission(Permissions.ServerCleanup);
 }
 <aside class="app-sidebar" data-sidebar>
     <div class="sidebar-brand flex h-16 shrink-0 items-center gap-3 border-b border-slate-800 px-5">
@@ -106,6 +107,10 @@
         {
             <a asp-controller="ServerPicker" asp-action="Logs" class="nav-link @NavigationHelper.ActiveActionClass(ViewContext, "ServerPicker", "Logs")" title="Sunucu seçip journal ve /var/log kayıtlarını oku">@Icons.Render("document") Loglar</a>
         }
+        @if (canCleanup)
+        {
+            <a asp-controller="ServerPicker" asp-action="Cleanup" class="nav-link @NavigationHelper.ActiveActionClass(ViewContext, "ServerPicker", "Cleanup")" title="Sunucu seçip kullanılmayan Docker kaynaklarını, eski logları ve önbellekleri temizle">@Icons.Render("trash") Temizlik</a>
+        }
 
         @if (canCommands)
         {
@@ -117,6 +122,10 @@
         @if (canServers)
         {
             <a asp-controller="ServerPicker" asp-action="Metrics" class="nav-link @NavigationHelper.ActiveActionClass(ViewContext, "ServerPicker", "Metrics")" title="Sunucu seçip kaynak kullanım grafiklerini gör">@Icons.Render("chart") Metrikler</a>
+        }
+        @if (canSystem)
+        {
+            <a asp-controller="ServerPicker" asp-action="Resources" class="nav-link @NavigationHelper.ActiveActionClass(ViewContext, "ServerPicker", "Resources")" title="Sunucu seçip neyin yavaşlattığını incele: yük, bellek, disk ve en çok kaynak kullananlar">@Icons.Render("bolt") Kaynak Kullanımı</a>
         }
         @if (canAlerts)
         {
@@ -139,6 +148,10 @@
         {
             <a asp-controller="Users" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "Users")" title="Panel kullanıcılarını ve rollerini yönet">@Icons.Render("users") Kullanıcılar</a>
         }
+        @if (User.HasPermission(Permissions.RolesManage))
+        {
+            <a asp-controller="Roles" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "Roles")" title="Rolleri ve izinlerini yönet">@Icons.Render("shield") Roller</a>
+        }
         @if (canAudit)
         {
             <a asp-controller="AuditLogs" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "AuditLogs")" title="Panelde yapılan tüm işlemlerin kaydı">@Icons.Render("clipboard") Audit Log</a>
@@ -152,5 +165,8 @@
         {
             <a asp-controller="Settings" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "Settings")" title="Uygulama sürümü, veritabanı durumu ve çalışan yapılandırma">@Icons.Render("settings") Ayarlar</a>
         }
+
+        <p class="nav-group">Yardım</p>
+        <a asp-controller="Guide" asp-action="Index" class="nav-link @NavigationHelper.ActiveClass(ViewContext, "Guide")" title="Paneldeki işlerin adım adım anlatımı">@Icons.Render("book") Kullanım Kılavuzu</a>
     </nav>
 </aside>

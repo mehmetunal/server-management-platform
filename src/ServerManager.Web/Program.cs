@@ -15,6 +15,7 @@ using ServerManager.Application.Interfaces.Monitoring;
 using ServerManager.Application.Interfaces.Security;
 using ServerManager.Infrastructure;
 using ServerManager.Infrastructure.Persistence;
+using ServerManager.Web.Api;
 using ServerManager.Web.BackgroundJobs;
 using ServerManager.Web.Backups;
 using ServerManager.Web.Commands;
@@ -52,6 +53,7 @@ try
     builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
     builder.Services.AddScoped<ServerPageBuilder>();
     builder.Services.AddSingleton<ScriptImportMap>();
+    builder.Services.AddSingleton<UserGuide>();
 
     builder.Services.AddSignalR();
     builder.Services.AddSingleton<IMonitoringNotifier, SignalRMonitoringNotifier>();
@@ -76,6 +78,7 @@ try
     builder.Services.AddHostedService<BackupSchedulerWorker>();
     builder.Services.AddHostedService<MetricsCollectorWorker>();
     builder.Services.AddHostedService<MetricsMaintenanceWorker>();
+    builder.Services.AddHostedService<ResourceHistoryWorker>();
     builder.Services.AddHostedService<AlertEvaluationWorker>();
     builder.Services.AddHostedService<UptimeCheckWorker>();
     builder.Services.AddHostedService<SslCheckWorker>();
@@ -156,6 +159,7 @@ try
     });
 
     builder.Services.AddAppRateLimiting();
+    builder.Services.AddApiV1();
     builder.AddPlugins(mvcBuilder);
 
     // Yalnızca listelenen proxy'lerden gelen X-Forwarded-* başlıklarına güvenilir. Liste boşsa varsayılan (loopback) kalır;
@@ -199,6 +203,7 @@ try
     app.UseMiddleware<GlobalExceptionMiddleware>();
     app.UseMiddleware<SecurityHeadersMiddleware>();
     app.UseStatusCodePagesWithReExecute("/Error/{0}");
+    app.UseApiV1StatusCodes();
     app.UseSerilogRequestLogging();
     app.UseHttpsRedirection();
     app.UseStaticFiles();
@@ -216,6 +221,7 @@ try
         .DisableRateLimiting();
 
     app.MapControllerRoute(name: "default", pattern: "{controller=Dashboard}/{action=Index}/{id?}");
+    app.MapApiV1();
 
     // Cookie süresi dolunca (veya oturum kapanınca) açık SignalR bağlantıları da kapanır; aksi halde bağlantı süresiz yaşar.
     app.MapHub<MonitoringHub>(MonitoringHub.Path, options => options.CloseOnAuthenticationExpiration = true);

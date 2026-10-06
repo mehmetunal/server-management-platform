@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ServerManager.Application.Alerting;
+using ServerManager.Application.ApiKeys;
 using ServerManager.Application.Authorization;
 using ServerManager.Application.Backups;
 using ServerManager.Application.Deployments;
@@ -132,12 +133,16 @@ public static class DependencyInjection
         services.AddSingleton<IBackupStorageProvider, LocalBackupStorageProvider>();
         services.AddSingleton<ISecurityScanner, SshSecurityScanner>();
         services.AddSingleton<IServerSystemInspector, SshServerSystemInspector>();
+        services.AddSingleton<IServerCleanupInspector, SshServerCleanupInspector>();
+        services.AddSingleton<IResourceUsageInspector, SshResourceUsageInspector>();
+        services.AddSingleton<IResourceHistoryInspector, SshResourceHistoryInspector>();
         services.AddSingleton<IPluginMigrator>(provider =>
             new FluentPluginMigrator(connectionString, provider.GetRequiredService<ILoggerFactory>()));
 
         services.AddScoped<IServerRepository, ServerRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IServerMetricRepository, ServerMetricRepository>();
+        services.AddScoped<IResourceHistoryRepository, ResourceHistoryRepository>();
         services.AddScoped<ITerminalLogRepository, TerminalLogRepository>();
         services.AddScoped<IPluginRepository, PluginRepository>();
         services.AddScoped<IDeploymentRepository, DeploymentRepository>();
@@ -163,6 +168,13 @@ public static class DependencyInjection
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IdentitySeeder>();
         services.AddScoped<IPermissionSeeder>(provider => provider.GetRequiredService<IdentitySeeder>());
+
+        // Roller ve API anahtarları
+        services.Configure<ApiKeyOptions>(configuration.GetSection(ApiKeyOptions.SectionName));
+        services.AddSingleton<IPermissionCatalog>(provider => new PermissionCatalog(
+            provider.GetServices<IPermissionProvider>(), provider.GetService<IPluginCatalog>()));
+        services.AddScoped<IRoleManagementService, RoleManagementService>();
+        services.AddScoped<IApiKeyService, ApiKeyService>();
 
         return services;
     }

@@ -45,5 +45,16 @@ public interface IDeploymentRepository
     /// <summary>Uygulama kapanırken yarım kalan deployment kayıtlarını silmeden "kesildi" olarak işaretler.</summary>
     Task<int> InterruptRunningDeploymentsAsync(DateTime completedAt, string reason, CancellationToken cancellationToken = default);
 
+    /// <summary>Projenin bekleyen webhook takip deploy'unu yazar (varsa üzerine); izlenen varlığa dokunmaz.</summary>
+    Task<bool> SetPendingWebhookDeployAsync(Guid projectId, DateTime queuedAt, string? commit, string? ipAddress, CancellationToken cancellationToken = default);
+
+    /// <summary>Bekleyen webhook takip deploy'ları (silinmemiş projeler, en eski önce).</summary>
+    Task<IReadOnlyList<PendingWebhookDeploy>> ListPendingWebhookDeploysAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Kuyruk kaydını yalnızca <paramref name="queuedUpTo"/> veya öncesinde yazıldıysa siler; bu arada gelen yeni push kaybolmaz.
+    /// </summary>
+    Task<bool> ClearPendingWebhookDeployAsync(Guid projectId, DateTime queuedUpTo, CancellationToken cancellationToken = default);
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

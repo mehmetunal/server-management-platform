@@ -147,6 +147,30 @@ public class BackupRepository : IBackupRepository
             .OrderByDescending(r => r.StartedAt)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyDictionary<Guid, BackupArtifactRef>> GetLatestAvailableBackupsAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken cancellationToken = default)
+    {
+        var ids = jobIds.Distinct().ToList();
+        if (ids.Count == 0)
+            return new Dictionary<Guid, BackupArtifactRef>();
+
+        var latest = await _context.BackupRuns
+            .AsNoTracking()
+            .Where(r => r.JobId.HasValue
+                        && ids.Contains(r.JobId.Value)
+                        && r.Operation == BackupOperation.Backup
+                        && r.Status == BackupRunStatus.Succeeded
+                        && r.ObjectKey != null
+                        && r.ArtifactDeletedAt == null)
+            .GroupBy(r => r.JobId!.Value)
+            .Select(g => g
+                .OrderByDescending(r => r.StartedAt)
+                .Select(r => new { JobId = r.JobId!.Value, r.Id, r.StartedAt, r.IsEncrypted, r.SizeBytes })
+                .First())
+            .ToListAsync(cancellationToken);
+
+        return latest.ToDictionary(r => r.JobId, r => new BackupArtifactRef(r.JobId, r.Id, r.StartedAt, r.IsEncrypted, r.SizeBytes));
+    }
+
     public Task UpdateRunLogAsync(Guid id, string log, CancellationToken cancellationToken = default) =>
         _context.BackupRuns
             .Where(r => r.Id == id && r.Status == BackupRunStatus.Running)

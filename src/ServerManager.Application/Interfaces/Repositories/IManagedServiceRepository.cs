@@ -33,5 +33,16 @@ public interface IManagedServiceRepository
     /// <summary>Önceki çalışmadan yarım kalan işlemleri "kesildi", kurulum/güncelleme durumundaki servisleri "başarısız" yapar.</summary>
     Task<int> InterruptRunningAsync(DateTime finishedAt, string reason, CancellationToken cancellationToken = default);
 
+    /// <summary>İşleme kurulum sonrası otomatik yedek isteğini (şifreli JSON) yazar veya temizler (null).</summary>
+    Task<bool> SetPendingAutoBackupAsync(Guid operationId, string? protectedOptions, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Bekleyen otomatik yedek isteğini okur ve aynı anda temizler; iki işleyici aynı isteği alamaz (alan yoksa veya başkası aldıysa null).
+    /// </summary>
+    Task<string?> ClaimPendingAutoBackupAsync(Guid operationId, CancellationToken cancellationToken = default);
+
+    /// <summary>Bitmiş (çalışmayan) ve otomatik yedek isteği bekleyen işlemler; log yüklenmez.</summary>
+    Task<IReadOnlyList<ManagedServiceOperation>> ListPendingAutoBackupOperationsAsync(CancellationToken cancellationToken = default);
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

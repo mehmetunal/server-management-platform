@@ -102,17 +102,8 @@ public static class BackupEncryption
     public static async Task DecryptAsync(Stream input, Stream output, string passphrase, CancellationToken cancellationToken = default)
     {
         var header = new byte[HeaderLength];
-        if (await input.ReadAtLeastAsync(header, HeaderLength, throwOnEndOfStream: false, cancellationToken) < HeaderLength
-            || !header.AsSpan(0, 4).SequenceEqual(Magic))
-            throw new BackupFormatException($"Dosya şifreli bir {ProductInfo.Name} yedeği değil.");
-        if (header[4] != Version || header[5] != EncryptedFlag)
-            throw new BackupFormatException("Yedek dosyası sürümü desteklenmiyor.");
-
-        var iterations = BinaryPrimitives.ReadUInt32BigEndian(header.AsSpan(IterationsOffset));
-        if (iterations is < MinIterations or > MaxIterations)
-            throw new BackupFormatException("Yedek dosyasının başlığı geçersiz.");
-
-        var key = DeriveKey(passphrase, header.AsSpan(SaltOffset, SaltLength), (int)iterations);
+        var iterations = await ReadHeaderAsync(input, header, cancellationToken);
+        var key = DeriveKey(passphrase, header.AsSpan(SaltOffset, SaltLength), iterations);
         try
         {
             using var aes = new AesGcm(key, TagLength);
@@ -128,15 +119,7 @@ public static class BackupEncryption
                 if (await input.ReadAtLeastAsync(record, RecordHeaderLength, throwOnEndOfStream: false, cancellationToken) < RecordHeaderLength)
                     throw new BackupFormatException("Yedek dosyası eksik (yarım kalmış).");
 
-                var isFinal = record[0] switch
-                {
-                    0 => false,
-                    1 => true,
-                    _ => throw new BackupFormatException("Yedek dosyası bozuk.")
-                };
-                var length = BinaryPrimitives.ReadUInt32BigEndian(record.AsSpan(1));
-                if (length > ChunkSize)
-                    throw new BackupFormatException("Yedek dosyası bozuk.");
+                var (isFinal, length) = ParseRecord(record);
 
                 var total = (int)length + TagLength;
                 if (await input.ReadAtLeastAsync(cipher.AsMemory(0, total), total, throwOnEndOfStream: false, cancellationToken) < total)
@@ -167,6 +150,95 @@ public static class BackupEncryption
         {
             CryptographicOperations.ZeroMemory(key);
         }
+    }
+
+    /// <summary>
+    /// Başlığı ve ilk parçayı okuyup parolayı doğrular; böylece yanıt başlamadan yanlış parola Türkçe hatayla bildirilir.
+    /// Okunan baytlar kaybolmaz: dönen akış önce onları, sonra <paramref name="input"/>'un kalanını verir ve kapatılınca
+    /// <paramref name="input"/>'u da kapatır. Dönen akış <see cref="DecryptAsync"/>'e verilir.
+    /// </summary>
+    /// <exception cref="BackupFormatException">Parola yanlış, dosya bozuk veya şifreli yedek değil.</exception>
+    public static async Task<Stream> VerifyPassphraseAsync(Stream input, string passphrase, CancellationToken cancellationToken = default)
+    {
+        var header = new byte[HeaderLength];
+        var iterations = await ReadHeaderAsync(input, header, cancellationToken);
+
+        var record = new byte[RecordHeaderLength];
+        if (await input.ReadAtLeastAsync(record, RecordHeaderLength, throwOnEndOfStream: false, cancellationToken) < RecordHeaderLength)
+            throw new BackupFormatException("Yedek dosyası eksik (yarım kalmış).");
+        var (isFinal, length) = ParseRecord(record);
+
+        var total = (int)length + TagLength;
+        var prefix = new byte[HeaderLength + RecordHeaderLength + total];
+        header.CopyTo(prefix, 0);
+        record.CopyTo(prefix, HeaderLength);
+        if (await input.ReadAtLeastAsync(prefix.AsMemory(HeaderLength + RecordHeaderLength, total), total, throwOnEndOfStream: false, cancellationToken) < total)
+            throw new BackupFormatException("Yedek dosyası eksik (yarım kalmış).");
+
+        var key = DeriveKey(passphrase, header.AsSpan(SaltOffset, SaltLength), iterations);
+        var plain = new byte[length];
+        try
+        {
+            using var aes = new AesGcm(key, TagLength);
+            var nonce = new byte[NonceLength];
+            var aad = new byte[HeaderLength + 5];
+            header.CopyTo(aad, 0);
+            FillChunkParameters(header, 0, isFinal, nonce, aad);
+            var cipher = prefix.AsSpan(HeaderLength + RecordHeaderLength, total);
+            aes.Decrypt(nonce, cipher[..(int)length], cipher[(int)length..], plain, aad);
+        }
+        catch (AuthenticationTagMismatchException ex)
+        {
+            throw new BackupFormatException("Şifre çözülemedi: parola yanlış veya dosya bozuk.", ex);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+            CryptographicOperations.ZeroMemory(plain);
+        }
+
+        return new PrefixedReadStream(prefix, input);
+    }
+
+    /// <summary>Şifreli dosyanın boyutundan çözülmüş içeriğin boyutunu hesaplar; boyut biçime uymuyorsa null.</summary>
+    public static long? PlaintextLength(long encryptedLength)
+    {
+        const long recordOverhead = RecordHeaderLength + TagLength;
+        var body = encryptedLength - HeaderLength;
+        if (body < recordOverhead)
+            return null;
+
+        var chunks = (body + ChunkSize + recordOverhead - 1) / (ChunkSize + recordOverhead);
+        var plain = body - chunks * recordOverhead;
+        return plain >= 0 ? plain : null;
+    }
+
+    private static async Task<int> ReadHeaderAsync(Stream input, byte[] header, CancellationToken cancellationToken)
+    {
+        if (await input.ReadAtLeastAsync(header, HeaderLength, throwOnEndOfStream: false, cancellationToken) < HeaderLength
+            || !header.AsSpan(0, 4).SequenceEqual(Magic))
+            throw new BackupFormatException($"Dosya şifreli bir {ProductInfo.Name} yedeği değil.");
+        if (header[4] != Version || header[5] != EncryptedFlag)
+            throw new BackupFormatException("Yedek dosyası sürümü desteklenmiyor.");
+
+        var iterations = BinaryPrimitives.ReadUInt32BigEndian(header.AsSpan(IterationsOffset));
+        if (iterations is < MinIterations or > MaxIterations)
+            throw new BackupFormatException("Yedek dosyasının başlığı geçersiz.");
+        return (int)iterations;
+    }
+
+    private static (bool IsFinal, uint Length) ParseRecord(byte[] record)
+    {
+        var isFinal = record[0] switch
+        {
+            0 => false,
+            1 => true,
+            _ => throw new BackupFormatException("Yedek dosyası bozuk.")
+        };
+        var length = BinaryPrimitives.ReadUInt32BigEndian(record.AsSpan(1));
+        if (length > ChunkSize)
+            throw new BackupFormatException("Yedek dosyası bozuk.");
+        return (isFinal, length);
     }
 
     private static byte[] DeriveKey(string passphrase, ReadOnlySpan<byte> salt, int iterations) =>
