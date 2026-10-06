@@ -1,6 +1,6 @@
 # Yalnızca yerel geliştirme/test içindir: SSH erişimli, izole Docker-in-Docker sunucusu.
 # Host Docker soketine bağlanmaz; içindeki container'lar host'tan tamamen ayrıdır.
-FROM docker:28-dind
+FROM docker:29-dind
 
 RUN apk add --no-cache openssh bash sudo \
     && (addgroup -S docker 2>/dev/null || true) \
