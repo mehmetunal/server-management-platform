@@ -109,9 +109,9 @@
 
     <section class="panel mb-6">
         <div class="grid grid-cols-2 gap-x-6 gap-y-4 p-5 md:grid-cols-3 xl:grid-cols-6">
-            @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("CPU", "cpu", latest?.CpuUsagePercent, thresholds.CpuWarningPercent, thresholds.CpuCriticalPercent))
-            @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("RAM", "memory", latest?.MemoryUsagePercent, thresholds.MemoryWarningPercent, thresholds.MemoryCriticalPercent))
-            @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("Disk", "disk", latest?.DiskUsagePercent, thresholds.DiskWarningPercent, thresholds.DiskCriticalPercent))
+            @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("CPU", "cpu", latest?.CpuUsagePercent, thresholds.CpuWarningPercent, thresholds.CpuCriticalPercent, Detail: MetricDisplay.CpuCores(latest?.CpuUsagePercent, latest?.CpuThreads)))
+            @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("RAM", "memory", latest?.MemoryUsagePercent, thresholds.MemoryWarningPercent, thresholds.MemoryCriticalPercent, Detail: MetricDisplay.UsedOfTotal(latest?.MemoryUsedBytes ?? 0, latest?.MemoryTotalBytes ?? 0)))
+            @await Html.PartialAsync("_ResourceBar", new ResourceBarModel("Disk", "disk", latest?.DiskUsagePercent, thresholds.DiskWarningPercent, thresholds.DiskCriticalPercent, Detail: MetricDisplay.UsedOfTotal(latest?.DiskUsedBytes ?? 0, latest?.DiskTotalBytes ?? 0)))
             <div>
                 <span class="block text-xs font-medium text-slate-500 dark:text-slate-400">Uptime</span>
                 <span class="mt-1 block text-sm font-semibold text-slate-900 dark:text-slate-100" data-live-uptime>@MetricDisplay.Uptime(latest?.UptimeSeconds)</span>

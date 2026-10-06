@@ -146,7 +146,7 @@ public class MonitoringService : IMonitoringService
             if (server.Status != ServerStatus.Maintenance)
                 server.Status = evaluation.Status;
 
-            latest = metric.ToSummaryDto(server.Status);
+            latest = metric.ToSummaryDto(server.Status, snapshot.CpuThreads);
         }
         else
         {
@@ -222,7 +222,7 @@ public class MonitoringService : IMonitoringService
             LastSeenAt = server.LastSeenAt,
             Snapshot = snapshot?.Snapshot,
             SnapshotCollectedAt = snapshot?.CollectedAt,
-            Latest = latest?.ToSummaryDto(server.Status),
+            Latest = latest?.ToSummaryDto(server.Status, snapshot?.Snapshot.CpuThreads),
             UptimePercent24h = uptime,
             RecentHealthChecks = healthChecks.Select(h => h.ToDto()).ToList()
         });

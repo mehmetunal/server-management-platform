@@ -57,7 +57,16 @@ function formatValue(key, value) {
     return formatNumber(value);
 }
 
-function chartOptions(key) {
+/** Tooltip'te yüzdenin yanına kullanılan miktarı ekler (ör. "%24,5 · 3,9 GB", "%40 · 1,6 çekirdek"). */
+function formatTooltipValue(key, value, totals) {
+    const text = formatValue(key, value);
+    if (key === 'cpu' && totals.cpuThreads > 0) return `${text} · ${formatNumber((value * totals.cpuThreads) / 100)} çekirdek`;
+    if (key === 'memory' && totals.memory > 0) return `${text} · ${formatBytes((value * totals.memory) / 100)}`;
+    if (key === 'disk' && totals.disk > 0) return `${text} · ${formatBytes((value * totals.disk) / 100)}`;
+    return text;
+}
+
+function chartOptions(key, totals = {}) {
     const colors = themeColors();
     return {
         responsive: true,
@@ -70,7 +79,7 @@ function chartOptions(key) {
                 labels: { color: colors.text, boxWidth: 12, usePointStyle: true }
             },
             tooltip: {
-                callbacks: { label: context => `${context.dataset.label}: ${formatValue(key, context.parsed.y)}` }
+                callbacks: { label: context => `${context.dataset.label}: ${formatTooltipValue(key, context.parsed.y, totals)}` }
             }
         },
         scales: {
@@ -90,14 +99,21 @@ function chartOptions(key) {
 
 function createGroup(container) {
     let closed = false;
+    // Toplamlar son ölçümden gelir; geçmiş noktalardaki miktar, yüzde × güncel toplam olarak gösterilir.
+    const totals = {
+        cpuThreads: Number(container.dataset.cpuThreads) || 0,
+        memory: Number(container.dataset.memoryTotal) || 0,
+        disk: Number(container.dataset.diskTotal) || 0
+    };
     const group = {
         url: container.dataset.seriesUrl,
         live: container.dataset.liveRange === 'true',
+        totals,
         charts: qsa('[data-metric-chart]', container).map(canvas => {
             const key = canvas.dataset.metricChart;
             return {
                 key,
-                chart: new window.Chart(canvas, { type: 'line', data: { labels: [], datasets: buildDatasets(key, {}) }, options: chartOptions(key) }),
+                chart: new window.Chart(canvas, { type: 'line', data: { labels: [], datasets: buildDatasets(key, {}) }, options: chartOptions(key, totals) }),
                 empty: canvas.parentElement.querySelector('[data-chart-empty]')
             };
         })
@@ -143,7 +159,7 @@ export function createChartGroups() {
     const groups = qsa('[data-metric-charts]').map(createGroup);
     const observer = groups.length
         ? new MutationObserver(() => groups.forEach(group => group.charts.forEach(({ key, chart }) => {
-            chart.options = chartOptions(key);
+            chart.options = chartOptions(key, group.totals);
             chart.update('none');
         })))
         : null;

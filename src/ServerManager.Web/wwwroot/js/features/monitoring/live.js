@@ -3,14 +3,16 @@ import { onPageDispose } from '../../core/page-scope.js';
 
 const BAR_CLASSES = ['bg-emerald-500', 'bg-amber-500', 'bg-red-500', 'bg-slate-300', 'dark:bg-slate-700'];
 
-function updateResource(scope, key, percent, text) {
+function updateResource(scope, key, percent, text, detail) {
     const element = qs(`[data-resource="${key}"]`, scope);
     if (!element) return;
     const warning = parseFloat(element.dataset.warning);
     const critical = parseFloat(element.dataset.critical);
     const label = qs('[data-resource-text]', element);
+    const detailLabel = qs('[data-resource-detail]', element);
     const bar = qs('[data-resource-bar]', element);
     if (label) label.textContent = text;
+    if (detailLabel && detail) detailLabel.textContent = detail;
     if (!bar) return;
     bar.style.width = `${Math.max(0, Math.min(100, percent))}%`;
     bar.classList.remove(...BAR_CLASSES);
@@ -31,9 +33,11 @@ export function applyUpdate(scope, payload) {
     }
     const latest = payload.latest;
     if (!latest) return;
-    updateResource(scope, 'cpu', latest.cpu, latest.cpuText);
-    updateResource(scope, 'memory', latest.memory, latest.memoryText);
-    updateResource(scope, 'disk', latest.disk, latest.diskText);
+    updateResource(scope, 'cpu', latest.cpu, latest.cpuText, latest.cpuDetailText);
+    updateResource(scope, 'memory', latest.memory, latest.memoryText, latest.memoryDetailText);
+    updateResource(scope, 'disk', latest.disk, latest.diskText, latest.diskDetailText);
+    setText(scope, '[data-live-rx]', latest.rxText);
+    setText(scope, '[data-live-tx]', latest.txText);
     setText(scope, '[data-live-uptime]', latest.uptimeText);
     setText(scope, '[data-live-load]', latest.loadText);
     setText(scope, '[data-live-collected]', latest.collectedAtText);

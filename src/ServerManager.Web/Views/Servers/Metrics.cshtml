@@ -4,13 +4,15 @@
     ViewData["Title"] = $"{server.Name} · Metrikler";
     ViewData["Page"] = "server-metrics";
     var rangeCode = MetricRanges.Code(Model.Range);
+    var latest = Model.Monitoring.Latest;
+    string Invariant(long value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
     var charts = new[]
     {
-        ("cpu", "CPU kullanımı", "%"),
-        ("memory", "RAM kullanımı", "%"),
-        ("disk", "Disk kullanımı (en dolu bölüm)", "%"),
-        ("network", "Ağ trafiği", "B/s"),
-        ("load", "Load average (1 dk)", "")
+        ("cpu", "CPU kullanımı"),
+        ("memory", "RAM kullanımı"),
+        ("disk", "Disk kullanımı (en dolu bölüm)"),
+        ("network", "Ağ trafiği"),
+        ("load", "Load average (1 dk)")
     };
     string Description(MetricRange range) =>
         $"{MetricRanges.DisplayName(range)} · {(MetricRanges.UsesHourlyData(range) ? "saatlik ortalamalar" : "ham ölçümler")}";
@@ -35,16 +37,33 @@
     <p class="text-sm text-slate-500 dark:text-slate-400" data-range-description>@Description(Model.Range)</p>
 </div>
 
-<div class="metrics-grid" data-metric-charts data-series-url="@Url.Action("MetricSeries", new { id = server.Id, range = rangeCode })" data-live-range="@(Model.Range == MetricRange.OneHour ? "true" : "false")">
-    @foreach (var (key, title, unit) in charts)
+<div class="metrics-grid" data-metric-charts data-series-url="@Url.Action("MetricSeries", new { id = server.Id, range = rangeCode })" data-live-range="@(Model.Range == MetricRange.OneHour ? "true" : "false")"
+     data-cpu-threads="@(latest?.CpuThreads ?? 0)" data-memory-total="@Invariant(latest?.MemoryTotalBytes ?? 0)" data-disk-total="@Invariant(latest?.DiskTotalBytes ?? 0)">
+    @foreach (var (key, title) in charts)
     {
         <section class="panel @(key == "load" ? "lg:col-span-2" : "")">
             <div class="panel-header">
                 <h2 class="panel-title">@title</h2>
-                @if (!string.IsNullOrEmpty(unit))
-                {
-                    <span class="text-xs text-slate-400">@unit</span>
-                }
+                <span class="text-xs tabular-nums text-slate-500 dark:text-slate-400" title="Son ölçüm">
+                    @switch (key)
+                    {
+                        case "cpu":
+                            <span data-resource="cpu"><span data-resource-detail>@MetricDisplay.CpuCores(latest?.CpuUsagePercent, latest?.CpuThreads)</span> · <span class="font-semibold text-slate-900 dark:text-slate-100" data-resource-text>@MetricDisplay.Percent(latest?.CpuUsagePercent)</span></span>
+                            break;
+                        case "memory":
+                            <span data-resource="memory"><span data-resource-detail>@MetricDisplay.UsedOfTotal(latest?.MemoryUsedBytes ?? 0, latest?.MemoryTotalBytes ?? 0)</span> · <span class="font-semibold text-slate-900 dark:text-slate-100" data-resource-text>@MetricDisplay.Percent(latest?.MemoryUsagePercent)</span></span>
+                            break;
+                        case "disk":
+                            <span data-resource="disk"><span data-resource-detail>@MetricDisplay.UsedOfTotal(latest?.DiskUsedBytes ?? 0, latest?.DiskTotalBytes ?? 0)</span> · <span class="font-semibold text-slate-900 dark:text-slate-100" data-resource-text>@MetricDisplay.Percent(latest?.DiskUsagePercent)</span></span>
+                            break;
+                        case "network":
+                            <span>↓ <span class="font-semibold text-slate-900 dark:text-slate-100" data-live-rx>@MetricDisplay.Rate(latest?.NetworkRxBytesPerSecond)</span> · ↑ <span class="font-semibold text-slate-900 dark:text-slate-100" data-live-tx>@MetricDisplay.Rate(latest?.NetworkTxBytesPerSecond)</span></span>
+                            break;
+                        default:
+                            <span class="font-semibold text-slate-900 dark:text-slate-100" data-live-load>@MetricDisplay.Number(latest?.LoadAverage1)</span>
+                            break;
+                    }
+                </span>
             </div>
             <div class="panel-body">
                 <div class="chart-box">

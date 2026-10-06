@@ -12,7 +12,17 @@ public sealed class ResourcePayload
 
     public double Disk { get; init; }
 
+    public double Rx { get; init; }
+
+    public double Tx { get; init; }
+
     public string CpuText { get; init; } = string.Empty;
+
+    public string CpuDetailText { get; init; } = string.Empty;
+
+    public string MemoryDetailText { get; init; } = string.Empty;
+
+    public string DiskDetailText { get; init; } = string.Empty;
 
     public string MemoryText { get; init; } = string.Empty;
 
@@ -33,9 +43,14 @@ public sealed class ResourcePayload
         Cpu = summary.CpuUsagePercent,
         Memory = summary.MemoryUsagePercent,
         Disk = summary.DiskUsagePercent,
+        Rx = summary.NetworkRxBytesPerSecond,
+        Tx = summary.NetworkTxBytesPerSecond,
         CpuText = MetricDisplay.Percent(summary.CpuUsagePercent),
         MemoryText = MetricDisplay.Percent(summary.MemoryUsagePercent),
         DiskText = MetricDisplay.Percent(summary.DiskUsagePercent),
+        CpuDetailText = MetricDisplay.CpuCores(summary.CpuUsagePercent, summary.CpuThreads),
+        MemoryDetailText = MetricDisplay.UsedOfTotal(summary.MemoryUsedBytes, summary.MemoryTotalBytes),
+        DiskDetailText = MetricDisplay.UsedOfTotal(summary.DiskUsedBytes, summary.DiskTotalBytes),
         LoadText = MetricDisplay.Number(summary.LoadAverage1),
         RxText = MetricDisplay.Rate(summary.NetworkRxBytesPerSecond),
         TxText = MetricDisplay.Rate(summary.NetworkTxBytesPerSecond),

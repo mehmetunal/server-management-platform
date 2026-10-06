@@ -29,6 +29,16 @@ public static class MetricDisplay
     public static string Rate(double? bytesPerSecond) =>
         bytesPerSecond.HasValue ? Bytes((long)Math.Round(bytesPerSecond.Value)) + "/s" : "—";
 
+    /// <summary>"3,2 GB / 8 GB" biçiminde kullanılan / toplam; toplam bilinmiyorsa "—".</summary>
+    public static string UsedOfTotal(long used, long total) =>
+        total > 0 ? $"{Bytes(used)} / {Bytes(total)}" : "—";
+
+    /// <summary>CPU yüzdesini kullanılan çekirdek eşdeğerine çevirir: "%40, 4 thread" → "1,6 / 4 çekirdek".</summary>
+    public static string CpuCores(double? percent, int? threads) =>
+        percent.HasValue && threads is > 0
+            ? $"{(percent.Value * threads.Value / 100).ToString("0.#", Turkish)} / {threads.Value} çekirdek"
+            : "—";
+
     public static string Number(double? value, string format = "0.##") =>
         value.HasValue ? value.Value.ToString(format, Turkish) : "—";
 

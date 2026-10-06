@@ -3,6 +3,7 @@ import { confirmAction, showSecretList } from '../core/dialog.js';
 import { getHtml, postForm } from '../core/http.js';
 import { notify } from '../core/notify.js';
 import { createChartGroups } from '../features/monitoring/charts.js';
+import { applyUpdate } from '../features/monitoring/live.js';
 import { initServerPage } from '../features/servers/server-page.js';
 
 const [charts] = createChartGroups();
@@ -28,7 +29,11 @@ const refreshLiveViews = debounce(() => {
 }, 1500);
 
 initServerPage({
-    onUpdate: refreshLiveViews,
+    onUpdate: payload => {
+        const chartGrid = qs('[data-metric-charts]');
+        if (chartGrid) applyUpdate(chartGrid, payload);
+        refreshLiveViews();
+    },
     regions: ['server-header'],
     onActionSuccess: async trigger => {
         if (agentPanel?.contains(trigger)) await refreshAgentPanel();
