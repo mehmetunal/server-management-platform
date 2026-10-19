@@ -16,8 +16,8 @@
     "chart.js": "^4.5.1",
     "codemirror": "^6.0.2",
     "jquery": "^4.0.0",
-    "postcss": "^8.5.28",
-    "sass": "^1.105.1",
+    "postcss": "^8.5.30",
+    "sass": "^1.105.2",
     "sweetalert2": "^11.26.25",
     "tailwindcss": "^4.1.0",
     "toastr": "^2.1.4"
