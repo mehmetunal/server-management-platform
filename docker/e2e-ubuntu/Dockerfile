@@ -8,7 +8,7 @@
 #   smnopw  — sudo parolasız (NOPASSWD), docker grubunda
 #
 # Eksikler: systemd PID 1 olarak çalışmaz (journald/systemctl yok); servisler entrypoint tarafından doğrudan başlatılır.
-FROM ubuntu:25.10
+FROM ubuntu:26.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Europe/Istanbul
