@@ -5,7 +5,7 @@
 # Ön yüz varlıkları (wwwroot/lib, derlenmiş CSS, eklenti Content/ klasörleri) depoda hazır olduğundan
 # imaj derlemesi Node.js gerektirmez; stilleri değiştirdiyseniz önce yerelde `npm run build` çalıştırın.
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 
 # Bağımlılık katmanı: proje dosyaları değişmedikçe restore önbellekten gelir.
@@ -47,7 +47,7 @@ RUN dotnet publish src/ServerManager.Web/ServerManager.Web.csproj \
     && test -n "$(ls -A /app/publish/Plugins)" \
     || (echo "Yayın çıktısında Plugins/ klasörü boş" && exit 1)
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS runtime
 
 # tzdata: Backup:TimeZone (Europe/Istanbul) gibi IANA saat dilimleri için; curl: HEALTHCHECK için.
 RUN apt-get update \
